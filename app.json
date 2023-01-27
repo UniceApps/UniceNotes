@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "UniceNotes",
-    "slug": "UniceNotes",
+    "slug": "unicenotes",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -21,7 +21,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSFaceIDUsageDescription": "Verouillez l'application grâce à FaceID / TouchID."
-      }
+      },
+      "bundleIdentifier": "fr.hugofnm.unice.notes"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +32,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "952dd5a7-b409-4a66-a575-420b44f53fa9"
+      }
+    },
+    "owner": "hugofnm"
   }
 }
