@@ -8,14 +8,15 @@ import * as WebBrowser from 'expo-web-browser';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-var isLoggedIn = false;
-var loading = false;
-var dataIsLoaded = false;
-var name = '';
-var semesters = [];
-var username = '';
-var password = '';
+var isLoggedIn = false; // App login
+var isConnected = false; // UniceAPI login
+var dataIsLoaded = false; // JSONPDF loaded
+var name = ''; // User's name
+var semesters = []; // User's semesters
+var username = ''; // User's username
+var password = ''; // User's password
 
+// SecureStore API
 async function save(key, value) {
   await SecureStore.setItemAsync(key, value);
 }
@@ -32,6 +33,7 @@ async function verifyLogin() {
 
 // Page de connexion à l'application (login)
 function LoginPage({ navigation }) {
+  
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -105,11 +107,11 @@ function LoginPage({ navigation }) {
     console.log(json);
 
     if(json.success) {
-      isLoggedIn = true;
+      isConnected = true;
       name = json.name;
       semesters = json.semesters;
       console.log(semesters);
-      loading = false;
+      setLoading(false);
       navigation.navigate('Semesters');
     } else {
       Alert.alert("Erreur", "Vos identifiants sont incorrects.");
@@ -138,42 +140,38 @@ function LoginPage({ navigation }) {
         value={password}
         onChangeText={(text) => setPassword(text)}
         secureTextEntry={seePassword}
-        right={<TextInput.Icon icon="eye" onPress={viewPass} />}
+        right={<TextInput.Icon icon="eye" onPress={ () => viewPass() } />}
         style={{ marginBottom: 16 }}
       />
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:16}}>
           <Switch value={rememberMe} onValueChange={setRememberMe} color="#3f51b5"/>
           <Text style={{ marginLeft:8}}> Se souvenir de moi</Text>
         </View>
-      <Button style={{ marginBottom: 16 }}icon="login" mode="contained-tonal" onPress={handleLogin}> Se connecter </Button>
+      <Button style={{ marginBottom: 16 }}icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
       <Divider style={{ marginBottom: 16 }} />
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
-      <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained-tonal" onPress={privacy}> Clause de confidentialité </Button>
+      <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained-tonal" onPress={ () => privacy() }> Clause de confidentialité </Button>
       <ActivityIndicator animating={loading} size="large" />
     </View>
   );
 }
 
 function Semesters ({ navigation }) {
+
+  name = name
+    .split(" ")
+    .map(word => word[0].toUpperCase() + word.substring(1).toLowerCase())
+    .join(" ");
+
   function loadGrades(semester) {
       navigation.navigate('APIConnect', { semester: semester });
   }
-
-  function includeSemesters(semesters) {
-    let buttons = [];
-    semesters.forEach(semester => {
-      buttons.push(
-        <Button style={{ marginTop: 8 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPressOut={ () => loadGrades(semester) }> {semester} </Button>
-      )
-    });
-    return buttons;
-  }
   
   function logout() {
-    isLoggedIn = false;
+    isConnected = false;
     dataIsLoaded = false;
     fetch('https://api.unice.hugofnm.fr/logout');
-    navigation.navigate('Login', { isLoggedIn: isLoggedIn, dataIsLoaded: dataIsLoaded });
+    navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded });
   }
 
   return (
@@ -183,9 +181,11 @@ function Semesters ({ navigation }) {
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displaySmall">{name} !</Text>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
 
-      {includeSemesters(semesters)}
+      {semesters.map((semester) => (
+        <Button style={{ marginTop: 8 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
+      ))}
 
-      <Button style={{ marginTop : 16, backgroundColor: "#FF0000" }} icon="logout" mode="contained-tonal" onPress={logout}> Se déconnecter </Button>
+      <Button style={{ marginTop : 16, backgroundColor: "#FF0000" }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
     </View>
   );
 }
@@ -193,28 +193,68 @@ function Semesters ({ navigation }) {
 function APIConnect ({ navigation }) {
   const [progress, setProgress] = useState(0);
 
-  function ok() {
-    dataIsLoaded = true;
-    navigation.navigate('Login', { dataIsLoaded: dataIsLoaded });
+  function logout() {
+    isConnected = false;
+    dataIsLoaded = false;
+    fetch('https://api.unice.hugofnm.fr/logout');
+    navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded });
   }
 
-  function loginAPI() {
+
+  async function loginAPI() {
+    fetch('https://api.unice.hugofnm.fr/load_pdf').then(response => response.json())
+    if(response.success) {
+      setProgress(0.5);
+
+      let apiResp = await fetch('https://api.unice.hugofnm.fr/scrape_pdf').then(response => response.json());
+  
+      if(!apiResp.ok || response.success == false){
+        Alert.alert("Erreur", "Connexion au serveur impossible.");
+      }
+  
+      let json = await apiResp.json();
+  
+      console.log(json);
+  
+      if(json.success) {
+        setProgress(1);
+        dataIsLoaded = true;
+        grades = json.grades;
+        admission = json.admission;
+        average = json.average;
+        position = json.position;
+        console.log(grades);
+        dataIsLoaded = true;
+        navigation.navigate('Home', { dataIsLoaded: dataIsLoaded, grades: grades, admission: admission, average: average, position: position });
+      } else {
+        Alert.alert("Erreur", "Vos identifiants sont incorrects.");
+      }
+    }
+    else {
+      Alert.alert("Erreur", "Une erreur est survenue. EC=L");
+    }
     return username, password;
   }
 
+  loginAPI();
+
   return (
     <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25 }}>
-      <Avatar.Icon style={{ alignSelf: "center", marginBottom: 16 }} size={200} icon="account" />
-      <ProgressBar progress={progress} style={{ marginBottom: 16 }} />
+      <Avatar.Icon style={{ alignSelf: "center", marginBottom: 32 }} size={200} icon="sync" />
 
-      <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained-tonal" onPress={() => navigation.navigate('Login')}> back to login </Button>
-      <Button style={{ marginBottom: 16 }}icon="bug" mode="contained-tonal" onPress={ok}> skip (connexion OK) </Button>
+      <ProgressBar progress={progress} style={{ marginBottom: 32 }} />
+
+      <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained-tonal" onPress={ () => logout() }> Annuler </Button>
     </View>
   );
 }
 
 function Home ({ navigation }) {
-
+  <View>
+    <Appbar.Header>
+      <Appbar.BackAction disabled={true} />
+    </Appbar.Header>
+  </View>
 }
 
 const Stack = createNativeStackNavigator();
@@ -226,7 +266,7 @@ function App() {
         <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false }} />
         <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false }} />  
         <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', gestureEnabled: false, presentation: "modal" }} />
-        <Stack.Screen name="Home" component={Home} options={{ title: 'UniceNotes', headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="Home" component={Home} options={{ title: 'UniceNotes', gestureEnabled: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
