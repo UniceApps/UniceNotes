@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, View, StyleSheet, StatusBar } from 'react-native';
-import { Avatar, Text, TextInput, Button, Switch, Divider, ActivityIndicator, ProgressBar } from 'react-native-paper';
+import { Alert, View, StyleSheet, StatusBar, ScrollView } from 'react-native';
+import { Avatar, Text, TextInput, Button, Switch, Divider, ActivityIndicator, ProgressBar, BottomNavigation, DataTable } from 'react-native-paper';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
@@ -12,9 +12,11 @@ var isLoggedIn = false; // App login
 var isConnected = false; // UniceAPI login
 var dataIsLoaded = false; // JSONPDF loaded
 var name = ''; // User's name
-var semesters = []; // User's semesters
+var semester = ''; // User's semesters
 var username = ''; // User's username
 var password = ''; // User's password
+
+var grades = []; // User's grades
 
 // SecureStore API
 async function save(key, value) {
@@ -77,11 +79,6 @@ function LoginPage({ navigation }) {
   verifyLogin();
   if(isLoggedIn) {
     handleLogin();
-  }
-
-  // Vérifie si les données sont chargées (si oui redirection vers la page d'accueil)
-  if(dataIsLoaded) {
-    navigation.navigate('Home');
   }
 
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
@@ -158,12 +155,15 @@ function LoginPage({ navigation }) {
 
 function Semesters ({ navigation }) {
 
+  // Correction du nom de l'étudiant
   name = name
     .split(" ")
     .map(word => word[0].toUpperCase() + word.substring(1).toLowerCase())
     .join(" ");
 
+  // Fonction de chargement des notes
   function loadGrades(semester) {
+      global.semester = semester;
       navigation.navigate('APIConnect', { semester: semester });
   }
   
@@ -202,38 +202,29 @@ function APIConnect ({ navigation }) {
 
 
   async function loginAPI() {
-    fetch('https://api.unice.hugofnm.fr/load_pdf').then(response => response.json())
-    if(response.success) {
+    let response = await fetch('https://api.unice.hugofnm.fr/load_pdf')
+    if(response.status == 200) {
       setProgress(0.5);
 
-      let apiResp = await fetch('https://api.unice.hugofnm.fr/scrape_pdf').then(response => response.json());
+      let pdfAPI = await fetch('https://api.unice.hugofnm.fr/scrape_pdf');
   
-      if(!apiResp.ok || response.success == false){
+      if(pdfAPI.status != 200){
         Alert.alert("Erreur", "Connexion au serveur impossible.");
       }
   
-      let json = await apiResp.json();
-  
-      console.log(json);
-  
-      if(json.success) {
-        setProgress(1);
-        dataIsLoaded = true;
-        grades = json.grades;
-        admission = json.admission;
-        average = json.average;
-        position = json.position;
-        console.log(grades);
-        dataIsLoaded = true;
-        navigation.navigate('Home', { dataIsLoaded: dataIsLoaded, grades: grades, admission: admission, average: average, position: position });
-      } else {
-        Alert.alert("Erreur", "Vos identifiants sont incorrects.");
-      }
+      let json = await pdfAPI.json();
+    
+      setProgress(1);
+      grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
+      admission = json.admission; // admission oui/non
+      average = json.average; // moyenne générale
+      position = json.position; // position dans le classement
+      global.dataIsLoaded = true;
+      navigation.navigate('ShowGrades', { grades : grades, admission : admission, average : average, position : position });
     }
     else {
       Alert.alert("Erreur", "Une erreur est survenue. EC=L");
     }
-    return username, password;
   }
 
   loginAPI();
@@ -249,12 +240,129 @@ function APIConnect ({ navigation }) {
   );
 }
 
-function Home ({ navigation }) {
-  <View>
-    <Appbar.Header>
-      <Appbar.BackAction disabled={true} />
-    </Appbar.Header>
-  </View>
+function ShowGrades( { route, navigation } ) {
+
+  const [admission, setAdmission] = route.params.admission;
+  const [average, setAverage] = route.params.average;
+  const [position, setPosition] = route.params.position;
+
+  function showHeader() {
+    if(admission || average || position) {
+      return (
+        <View>
+          <Text style={{ textAlign: 'left' }} variant="titleMedium"> {semester} </Text>
+          <Text style={{ textAlign: 'left' }} variant="titleMedium"> {average} </Text>
+          <Text style={{ textAlign: 'left' }} variant="titleMedium"> {admission} </Text>
+          <Text style={{ textAlign: 'left' }} variant="titleMedium"> Position bientôt affichée... </Text>
+        </View>
+      );
+    }
+  }
+
+  function showTable() {
+    return (grades.map((item) => (
+      <View>
+        <Text>{item.subject}</Text>
+        <Text>Teacher: {item.teacher}</Text>
+        <Text>Average: {item.average}</Text>
+        <DataTable>
+          <DataTable.Header>
+            <DataTable.Title>Exam</DataTable.Title>
+            <DataTable.Title numeric>Grade</DataTable.Title>
+            <DataTable.Title numeric>Coefficient</DataTable.Title>
+          </DataTable.Header>
+          {item.grades.map((grade) => (
+            <DataTable.Row>
+              <DataTable.Cell>{grade[0]}</DataTable.Cell>
+              {isCoeff(grade)}
+            </DataTable.Row>
+          ))}
+        </DataTable>
+      </View>
+    )))
+  }
+
+  function isCoeff(grade) {
+    if(grade[1].length <= 3){
+      return (
+        <><DataTable.Cell numeric>{grade[1][0]}</DataTable.Cell>
+        <DataTable.Cell numeric>{grade[1][1]}</DataTable.Cell></>
+      )
+    }
+  }
+  
+  function logout() {
+    isConnected = false;
+    isLoggedIn = false;
+    dataIsLoaded = false;
+    fetch('https://api.unice.hugofnm.fr/logout');
+    navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded, isLoggedIn: isLoggedIn });
+  }
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25, marginTop: 50 }}>
+      <ScrollView>
+        <Text style={{ textAlign: 'left' }} variant="displayLarge">Notes</Text>
+        <Button style={{ marginTop: 16 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
+        <Button style={{ marginTop: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
+        {showHeader()}
+        {showTable()}
+      </ScrollView>
+    </View>
+  );
+}
+
+function ShowSettings( { navigation } ) {
+  const [confirm, setConfirm] = useState(false);
+
+  function logout() {
+    isConnected = false;
+    isLoggedIn = false;
+    dataIsLoaded = false;
+    fetch('https://api.unice.hugofnm.fr/logout');
+    navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded, isLoggedIn: isLoggedIn });
+  }
+
+  function deleteData() {
+    Alert.alert("Suppression des données", "Voulez-vous vraiment supprimer les données de l'application ?", [
+      {
+        text: "Annuler",
+        onPress: () => setConfirm(false),
+        style: "cancel"
+      },
+      { 
+        text: "Supprimer", 
+        onPress: () => setConfirm(true) 
+      }]);
+
+    if(confirm){
+      save('username', '');
+      save('password', '');
+      logout();
+    }
+  }
+
+  const handleURL = async (url) => {
+    let result = await WebBrowser.openBrowserAsync(url);
+    setResult(result);
+  };
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25 }}>
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Paramètres</Text>
+      <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.unice.cf/bug") }> Signaler un bug </Button>
+      <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
+      <Button style={{ marginBottom: 16, backgroundColor: "#FF0000" }} icon="delete" mode="contained-tonal" onPress={ () => deleteData() }> Supprimer les données de connexion </Button>
+      
+
+      <Text style={{ textAlign: 'left' }} variant="titleMedium">Version: 1.0.0</Text>
+      <Text style={{ textAlign: 'left' }} variant="titleMedium">Développé par @hugofnm</Text>
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">GitHub:
+        <Text style={{ color: 'blue' }} onPress={() => handleURL("https://github.com/UniceApps/UniceNotes")}> github.com/UniceApps/UniceNotes </Text>
+      </Text>
+      <Text style={{ textAlign: 'left' }} variant="titleMedium">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur.</Text>
+    </View>
+  );
 }
 
 const Stack = createNativeStackNavigator();
@@ -265,8 +373,9 @@ function App() {
       <Stack.Navigator>
         <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false }} />
         <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false }} />  
-        <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', gestureEnabled: false, presentation: "modal" }} />
-        <Stack.Screen name="Home" component={Home} options={{ title: 'UniceNotes', gestureEnabled: false }} />
+        <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', gestureEnabled: false, headerShown: false }} />
+        <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false }} />
+        <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
