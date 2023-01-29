@@ -36,4 +36,8 @@ Certains composants intégrés peuvent être sous des licences différentes, con
 
 ## 🔒 Confidentialité
 
-L'application UniceNotes ne collecte aucune donnée personnelle. Les données sont **stockées sur votre appareil** et ne sont pas envoyées sur un serveur (sauf l'API communiquant avec Intracursus). Les données sont stockées dans un format **crypté** et ne peuvent être lues que par l'application lorsque l'utilisateur s'identifie grâce à un moyen biométrique / code. [Voir l'API SecureStore](https://docs.expo.dev/versions/v47.0.0/sdk/securestore/)
+L'application UniceNotes ne collecte aucune donnée personnelle. 
+\
+Les données sont **stockées sur votre appareil** et ne sont pas envoyées sur un serveur (sauf l'API communiquant avec Intracursus). 
+\
+Les données sont stockées dans un format **crypté** et ne peuvent être lues que par l'application lorsque l'utilisateur s'identifie grâce à un moyen biométrique / code. [Voir l'API SecureStore](https://docs.expo.dev/versions/v47.0.0/sdk/securestore/)
