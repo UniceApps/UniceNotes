@@ -13,7 +13,7 @@ import { Alert, View, StyleSheet, StatusBar, ScrollView, Image } from 'react-nat
 import { Avatar, Text, TextInput, 
   Button, Switch, Divider, 
   ActivityIndicator, ProgressBar, BottomNavigation, 
-  DataTable
+  DataTable, Card
 } from 'react-native-paper';
 
 // Expo API
@@ -36,6 +36,9 @@ var username = ''; // User's username
 var password = ''; // User's password
 
 var grades = []; // User's grades
+var average = ""; // User's average
+var admission = ""; // User's admission
+var position = ""; // User's position
 
 // SecureStore API
 async function save(key, value) {
@@ -57,12 +60,6 @@ function LoginPage({ navigation }) {
   const [seePassword, setSeePassword] = useState(true);
   const [isBooted, setIsBooted] = useState(false);
   const [count, setCount] = useState(0);
-
-  if(count == 0) {
-    setCount(1);
-    // Vérifie si l'utilisateur est déjà connecté (si oui auth par TouchID/FaceID)
-    verifyLogin();
-  }
   
   async function verifyLogin() {
     var res = true;
@@ -70,7 +67,7 @@ function LoginPage({ navigation }) {
     if(!isBooted) {
       setPassword(await SecureStore.getItemAsync("passkey"));
       setUsername(await SecureStore.getItemAsync("username"));
-      if (username != "" || password != "") {
+      if (username != "" && password != "") {
         setIsBooted(true);
         isConnected = false;
         handleLogin();
@@ -111,7 +108,8 @@ function LoginPage({ navigation }) {
         }),
         headers: {
           "Accept": "application/json",
-          "Content-type": "application/json"
+          "Content-type": "application/json",
+          "Charset": "utf-8"
         }
       })
     
@@ -119,7 +117,7 @@ function LoginPage({ navigation }) {
         setLoading(false);
         Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
       }
-    
+
       let json = await apiResp.json();
     
       console.log(json);
@@ -141,6 +139,12 @@ function LoginPage({ navigation }) {
   // Affichage en clair du mot de passe si clic sur l'oeil
   function viewPass() {
     setSeePassword(!seePassword);
+  }
+
+  if(count == 0) {
+    setCount(1);
+    // Vérifie si l'utilisateur est déjà connecté (si oui auth par TouchID/FaceID)
+    verifyLogin();
   }
 
   return (
@@ -175,7 +179,7 @@ function LoginPage({ navigation }) {
       <Divider style={{ marginBottom: 16 }} />
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
       <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
-      <Button icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
+      <Button style={{ marginBottom: 16 }} icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
       <ActivityIndicator animating={loading} size="large" />
     </View>
   );
@@ -275,11 +279,7 @@ function APIConnect ({ navigation }) {
   );
 }
 
-function ShowGrades( { route, navigation } ) {
-
-  const [admission, setAdmission] = route.params.admission;
-  const [average, setAverage] = route.params.average;
-  const [position, setPosition] = route.params.position;
+function ShowGrades( { navigation } ) {
 
   function showInfos(grade){
     var res;
@@ -293,7 +293,7 @@ function ShowGrades( { route, navigation } ) {
   }
 
   function showHeader() {
-    if(admission || average || position) {
+    if(admission != "" && average != "" && position != "") {
       return (
         <View>
           <Text style={{ textAlign: 'left' }} variant="titleMedium"> {semester} </Text>
@@ -308,22 +308,26 @@ function ShowGrades( { route, navigation } ) {
   function showTable() {
     return (grades.map((item) => (
       <View>
-        <Text>{item.name}</Text>
-        <Text>Professeur : {item.teacher}</Text>
-        <Text>Moyenne : {item.average}</Text>
-        <DataTable>
-          <DataTable.Header>
-            <DataTable.Title>Examen</DataTable.Title>
-            <DataTable.Title numeric>Note</DataTable.Title>
-            <DataTable.Title numeric>Coeff.</DataTable.Title>
-          </DataTable.Header>
-          {item.grades.map((grade) => (
-            <DataTable.Row onPress={ () => showInfos(grade)}>
-              <DataTable.Cell>{grade[0]}</DataTable.Cell>
-              {isCoeff(grade)}
-            </DataTable.Row>
-          ))}
-        </DataTable>
+        <Card style={{ marginBottom: 16 }} >
+          <Card.Title title={item.name} subtitle={"Professeur : " + item.teacher} />
+          <Card.Content>
+            <Text>Moyenne : {item.average}</Text>
+            <DataTable>
+              <DataTable.Header>
+                <DataTable.Title>Examen</DataTable.Title>
+                <DataTable.Title numeric>Note</DataTable.Title>
+                <DataTable.Title numeric>Coeff.</DataTable.Title>
+              </DataTable.Header>
+              {item.grades.map((grade) => (
+                <DataTable.Row onPress={ () => showInfos(grade)}>
+                  <DataTable.Cell>{grade[0]}</DataTable.Cell>
+                  {isCoeff(grade)}
+                </DataTable.Row>
+              ))}
+            </DataTable>
+          </Card.Content>
+        </Card>
+        <Divider style={{ marginBottom: 16 }} />
       </View>
     )))
   }
@@ -357,6 +361,7 @@ function ShowGrades( { route, navigation } ) {
         <Text style={{ textAlign: 'left' }} variant="displayLarge">Notes</Text>
         <Button style={{ marginTop: 16, marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
         <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
+        <Divider style={{ marginBottom: 16 }} />
         {showHeader()}
         {showTable()}
       </ScrollView>
@@ -406,7 +411,9 @@ function ShowSettings( { navigation } ) {
       <Text style={{ textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
       <Text style={{ textAlign: 'left' }} variant="titleMedium">Visualisez vos notes. Sans PDF.</Text>
       <Text style={{ textAlign: 'left' }} variant="titleMedium">Version: {appVersion}</Text>
-      <Text style={{ textAlign: 'left' }} variant="titleMedium">Développé par @hugofnm</Text>
+      <Text style={{ textAlign: 'left' }} variant="titleMedium">Développé par 
+        <Text style={{ color: 'blue' }} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
+      </Text>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">GitHub:
         <Text style={{ color: 'blue' }} onPress={() => handleURL("https://github.com/UniceApps/UniceNotes")}> github.com/UniceApps/UniceNotes </Text>
       </Text>
