@@ -1,12 +1,30 @@
-import React, { useState } from 'react';
+/*
+
+UniceNotes
+Développé par Hugo Meleiro (@hugofnm)
+MIT License
+
+*/
+
+import React, { useState, useEffect } from 'react';
 import { Alert, View, StyleSheet, StatusBar, ScrollView, Image } from 'react-native';
-import { Avatar, Text, TextInput, Button, Switch, Divider, ActivityIndicator, ProgressBar, BottomNavigation, DataTable } from 'react-native-paper';
+
+// Material Design 3 API (React Native Paper)
+import { Avatar, Text, TextInput, 
+  Button, Switch, Divider, 
+  ActivityIndicator, ProgressBar, BottomNavigation, 
+  DataTable
+} from 'react-native-paper';
+
+// Expo API
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+var appVersion = '1.0.0';
 
 var isLoggedIn = false; // App login
 var isConnected = false; // UniceAPI login
@@ -24,95 +42,99 @@ async function save(key, value) {
   await SecureStore.setItemAsync(key, value);
 }
 
-async function verifyLogin() {
-  username = await SecureStore.getItemAsync(username);
-  password = await SecureStore.getItemAsync(password);
-  if (username && password) {
-    isLoggedIn = true;
-  } else {
-    isLoggedIn = false;
-  }
-}
+// Ouverture de pages web dans le navigateur par défaut
+const handleURL = async (url) => {
+  await WebBrowser.openBrowserAsync(url);
+};
 
 // Page de connexion à l'application (login)
 function LoginPage({ navigation }) {
-  
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+
+  var [username, setUsername] = useState(username);
+  var [password, setPassword] = useState(password);
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [seePassword, setSeePassword] = useState(true);
+  const [isBooted, setIsBooted] = useState(false);
+  const [count, setCount] = useState(0);
 
-  // Résultat du bouton "Se connecter"
-  const handleLogin = () => {
-    setLoading(true);
+  if(count == 0) {
+    setCount(1);
+    // Vérifie si l'utilisateur est déjà connecté (si oui auth par TouchID/FaceID)
     verifyLogin();
-    if (isLoggedIn) {
-      // Connexion par TouchID/FaceID et récupération des identifiants
-      LocalAuthentication.authenticateAsync().then((result) => {
-        if (result.success) {
-          ssoUnice(username, password);
-        }
-      });
-    }
-    else {
-      // Sauvegarde des identifiants si "Se souvenir de moi" est activé
-      if(rememberMe) {
-        save('username', username);
-        save('password', password);
+  }
+  
+  async function verifyLogin() {
+    var res = true;
+    
+    if(!isBooted) {
+      setPassword(await SecureStore.getItemAsync("passkey"));
+      setUsername(await SecureStore.getItemAsync("username"));
+      if (username != "" || password != "") {
+        setIsBooted(true);
+        isConnected = false;
+        handleLogin();
+      } else {
+        setIsBooted(true);
       }
-      // Connexion par TouchID/FaceID
-      LocalAuthentication.authenticateAsync().then((result) => {
-        if (result.success) {
-          ssoUnice(username, password);
-        }
-      });
+      return res;
     }
   }
-
-  // Résultat du bouton "Clause de confidentialité"
-  const privacy = async () => {
-    let result = await WebBrowser.openBrowserAsync('https://metrixmedia.fr/privacy');
-    setResult(result);
-  };
-
-  // Vérifie si l'utilisateur est déjà connecté (si oui auth par TouchID/FaceID)
-  verifyLogin();
-  if(isLoggedIn) {
-    handleLogin();
+  
+  // Résultat du bouton "Se connecter"
+  function handleLogin() {
+    setLoading(true);
+    // Sauvegarde des identifiants si "Se souvenir de moi" est activé
+    if(rememberMe) {
+      save('username', username);
+      save('passkey', password);
+    }
+    // Connexion par TouchID/FaceID
+    LocalAuthentication.authenticateAsync().then((result) => {
+      if (result.success) {
+        ssoUnice(username, password);
+      } else {
+        setLoading(false);
+        Alert.alert("Erreur", "Authentification annulée. EC=0xB");
+      }
+    });
   }
 
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
   async function ssoUnice(username, password) {
-    let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: username,
-        password: password
-      }),
-      headers: {
-        "Accept": "application/json",
-        "Content-type": "application/json"
+    if(!isConnected) {
+      let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: username,
+          password: password
+        }),
+        headers: {
+          "Accept": "application/json",
+          "Content-type": "application/json"
+        }
+      })
+    
+      if(!apiResp.ok){
+        setLoading(false);
+        Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
       }
-    })
-
-    if(!apiResp.ok){
-      Alert.alert("Erreur", "Connexion au serveur impossible.");
-    }
-
-    let json = await apiResp.json();
-
-    console.log(json);
-
-    if(json.success) {
-      isConnected = true;
-      name = json.name;
-      semesters = json.semesters;
-      console.log(semesters);
-      setLoading(false);
-      navigation.navigate('Semesters');
-    } else {
-      Alert.alert("Erreur", "Vos identifiants sont incorrects.");
+    
+      let json = await apiResp.json();
+    
+      console.log(json);
+    
+      if(json.success) {
+        isConnected = true;
+        name = json.name;
+        semesters = json.semesters;
+        console.log(semesters);
+        setLoading(false);
+        navigation.navigate('Semesters');
+      } else {
+        setLoading(false);
+        Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
+      }
     }
   };
 
@@ -133,15 +155,15 @@ function LoginPage({ navigation }) {
         onChangeText={(text) => setUsername(text)}
         returnKeyType="next"
         style={{ marginBottom: 8 }}
-        autoComplete = {{ url: "https://login.unice.fr" }}
+        
       />
       <TextInput
         label='Mot de passe'
         value={password}
+        defaultValue={password}
         onChangeText={(text) => setPassword(text)}
         secureTextEntry={seePassword}
         returnKeyType="go"
-        onSubmitEditing={() => handleLogin()}
         right={<TextInput.Icon icon="eye" onPress={ () => viewPass() } />}
         style={{ marginBottom: 16 }}
       />
@@ -152,7 +174,8 @@ function LoginPage({ navigation }) {
       <Button style={{ marginBottom: 16 }}icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
       <Divider style={{ marginBottom: 16 }} />
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
-      <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained-tonal" onPress={ () => privacy() }> Clause de confidentialité </Button>
+      <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
+      <Button icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
       <ActivityIndicator animating={loading} size="large" />
     </View>
   );
@@ -196,7 +219,7 @@ function Semesters ({ navigation }) {
 }
 
 function APIConnect ({ navigation }) {
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(0.1);
 
   function logout() {
     isConnected = false;
@@ -215,13 +238,17 @@ function APIConnect ({ navigation }) {
         let pdfAPI = await fetch('https://api.unice.hugofnm.fr/scrape_pdf');
     
         if(pdfAPI.status != 200){
-          Alert.alert("Erreur", "Connexion au serveur impossible.");
+          Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
         }
     
         let json = await pdfAPI.json();
       
         setProgress(1);
-        grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
+        if(json.grades) {
+          grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
+        } else {
+          Alert.alert("Erreur", "Une erreur est survenue. EC=0xG");
+        }
         admission = json.admission; // admission oui/non
         average = json.average; // moyenne générale
         position = json.position; // position dans le classement
@@ -229,7 +256,7 @@ function APIConnect ({ navigation }) {
         navigation.navigate('ShowGrades', { grades : grades, admission : admission, average : average, position : position });
       }
       else {
-        Alert.alert("Erreur", "Une erreur est survenue. EC=L");
+        Alert.alert("Erreur", "Une erreur est survenue. EC=0xL");
       }
     }
     dataIsLoaded = true;
@@ -339,7 +366,6 @@ function ShowGrades( { route, navigation } ) {
 
 function ShowSettings( { navigation } ) {
   const [confirm, setConfirm] = useState(false);
-  const [result, setResult] = useState(false);
 
   function logout() {
     isConnected = false;
@@ -349,44 +375,45 @@ function ShowSettings( { navigation } ) {
     navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded, isLoggedIn: isLoggedIn });
   }
 
-  function deleteData() {
+  function askDeleteData() {
     Alert.alert("Suppression des données", "Voulez-vous vraiment supprimer les données de l'application ?", [
       {
         text: "Annuler",
-        onPress: () => setConfirm(false),
         style: "cancel"
       },
       { 
         text: "Supprimer", 
-        onPress: () => setConfirm(true) 
+        onPress: (() => deleteData())
       }]);
-
-    if(confirm){
-      save('username', '');
-      save('password', '');
-      logout();
-    }
   }
 
-  const handleURL = async (url) => {
-    let result = await WebBrowser.openBrowserAsync(url);
-    setResult(result);
-  };
+  function deleteData() {
+      save("username", '');
+      save("passkey", '');
+      username = '';
+      password = '';
+      Alert.alert("Données supprimées", "Retour au menu principal.");
+      logout();
+  }
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25 }}>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Paramètres</Text>
       <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.unice.cf/bug") }> Signaler un bug </Button>
       <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
-      <Button style={{ marginBottom: 16, backgroundColor: "#FF0000" }} icon="delete" mode="contained-tonal" onPress={ () => deleteData() }> Supprimer les données de connexion </Button>
+      <Button style={{ marginBottom: 16, backgroundColor: "#FF0000" }} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer les données de connexion </Button>
       
-
-      <Text style={{ textAlign: 'left' }} variant="titleMedium">Version: 1.0.0</Text>
+      <Text style={{ textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
+      <Text style={{ textAlign: 'left' }} variant="titleMedium">Visualisez vos notes. Sans PDF.</Text>
+      <Text style={{ textAlign: 'left' }} variant="titleMedium">Version: {appVersion}</Text>
       <Text style={{ textAlign: 'left' }} variant="titleMedium">Développé par @hugofnm</Text>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">GitHub:
         <Text style={{ color: 'blue' }} onPress={() => handleURL("https://github.com/UniceApps/UniceNotes")}> github.com/UniceApps/UniceNotes </Text>
       </Text>
       <Text style={{ textAlign: 'left' }} variant="titleMedium">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur.</Text>
+      <Button style={{ marginTop: 32 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
+      <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
+      <Button style={{ marginTop: 4 }} icon="cash-fast" onPress={ () => handleURL("https://revolut.me/hugofnm") }> Soutenir le développement de l'application </Button>
     </View>
   );
 }
@@ -400,7 +427,7 @@ function App() {
         <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false }} />
         <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false }} />  
         <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', gestureEnabled: false, headerShown: false }} />
-        <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false }} />
+        <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false, gestureEnabled: false}} />
         <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres' }} />
       </Stack.Navigator>
     </NavigationContainer>
