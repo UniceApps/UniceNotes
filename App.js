@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, View, StyleSheet, StatusBar, ScrollView } from 'react-native';
+import { Alert, View, StyleSheet, StatusBar, ScrollView, Image } from 'react-native';
 import { Avatar, Text, TextInput, Button, Switch, Divider, ActivityIndicator, ProgressBar, BottomNavigation, DataTable } from 'react-native-paper';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
@@ -11,6 +11,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 var isLoggedIn = false; // App login
 var isConnected = false; // UniceAPI login
 var dataIsLoaded = false; // JSONPDF loaded
+var semesters = []; // User's all semesters
 var name = ''; // User's name
 var semester = ''; // User's semesters
 var username = ''; // User's username
@@ -122,13 +123,15 @@ function LoginPage({ navigation }) {
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25 }}>
-      <Avatar.Icon style={{ alignSelf: "center", marginBottom: 16 }} size={100} icon="account" />
+      <Avatar.Image style={{ alignSelf: "center", marginBottom: 16 }} size={100} source={require('./assets/icon.png')} />
       <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez entrer vos identifiants Sésame - IUT Nice pour continuer.</Text>
       <TextInput
         label="Nom d'utilisateur"
         value={username}
+        defaultValue={username}
         onChangeText={(text) => setUsername(text)}
+        returnKeyType="next"
         style={{ marginBottom: 8 }}
         autoComplete = {{ url: "https://login.unice.fr" }}
       />
@@ -137,6 +140,8 @@ function LoginPage({ navigation }) {
         value={password}
         onChangeText={(text) => setPassword(text)}
         secureTextEntry={seePassword}
+        returnKeyType="go"
+        onSubmitEditing={() => handleLogin()}
         right={<TextInput.Icon icon="eye" onPress={ () => viewPass() } />}
         style={{ marginBottom: 16 }}
       />
@@ -202,29 +207,32 @@ function APIConnect ({ navigation }) {
 
 
   async function loginAPI() {
-    let response = await fetch('https://api.unice.hugofnm.fr/load_pdf')
-    if(response.status == 200) {
-      setProgress(0.5);
-
-      let pdfAPI = await fetch('https://api.unice.hugofnm.fr/scrape_pdf');
+    if(!dataIsLoaded){
+      let response = await fetch('https://api.unice.hugofnm.fr/load_pdf')
+      if(response.status == 200) {
+        setProgress(0.5);
   
-      if(pdfAPI.status != 200){
-        Alert.alert("Erreur", "Connexion au serveur impossible.");
-      }
-  
-      let json = await pdfAPI.json();
+        let pdfAPI = await fetch('https://api.unice.hugofnm.fr/scrape_pdf');
     
-      setProgress(1);
-      grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
-      admission = json.admission; // admission oui/non
-      average = json.average; // moyenne générale
-      position = json.position; // position dans le classement
-      global.dataIsLoaded = true;
-      navigation.navigate('ShowGrades', { grades : grades, admission : admission, average : average, position : position });
+        if(pdfAPI.status != 200){
+          Alert.alert("Erreur", "Connexion au serveur impossible.");
+        }
+    
+        let json = await pdfAPI.json();
+      
+        setProgress(1);
+        grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
+        admission = json.admission; // admission oui/non
+        average = json.average; // moyenne générale
+        position = json.position; // position dans le classement
+        dataIsLoaded = true;
+        navigation.navigate('ShowGrades', { grades : grades, admission : admission, average : average, position : position });
+      }
+      else {
+        Alert.alert("Erreur", "Une erreur est survenue. EC=L");
+      }
     }
-    else {
-      Alert.alert("Erreur", "Une erreur est survenue. EC=L");
-    }
+    dataIsLoaded = true;
   }
 
   loginAPI();
@@ -246,6 +254,17 @@ function ShowGrades( { route, navigation } ) {
   const [average, setAverage] = route.params.average;
   const [position, setPosition] = route.params.position;
 
+  function showInfos(grade){
+    var res;
+    if(!grade[1][0].includes("coeff")){
+      res = "Note : " + grade[1][0] + " Coefficient : " + grade[1][1];
+    }
+    else {
+      res = "Note : Non disponible" + " Coefficient : " + (grade[1][0].replace("(coeff ", "")).replace(")","");
+    }
+    Alert.alert(grade[0], res);
+  }
+
   function showHeader() {
     if(admission || average || position) {
       return (
@@ -262,17 +281,17 @@ function ShowGrades( { route, navigation } ) {
   function showTable() {
     return (grades.map((item) => (
       <View>
-        <Text>{item.subject}</Text>
-        <Text>Teacher: {item.teacher}</Text>
-        <Text>Average: {item.average}</Text>
+        <Text>{item.name}</Text>
+        <Text>Professeur : {item.teacher}</Text>
+        <Text>Moyenne : {item.average}</Text>
         <DataTable>
           <DataTable.Header>
-            <DataTable.Title>Exam</DataTable.Title>
-            <DataTable.Title numeric>Grade</DataTable.Title>
-            <DataTable.Title numeric>Coefficient</DataTable.Title>
+            <DataTable.Title>Examen</DataTable.Title>
+            <DataTable.Title numeric>Note</DataTable.Title>
+            <DataTable.Title numeric>Coeff.</DataTable.Title>
           </DataTable.Header>
           {item.grades.map((grade) => (
-            <DataTable.Row>
+            <DataTable.Row onPress={ () => showInfos(grade)}>
               <DataTable.Cell>{grade[0]}</DataTable.Cell>
               {isCoeff(grade)}
             </DataTable.Row>
@@ -283,10 +302,16 @@ function ShowGrades( { route, navigation } ) {
   }
 
   function isCoeff(grade) {
-    if(grade[1].length <= 3){
+    if(!grade[1][0].includes("coeff")){
       return (
         <><DataTable.Cell numeric>{grade[1][0]}</DataTable.Cell>
         <DataTable.Cell numeric>{grade[1][1]}</DataTable.Cell></>
+      )
+    }
+    else {
+      return (
+        <><DataTable.Cell numeric> X </DataTable.Cell>
+        <DataTable.Cell numeric>{(grade[1][0].replace("(coeff ", "")).replace(")","")}</DataTable.Cell></>
       )
     }
   }
@@ -303,8 +328,8 @@ function ShowGrades( { route, navigation } ) {
     <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25, marginTop: 50 }}>
       <ScrollView>
         <Text style={{ textAlign: 'left' }} variant="displayLarge">Notes</Text>
-        <Button style={{ marginTop: 16 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
-        <Button style={{ marginTop: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
+        <Button style={{ marginTop: 16, marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
+        <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
         {showHeader()}
         {showTable()}
       </ScrollView>
@@ -314,6 +339,7 @@ function ShowGrades( { route, navigation } ) {
 
 function ShowSettings( { navigation } ) {
   const [confirm, setConfirm] = useState(false);
+  const [result, setResult] = useState(false);
 
   function logout() {
     isConnected = false;
