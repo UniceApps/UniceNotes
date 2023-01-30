@@ -7,13 +7,14 @@ MIT License
 */
 
 import React, { useState, useEffect } from 'react';
-import { Alert, View, StyleSheet, StatusBar, ScrollView, Image } from 'react-native';
+import { Alert, View, StyleSheet, StatusBar, ScrollView, Image, Appearance } from 'react-native';
 
 // Material Design 3 API (React Native Paper)
 import { Avatar, Text, TextInput, 
   Button, Switch, Divider, 
   ActivityIndicator, ProgressBar, BottomNavigation, 
-  DataTable, Card, Provider as PaperProvider
+  DataTable, Card, Provider as PaperProvider,
+  withTheme
 } from 'react-native-paper';
 
 // Expo API
@@ -60,23 +61,33 @@ function LoginPage({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [seePassword, setSeePassword] = useState(true);
-  const [isBooted, setIsBooted] = useState(false);
+  const [isDataStored, setIsDataStored] = useState(false);
   const [count, setCount] = useState(0);
+
+  // Text and icons variables
+  const [loginMethod, setLoginMethod] = useState("login");
+  const [loginText, setLoginText] = useState("Se connecter");
+  const [rememberMeOn, setRememberMeOn] = useState(false);
+
+  useEffect(() => {
+    if(count == 0) {
+      setCount(1);
+      verifyLogin();
+    }
+  });
   
   async function verifyLogin() {
-    var res = true;
-    
-    if(!isBooted) {
+    if(!isDataStored) {
       setPassword(await SecureStore.getItemAsync("passkey"));
       setUsername(await SecureStore.getItemAsync("username"));
       if (username != "" && password != "") {
-        setIsBooted(true);
-        isConnected = false;
-        handleLogin();
+        setLoginMethod("face-recognition");
+        setLoginText("Se connecter avec TouchID/FaceID");
+        setRememberMeOn(true);
+        setIsDataStored(true);
       } else {
-        setIsBooted(true);
+        setIsDataStored(false);
       }
-      return res;
     }
   }
   
@@ -117,7 +128,6 @@ function LoginPage({ navigation }) {
     
       if(!apiResp.ok){
         setLoading(false);
-        Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
       }
 
       let json = await apiResp.json();
@@ -140,17 +150,23 @@ function LoginPage({ navigation }) {
 
   // Affichage en clair du mot de passe si clic sur l'oeil
   function viewPass() {
-    setSeePassword(!seePassword);
-  }
-
-  if(count == 0) {
-    setCount(1);
-    // Vérifie si l'utilisateur est déjà connecté (si oui auth par TouchID/FaceID)
-    verifyLogin();
+    if (seePassword == false) {
+      setSeePassword(!seePassword);
+    } else if (isDataStored == true) {
+      LocalAuthentication.authenticateAsync().then((result) => {
+        if (result.success) {
+          setSeePassword(!seePassword);
+        } else {
+          Alert.alert("Erreur", "Authentification annulée. EC=0xB");
+        }
+      });
+    } else {
+      setSeePassword(!seePassword);
+    }
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25 }}>
+    <View style={style.container}>
       <Avatar.Image style={{ alignSelf: "center", marginBottom: 16 }} size={100} source={require('./assets/icon.png')} />
       <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez entrer vos identifiants Sésame - IUT Nice pour continuer.</Text>
@@ -161,7 +177,6 @@ function LoginPage({ navigation }) {
         onChangeText={(text) => setUsername(text)}
         returnKeyType="next"
         style={{ marginBottom: 8 }}
-        
       />
       <TextInput
         label='Mot de passe'
@@ -173,11 +188,11 @@ function LoginPage({ navigation }) {
         right={<TextInput.Icon icon="eye" onPress={ () => viewPass() } />}
         style={{ marginBottom: 16 }}
       />
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:16}}>
-          <Switch value={rememberMe} onValueChange={setRememberMe} color="#3f51b5"/>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:16 }} >
+          <Switch disabled={rememberMeOn} value={rememberMe} onValueChange={setRememberMe} color="#3f51b5"/>
           <Text style={{ marginLeft:8}}> Se souvenir de moi</Text>
         </View>
-      <Button style={{ marginBottom: 16 }}icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
+      <Button style={{ marginBottom: 16 }} icon={loginMethod} mode="contained-tonal" onPress={ () => handleLogin() }> {loginText} </Button>
       <Divider style={{ marginBottom: 16 }} />
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
       <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
@@ -189,6 +204,7 @@ function LoginPage({ navigation }) {
 
 // Page de sélection du semestre
 function Semesters ({ navigation }) {
+  const [jourNuit, setJourNuit] = useState("Bonjour");
 
   // Correction du nom de l'étudiant
   name = name
@@ -209,18 +225,29 @@ function Semesters ({ navigation }) {
     navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded });
   }
 
+  // Changement du texte en fonction de l'heure
+  useEffect(() => {
+    let date = new Date();
+    let hours = date.getHours();
+    if (hours >= 5 && hours < 17) {
+      setJourNuit("Bonjour");
+    } else {
+      setJourNuit("Bonsoir");
+    }
+  }, []);
+
   return (
-    <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25 }}>
+    <View style={style.container}>
       <Avatar.Icon style={{ alignSelf: "center", marginBottom: 16 }} size={100} icon="check" />
-      <Text style={{ textAlign: 'left' }} variant="displayLarge">Bonjour,</Text>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displaySmall">{name} !</Text>
+      <Text style={{ textAlign: 'left' }} variant="displayLarge">{jourNuit},</Text>
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayMedium">{name} !</Text>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
 
       {semesters.map((semester) => (
         <Button style={{ marginTop: 8 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
       ))}
 
-      <Button style={{ marginTop : 16, backgroundColor: "#FF0000" }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
+      <Button style={{ marginTop : 16, backgroundColor:"red" }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
     </View>
   );
 }
@@ -273,7 +300,7 @@ function APIConnect ({ navigation }) {
   loginAPI();
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25 }}>
+    <View style={style.container}>
       <Avatar.Icon style={{ alignSelf: "center", marginBottom: 32 }} size={200} icon="sync" />
 
       <ProgressBar progress={progress} style={{ marginBottom: 32 }} />
@@ -361,8 +388,8 @@ function ShowGrades( { navigation } ) {
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', marginTop: 50 }}>
-      <ScrollView style={{ marginLeft: 25, marginRight: 25 }}>
+    <View style={styleShowGrades.container}>
+      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Text style={{ textAlign: 'left' }} variant="displayLarge">Notes</Text>
         <Button style={{ marginTop: 16, marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
         <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
@@ -421,7 +448,7 @@ function ShowSettings( { navigation } ) {
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25 }}>
+    <View style={style.container}>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Paramètres</Text>
       <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.unice.cf/bug") }> Signaler un bug </Button>
       <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
@@ -464,6 +491,8 @@ function App() {
 
 // Themes
 const lightTheme = {
+  "dark": false,
+  "version": 3,
   "colors": {
     "primary": "rgb(0, 98, 159)",
     "onPrimary": "rgb(255, 255, 255)",
@@ -509,6 +538,9 @@ const lightTheme = {
 };
 
 const darkTheme = {
+  "dark": true,
+  "version": 3,
+  "mode": "adaptive",
   "colors": {
     "primary": "rgb(155, 203, 255)",
     "onPrimary": "rgb(0, 51, 86)",
@@ -553,11 +585,37 @@ const darkTheme = {
   }
 };
 
+var choosenTheme = darkTheme;
+const colorScheme = Appearance.getColorScheme();
+if (colorScheme === 'dark') {
+  choosenTheme = darkTheme
+} else {
+  choosenTheme = lightTheme
+}
+
+const style = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: choosenTheme.colors.background,
+    justifyContent: 'center',
+    paddingLeft: 25, 
+    paddingRight: 25 
+  },
+});
+
+const styleShowGrades = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: choosenTheme.colors.background,
+    justifyContent: 'center',
+    marginTop: 50
+  },
+});
 
 export default function Main() {
   return (
-    <PaperProvider theme={lightTheme}>
-      <App />
+    <PaperProvider theme={choosenTheme}>
+      <App/>
     </PaperProvider>
   );
 }
