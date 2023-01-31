@@ -7,7 +7,7 @@ MIT License
 */
 
 import React, { useState, useEffect } from 'react';
-import { Alert, View, StyleSheet, StatusBar, ScrollView, Image, Appearance } from 'react-native';
+import { Alert, View, StyleSheet, StatusBar, ScrollView, Image, Appearance, BackHandler } from 'react-native';
 
 // Material Design 3 API (React Native Paper)
 import { Avatar, Text, TextInput, 
@@ -35,8 +35,23 @@ var name = ''; // User's name
 var semester = ''; // Selected semesters
 
 // Temporary variables
-var username = ''; // User's username
-var password = ''; // User's password
+var username = SecureStore.getItemAsync("username").then((result) => {
+  if (result != "") {
+    username = result;
+  } else {
+    username = null;
+  }
+}); // User's username
+
+var password = SecureStore.getItemAsync("passkey").then((result) => {
+  if (result != "") {
+    password = result;
+  } else {
+    password = null;
+  }
+}); // User's password
+
+var rememberMe = true; // Remember me
 
 var grades = []; // User's grades
 var average = ""; // User's average
@@ -53,13 +68,22 @@ const handleURL = async (url) => {
   await WebBrowser.openBrowserAsync(url);
 };
 
+// Fonction de déconnexion (API UniceNotes + app si "Se souvenir de moi" est désactivé)
+function logout(navigation) {
+  isConnected = false;
+  isLoggedIn = false;
+  dataIsLoaded = false;
+  if (rememberMe == false) {
+    password = null;
+  }
+  fetch('https://api.unice.hugofnm.fr/logout');
+  navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded, isLoggedIn: isLoggedIn });
+}
+
 // Page de connexion à l'application (login)
 function LoginPage({ navigation }) {
 
-  var [username, setUsername] = useState(username);
-  var [password, setPassword] = useState(password);
   const [loading, setLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [seePassword, setSeePassword] = useState(true);
   const [isDataStored, setIsDataStored] = useState(false);
   const [count, setCount] = useState(0);
@@ -67,7 +91,7 @@ function LoginPage({ navigation }) {
   // Text and icons variables
   const [loginMethod, setLoginMethod] = useState("login");
   const [loginText, setLoginText] = useState("Se connecter");
-  const [rememberMeOn, setRememberMeOn] = useState(false);
+  const [rememberMeOn, setRememberMeOn] = useState(false); // "Se souvenir de moi" clickable
 
   useEffect(() => {
     if(count == 0) {
@@ -78,14 +102,14 @@ function LoginPage({ navigation }) {
   
   async function verifyLogin() {
     if(!isDataStored) {
-      setPassword(await SecureStore.getItemAsync("passkey"));
-      setUsername(await SecureStore.getItemAsync("username"));
-      if (username != "" && password != "") {
+      if (username != null && password != null) {
         setLoginMethod("face-recognition");
         setLoginText("Se connecter avec TouchID/FaceID");
         setRememberMeOn(true);
         setIsDataStored(true);
       } else {
+        username = null;
+        password = null;
         setIsDataStored(false);
       }
     }
@@ -96,11 +120,11 @@ function LoginPage({ navigation }) {
     setLoading(true);
     // Sauvegarde des identifiants si "Se souvenir de moi" est activé
     if(rememberMe) {
-      save('username', username);
-      save('passkey', password);
+      save("username", username);
+      save("passkey", password);
     }
     // Connexion par TouchID/FaceID
-    LocalAuthentication.authenticateAsync().then((result) => {
+    LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
       if (result.success) {
         ssoUnice(username, password);
       } else {
@@ -165,6 +189,18 @@ function LoginPage({ navigation }) {
     }
   }
 
+  function setUsername(text) {
+    username = text;
+  }
+
+  function setPassword(text) {
+    password = text;
+  }
+
+  function setRememberMe(bool) {
+    rememberMe = bool;
+  }
+
   return (
     <View style={style.container}>
       <Avatar.Image style={{ alignSelf: "center", marginBottom: 16 }} size={100} source={require('./assets/icon.png')} />
@@ -172,7 +208,6 @@ function LoginPage({ navigation }) {
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez entrer vos identifiants Sésame - IUT Nice pour continuer.</Text>
       <TextInput
         label="Nom d'utilisateur"
-        value={username}
         defaultValue={username}
         onChangeText={(text) => setUsername(text)}
         returnKeyType="next"
@@ -180,7 +215,6 @@ function LoginPage({ navigation }) {
       />
       <TextInput
         label='Mot de passe'
-        value={password}
         defaultValue={password}
         onChangeText={(text) => setPassword(text)}
         secureTextEntry={seePassword}
@@ -217,13 +251,6 @@ function Semesters ({ navigation }) {
       global.semester = semester;
       navigation.navigate('APIConnect', { semester: semester });
   }
-  
-  function logout() {
-    isConnected = false;
-    dataIsLoaded = false;
-    fetch('https://api.unice.hugofnm.fr/logout');
-    navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded });
-  }
 
   // Changement du texte en fonction de l'heure
   useEffect(() => {
@@ -244,10 +271,11 @@ function Semesters ({ navigation }) {
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
 
       {semesters.map((semester) => (
-        <Button style={{ marginTop: 8 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
+        <Button style={{ marginBottom: 16 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
       ))}
 
-      <Button style={{ marginTop : 16, backgroundColor:"red" }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
+      <Button style={{ marginBottom: 8 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
+      <Button style={style.buttonLogout} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
     </View>
   );
 }
@@ -255,14 +283,6 @@ function Semesters ({ navigation }) {
 // Page de chargement des données
 function APIConnect ({ navigation }) {
   const [progress, setProgress] = useState(0.1);
-
-  function logout() {
-    isConnected = false;
-    dataIsLoaded = false;
-    fetch('https://api.unice.hugofnm.fr/logout');
-    navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded });
-  }
-
 
   async function loginAPI() {
     if(!dataIsLoaded){
@@ -305,7 +325,7 @@ function APIConnect ({ navigation }) {
 
       <ProgressBar progress={progress} style={{ marginBottom: 32 }} />
 
-      <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained-tonal" onPress={ () => logout() }> Annuler </Button>
+      <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained-tonal" onPress={ () => logout(navigation) }> Annuler </Button>
     </View>
   );
 }
@@ -378,21 +398,13 @@ function ShowGrades( { navigation } ) {
       )
     }
   }
-  
-  function logout() {
-    isConnected = false;
-    isLoggedIn = false;
-    dataIsLoaded = false;
-    fetch('https://api.unice.hugofnm.fr/logout');
-    navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded, isLoggedIn: isLoggedIn });
-  }
 
   return (
     <View style={styleShowGrades.container}>
+      <Text style={{ textAlign: 'left', marginBottom: 16, paddingLeft: 25 }} variant="displayLarge">Notes</Text>
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Text style={{ textAlign: 'left' }} variant="displayLarge">Notes</Text>
-        <Button style={{ marginTop: 16, marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
-        <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
+        <Button style={style.buttonLogout} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
+        <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
         <Divider style={{ marginBottom: 16 }} />
         {showHeader()}
         {showTable()}
@@ -406,7 +418,7 @@ function ShowEDT( { navigation } ) {
   return (
     <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25 }}>
       <Text style={{ textAlign: 'left' }} variant="displayLarge">Emploi du temps</Text>
-      <Button style={{ marginTop: 16, marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
+      <Button style={{ marginTop: 16, marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
       <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
       <Divider style={{ marginBottom: 16 }} />
       <Text>Emploi du temps bientôt disponible...</Text>
@@ -417,14 +429,6 @@ function ShowEDT( { navigation } ) {
 // Page de paramètres
 function ShowSettings( { navigation } ) {
   const [confirm, setConfirm] = useState(false);
-
-  function logout() {
-    isConnected = false;
-    isLoggedIn = false;
-    dataIsLoaded = false;
-    fetch('https://api.unice.hugofnm.fr/logout');
-    navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded, isLoggedIn: isLoggedIn });
-  }
 
   function askDeleteData() {
     Alert.alert("Suppression des données", "Voulez-vous vraiment supprimer les données de l'application ?", [
@@ -439,31 +443,30 @@ function ShowSettings( { navigation } ) {
   }
 
   function deleteData() {
-      save("username", '');
-      save("passkey", '');
-      username = '';
-      password = '';
-      Alert.alert("Données supprimées", "Retour au menu principal.");
-      logout();
+      save("username", "");
+      save("passkey", "");
+      username = "";
+      password = "";
+      Alert.alert("Données supprimées", "Fermeture de l'application.");
+      logout(navigation);
+      BackHandler.exitApp();
   }
 
   return (
     <View style={style.container}>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Paramètres</Text>
+      <Button style={{ marginBottom: 8 }} icon="arrow-left" mode="contained-tonal" onPress={ () => navigation.goBack() }> Retourner en arrière </Button>
       <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.unice.cf/bug") }> Signaler un bug </Button>
-      <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout() }> Se déconnecter </Button>
-      <Button style={{ marginBottom: 16, backgroundColor: "#FF0000" }} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer les données de connexion </Button>
+      <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
+      <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer les données de connexion </Button>
       
-      <Text style={{ textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
+      <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
       <Text style={{ textAlign: 'left' }} variant="titleMedium">Visualisez vos notes. Sans PDF.</Text>
       <Text style={{ textAlign: 'left' }} variant="titleMedium">Version: {appVersion}</Text>
       <Text style={{ textAlign: 'left' }} variant="titleMedium">Développé par 
-        <Text style={{ color: 'blue' }} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
+        <Text style={style.textLink} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
       </Text>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">GitHub:
-        <Text style={{ color: 'blue' }} onPress={() => handleURL("https://github.com/UniceApps/UniceNotes")}> github.com/UniceApps/UniceNotes </Text>
-      </Text>
-      <Text style={{ textAlign: 'left' }} variant="titleMedium">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur.</Text>
+      <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur.</Text>
       <Button style={{ marginTop: 32 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
       <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
       <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
@@ -480,10 +483,10 @@ function App() {
       <Stack.Navigator>
         <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false }} />
         <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false }} />  
-        <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', gestureEnabled: false, headerShown: false }} />
+        <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false, gestureEnabled: false}} />
         <Stack.Screen name="ShowEDT" component={ShowEDT} options={{ title: 'Emploi du temps', headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres' }} />
+        <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres', headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -601,6 +604,12 @@ const style = StyleSheet.create({
     paddingLeft: 25, 
     paddingRight: 25 
   },
+  buttonLogout: {
+    backgroundColor: choosenTheme.colors.errorContainer
+  },
+  textLink: {
+    color: choosenTheme.colors.primary
+  },
 });
 
 const styleShowGrades = StyleSheet.create({
@@ -608,7 +617,7 @@ const styleShowGrades = StyleSheet.create({
     flex: 1,
     backgroundColor: choosenTheme.colors.background,
     justifyContent: 'center',
-    marginTop: 50
+    paddingTop: 75
   },
 });
 
