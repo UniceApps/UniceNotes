@@ -20,9 +20,9 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Verouillez l'application grâce à FaceID / TouchID."
+        "NSFaceIDUsageDescription": "Connectez-vous sur l'application grâce à FaceID / TouchID."
       },
-      "bundleIdentifier": "fr.hugofnm.unice.notes"
+      "bundleIdentifier": "fr.hugofnm.unicenotes"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,7 +36,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "952dd5a7-b409-4a66-a575-420b44f53fa9"
+        "projectId": "ec0ebd57-7227-4cd2-a71e-344e0a5fffe5"
       }
     },
     "owner": "hugofnm"

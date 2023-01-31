@@ -428,7 +428,6 @@ function ShowEDT( { navigation } ) {
 
 // Page de paramètres
 function ShowSettings( { navigation } ) {
-  const [confirm, setConfirm] = useState(false);
 
   function askDeleteData() {
     Alert.alert("Suppression des données", "Voulez-vous vraiment supprimer les données de l'application ?", [
@@ -443,13 +442,12 @@ function ShowSettings( { navigation } ) {
   }
 
   function deleteData() {
-      save("username", "");
-      save("passkey", "");
-      username = "";
-      password = "";
-      Alert.alert("Données supprimées", "Fermeture de l'application.");
+      SecureStore.deleteItemAsync("username");
+      SecureStore.deleteItemAsync("passkey");
+      username = null;
+      password = null;
+      Alert.alert("Données supprimées", "Retour à la page de connexion.");
       logout(navigation);
-      BackHandler.exitApp();
   }
 
   return (
