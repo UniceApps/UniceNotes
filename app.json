@@ -22,7 +22,8 @@
       "infoPlist": {
         "NSFaceIDUsageDescription": "Connectez-vous sur l'application grâce à FaceID / TouchID."
       },
-      "bundleIdentifier": "fr.hugofnm.unicenotes"
+      "bundleIdentifier": "fr.hugofnm.unicenotes",
+      "buildNumber": "2"
     },
     "android": {
       "adaptiveIcon": {
