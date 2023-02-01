@@ -7,7 +7,10 @@ MIT License
 */
 
 import React, { useState, useEffect } from 'react';
-import { Alert, View, StyleSheet, StatusBar, ScrollView, Image, Appearance, BackHandler } from 'react-native';
+import { Alert, View, StyleSheet, 
+  StatusBar, ScrollView, Image, 
+  Appearance, BackHandler 
+} from 'react-native';
 
 // Material Design 3 API (React Native Paper)
 import { Avatar, Text, TextInput, 
@@ -25,7 +28,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-var appVersion = '1.0.0';
+var appVersion = '1.0.0b3';
 
 var isLoggedIn = false; // App login
 var isConnected = false; // UniceAPI login
@@ -203,9 +206,9 @@ function LoginPage({ navigation }) {
 
   return (
     <View style={style.container}>
-      <Avatar.Image style={{ alignSelf: "center", marginBottom: 16 }} size={100} source={require('./assets/icon.png')} />
+      <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/icon.png')} />
       <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
-      <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez entrer vos identifiants Sésame - IUT Nice pour continuer.</Text>
+      <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez entrer vos identifiants Sésame (I.U.T. Nice Côte d'Azur) pour continuer.</Text>
       <TextInput
         label="Nom d'utilisateur"
         defaultValue={username}
@@ -247,9 +250,9 @@ function Semesters ({ navigation }) {
     .join(" ");
 
   // Fonction de chargement des notes
-  function loadGrades(semester) {
-      global.semester = semester;
-      navigation.navigate('APIConnect', { semester: semester });
+  function loadGrades(sel) {
+      semester = sel.toString();
+      navigation.navigate('APIConnect', { semester: sel });
   }
 
   // Changement du texte en fonction de l'heure
@@ -265,7 +268,7 @@ function Semesters ({ navigation }) {
 
   return (
     <View style={style.container}>
-      <Avatar.Icon style={{ alignSelf: "center", marginBottom: 16 }} size={100} icon="check" />
+      <Avatar.Image style={{ alignSelf: "center", marginBottom: 16 }} size={100} source={{ uri: "https://api.unice.hugofnm.fr/avatar" }} />
       <Text style={{ textAlign: 'left' }} variant="displayLarge">{jourNuit},</Text>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayMedium">{name} !</Text>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
@@ -285,12 +288,12 @@ function APIConnect ({ navigation }) {
   const [progress, setProgress] = useState(0.1);
 
   async function loginAPI() {
-    if(!dataIsLoaded){
-      let response = await fetch('https://api.unice.hugofnm.fr/load_pdf')
+    if(dataIsLoaded == false){
+      let response = await fetch('https://api.unice.hugofnm.fr/load_pdf?sem=' + semester)
       if(response.status == 200) {
         setProgress(0.5);
   
-        let pdfAPI = await fetch('https://api.unice.hugofnm.fr/scrape_pdf');
+        let pdfAPI = await fetch('https://api.unice.hugofnm.fr/scrape_pdf?sem=' + semester);
     
         if(pdfAPI.status != 200){
           Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
@@ -332,6 +335,11 @@ function APIConnect ({ navigation }) {
 
 // Page d'affichage des notes
 function ShowGrades( { navigation } ) {
+
+  var moyenneGenerale = 0.0;
+  var moyenneCache = 0.0;
+  var coeffGeneral = 0.0;
+  var coeff = 0.0;
 
   function showInfos(grade){
     var res;
@@ -399,12 +407,35 @@ function ShowGrades( { navigation } ) {
     }
   }
 
+  function showGlobalAverage() {
+    grades.forEach(element => {
+      if(element.average.toString() != "Pas de moyenne disponible") {
+        moyenneCache = parseFloat(element.average.replace(" (calculée)", "").toString());
+        element.grades.forEach((grade) => {
+          if(!grade[1][0].includes("coeff")){
+            coeff += parseFloat(grade[1][1]);
+          }
+          else {
+            coeff += parseFloat((grade[1][0].replace("(coeff ", "")).replace(")",""));
+          }
+        })
+        moyenneGenerale += moyenneCache * coeff;
+        coeffGeneral += coeff;
+        coeff = 0;
+        moyenneCache = 0;
+      }
+    });
+    moyenneGenerale = moyenneGenerale / coeffGeneral;
+    return moyenneGenerale.toFixed(2);
+  }
+
   return (
     <View style={styleShowGrades.container}>
       <Text style={{ textAlign: 'left', marginBottom: 16, paddingLeft: 25 }} variant="displayLarge">Notes</Text>
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Button style={style.buttonLogout} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
         <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
+        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">[BETA] Moyenne générale : {showGlobalAverage()}</Text>
         <Divider style={{ marginBottom: 16 }} />
         {showHeader()}
         {showTable()}
