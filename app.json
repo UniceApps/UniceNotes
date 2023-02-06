@@ -3,9 +3,11 @@
     "name": "UniceNotes",
     "slug": "unicenotes",
     "version": "1.0.0",
+    "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "scheme": "unicenotes",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -18,22 +20,21 @@
       "**/*"
     ],
     "ios": {
+      "appStoreUrl": "https://apps.apple.com/fr/app/unicenotes/id1668992337",
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Connectez-vous sur l'application grâce à FaceID / TouchID."
+        "NSFaceIDUsageDescription": "Connectez-vous sur l'application grâce à FaceID / TouchID.",
+        "NSNotificationsUsageDescription": "Recevez des notifications pour être informé des nouvelles notes."
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "fr.hugofnm.unice.notes"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
+      "package": "fr.hugofnm.unicenotes"
     },
     "extra": {
       "eas": {
