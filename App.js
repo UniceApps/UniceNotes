@@ -9,7 +9,8 @@ MIT License
 import React, { useState, useEffect } from 'react';
 import { Alert, View, StyleSheet, 
   StatusBar, ScrollView, Image, 
-  Appearance, BackHandler 
+  Appearance, BackHandler, SafeAreaView,
+  SafeAreaProvider 
 } from 'react-native';
 
 // Material Design 3 API (React Native Paper)
@@ -17,7 +18,7 @@ import { Avatar, Text, TextInput,
   Button, Switch, Divider, 
   ActivityIndicator, ProgressBar, BottomNavigation, 
   DataTable, Card, Provider as PaperProvider,
-  withTheme
+  withTheme, Chip
 } from 'react-native-paper';
 
 // Expo API
@@ -25,16 +26,15 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-var appVersion = '1.0.0b3';
+var appVersion = '1.0.0b4';
 
 var isLoggedIn = false; // App login
 var isConnected = false; // UniceAPI login
 var dataIsLoaded = false; // JSONPDF loaded
 var semesters = []; // User's all semesters
-var name = ''; // User's name
 var semester = ''; // Selected semesters
 
 // Temporary variables
@@ -53,6 +53,22 @@ var password = SecureStore.getItemAsync("passkey").then((result) => {
     password = null;
   }
 }); // User's password
+
+var name = SecureStore.getItemAsync("name").then((result) => {
+  if (result != "") {
+    name = result;
+  } else {
+    name = null;
+  }
+}); // User's name
+
+var avatar = SecureStore.getItemAsync("avatar").then((result) => {
+  if (result != "") {
+    password = result;
+  } else {
+    password = null;
+  }
+}); // User's avatar
 
 var rememberMe = true; // Remember me
 
@@ -80,7 +96,15 @@ function logout(navigation) {
     password = null;
   }
   fetch('https://api.unice.hugofnm.fr/logout');
-  navigation.navigate('Login', { isConnected: isConnected, dataIsLoaded: dataIsLoaded, isLoggedIn: isLoggedIn });
+  navigation.dispatch(
+    CommonActions.reset({
+      index: 0,
+      routes: [
+        { name: 'Login' }
+      ],
+    })
+  );
+  
 }
 
 // Page de connexion à l'application (login)
@@ -90,6 +114,7 @@ function LoginPage({ navigation }) {
   const [seePassword, setSeePassword] = useState(true);
   const [isDataStored, setIsDataStored] = useState(false);
   const [count, setCount] = useState(0);
+  const [editable, setEditable] = useState(true);
 
   // Text and icons variables
   const [loginMethod, setLoginMethod] = useState("login");
@@ -105,11 +130,16 @@ function LoginPage({ navigation }) {
   
   async function verifyLogin() {
     if(!isDataStored) {
+      setUsername(await SecureStore.getItemAsync("username"));
+      setPassword(await SecureStore.getItemAsync("passkey"));
+
       if (username != null && password != null) {
+        navigation.navigate('LoggedPage');
         setLoginMethod("face-recognition");
         setLoginText("Se connecter avec TouchID/FaceID");
         setRememberMeOn(true);
         setIsDataStored(true);
+        setEditable(false);
       } else {
         username = null;
         password = null;
@@ -121,11 +151,6 @@ function LoginPage({ navigation }) {
   // Résultat du bouton "Se connecter"
   function handleLogin() {
     setLoading(true);
-    // Sauvegarde des identifiants si "Se souvenir de moi" est activé
-    if(rememberMe) {
-      save("username", username);
-      save("passkey", password);
-    }
     // Connexion par TouchID/FaceID
     LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
       if (result.success) {
@@ -154,6 +179,7 @@ function LoginPage({ navigation }) {
       })
     
       if(!apiResp.ok){
+        Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
         setLoading(false);
       }
 
@@ -162,6 +188,13 @@ function LoginPage({ navigation }) {
       console.log(json);
     
       if(json.success) {
+
+        // Sauvegarde des identifiants si "Se souvenir de moi" est activé
+        if(rememberMe) {
+          save("username", username);
+          save("passkey", password);
+        }
+
         isConnected = true;
         name = json.name;
         semesters = json.semesters;
@@ -206,7 +239,8 @@ function LoginPage({ navigation }) {
 
   return (
     <View style={style.container}>
-      <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/icon.png')} />
+    <SafeAreaView style={style.container}>
+      <Avatar.Image style={{ alignSelf: "center", marginBottom: 8 }} size={100} source={require('./assets/icon.png')} />
       <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez entrer vos identifiants Sésame (I.U.T. Nice Côte d'Azur) pour continuer.</Text>
       <TextInput
@@ -214,6 +248,7 @@ function LoginPage({ navigation }) {
         defaultValue={username}
         onChangeText={(text) => setUsername(text)}
         returnKeyType="next"
+        editable={editable}
         style={{ marginBottom: 8 }}
       />
       <TextInput
@@ -222,11 +257,12 @@ function LoginPage({ navigation }) {
         onChangeText={(text) => setPassword(text)}
         secureTextEntry={seePassword}
         returnKeyType="go"
+        editable={editable}
         right={<TextInput.Icon icon="eye" onPress={ () => viewPass() } />}
         style={{ marginBottom: 16 }}
       />
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:16 }} >
-          <Switch disabled={rememberMeOn} value={rememberMe} onValueChange={setRememberMe} color="#3f51b5"/>
+          <Switch disabled={rememberMeOn} value={rememberMe} onValueChange={setRememberMe}/>
           <Text style={{ marginLeft:8}}> Se souvenir de moi</Text>
         </View>
       <Button style={{ marginBottom: 16 }} icon={loginMethod} mode="contained-tonal" onPress={ () => handleLogin() }> {loginText} </Button>
@@ -235,6 +271,89 @@ function LoginPage({ navigation }) {
       <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
       <Button style={{ marginBottom: 16 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
       <ActivityIndicator animating={loading} size="large" />
+    </SafeAreaView>
+    </View>
+  );
+}
+
+// Page de connexion à l'application si les identifiants sont sauvegardés
+function LoggedPage({ navigation, route }) {
+  const [loading, setLoading] = useState(false);
+
+  function handleLogin() {
+    setLoading(true);
+    // Connexion par TouchID/FaceID
+    LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
+      if (result.success) {
+        ssoUnice(username, password);
+      } else {
+        setLoading(false);
+        Alert.alert("Erreur", "Authentification annulée. EC=0xB");
+      }
+    });
+  }
+
+  // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
+  async function ssoUnice(username, password) {
+      if(!isConnected) {
+        let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: username,
+            password: password
+          }),
+          headers: {
+            "Accept": "application/json",
+            "Content-type": "application/json",
+            "Charset": "utf-8"
+          }
+        })
+      
+        if(!apiResp.ok){
+          Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
+          setLoading(false);
+        }
+  
+        let json = await apiResp.json();
+      
+        console.log(json);
+      
+        if(json.success) { 
+          isConnected = true;
+          semesters = json.semesters;
+          console.log(semesters);
+          setLoading(false);
+          navigation.navigate('Semesters');
+        } else {
+          setLoading(false);
+          Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
+        }
+      }
+  };
+
+  function deleteData() {
+      SecureStore.deleteItemAsync("username");
+      SecureStore.deleteItemAsync("passkey");
+      SecureStore.deleteItemAsync("name");
+      SecureStore.deleteItemAsync("avatar");
+      username = null;
+      password = null;
+      logout(navigation);
+  }
+  
+  return (
+    <View style={style.container}>
+      <SafeAreaView style={style.container}>
+        <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/icon.png')} />
+        <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
+        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner votre nom d'utilisateur pour continuer.</Text>
+        <Chip onPress={ () => handleLogin() } avatar={<Image source={require("./assets/icon.png")}/>}>{username} - {name}</Chip>
+        <Divider style={{ marginBottom: 16 }} />
+        <Button style={{ marginBottom: 16 }} icon="account" mode="contained-tonal" onPress={ () => deleteData() }> Changer d'utilisateur </Button>
+        <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
+        <Button style={{ marginBottom: 16 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
+        <ActivityIndicator animating={loading} size="large" />
+      </SafeAreaView>
     </View>
   );
 }
@@ -254,9 +373,14 @@ function Semesters ({ navigation }) {
       semester = sel.toString();
       navigation.navigate('APIConnect', { semester: sel });
   }
-
+  
   // Changement du texte en fonction de l'heure
   useEffect(() => {
+    if(avatar != null) {
+      avatar = fetch("https://api.unice.hugofnm.fr/avatar64");
+      save("avatar", avatar);
+    }
+    save("name", name);
     let date = new Date();
     let hours = date.getHours();
     if (hours >= 5 && hours < 17) {
@@ -274,11 +398,11 @@ function Semesters ({ navigation }) {
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
 
       {semesters.map((semester) => (
-        <Button style={{ marginBottom: 16 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
+        <Button style={{ marginBottom: 8 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
       ))}
 
-      <Button style={{ marginBottom: 8 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
-      <Button style={style.buttonLogout} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
+      <Button style={{ marginBottom: 8, marginTop: 8 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
+      <Button style={ style.buttonLogout } icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
     </View>
   );
 }
@@ -311,7 +435,7 @@ function APIConnect ({ navigation }) {
         average = json.average; // moyenne générale
         position = json.position; // position dans le classement
         dataIsLoaded = true;
-        navigation.navigate('ShowGrades', { grades : grades, admission : admission, average : average, position : position });
+        navigation.navigate('ShowGrades');
       }
       else {
         Alert.alert("Erreur", "Une erreur est survenue. EC=0xL");
@@ -435,7 +559,7 @@ function ShowGrades( { navigation } ) {
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Button style={style.buttonLogout} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
         <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
-        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">[BETA] Moyenne générale : {showGlobalAverage()}</Text>
+        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Moyenne générale : {showGlobalAverage()} (calculée)</Text>
         <Divider style={{ marginBottom: 16 }} />
         {showHeader()}
         {showTable()}
@@ -475,6 +599,8 @@ function ShowSettings( { navigation } ) {
   function deleteData() {
       SecureStore.deleteItemAsync("username");
       SecureStore.deleteItemAsync("passkey");
+      SecureStore.deleteItemAsync("name");
+      SecureStore.deleteItemAsync("avatar");
       username = null;
       password = null;
       Alert.alert("Données supprimées", "Retour à la page de connexion.");
@@ -511,6 +637,7 @@ function App() {
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false }} />
+        <Stack.Screen name="LoggedPage" component={LoggedPage} options={{ title: 'Se connecter', headerShown: false }} />
         <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false }} />  
         <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false, gestureEnabled: false}} />
