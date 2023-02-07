@@ -6,11 +6,11 @@ MIT License
 
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Alert, View, StyleSheet, 
   StatusBar, ScrollView, Image, 
   Appearance, BackHandler, SafeAreaView,
-  SafeAreaProvider 
+  SafeAreaProvider, Keyboard
 } from 'react-native';
 
 // Material Design 3 API (React Native Paper)
@@ -29,7 +29,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-var appVersion = '1.0.0b4';
+var appVersion = '1.0.0';
 
 var isLoggedIn = false; // App login
 var isConnected = false; // UniceAPI login
@@ -61,14 +61,6 @@ var name = SecureStore.getItemAsync("name").then((result) => {
     name = null;
   }
 }); // User's name
-
-var avatar = SecureStore.getItemAsync("avatar").then((result) => {
-  if (result != "") {
-    password = result;
-  } else {
-    password = null;
-  }
-}); // User's avatar
 
 var rememberMe = true; // Remember me
 
@@ -150,16 +142,22 @@ function LoginPage({ navigation }) {
   
   // Résultat du bouton "Se connecter"
   function handleLogin() {
-    setLoading(true);
-    // Connexion par TouchID/FaceID
-    LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
-      if (result.success) {
-        ssoUnice(username, password);
-      } else {
-        setLoading(false);
-        Alert.alert("Erreur", "Authentification annulée. EC=0xB");
-      }
-    });
+    if (username == null || password == null) {
+      Alert.alert("Erreur", "Veuillez entrer un nom d'utilisateur et un mot de passe.");
+    } else {
+      Keyboard.dismiss();
+      setLoading(true);
+      // Connexion par TouchID/FaceID
+      LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
+        if (result.success) {
+          setEditable(false);
+          ssoUnice(username, password);
+        } else {
+          setLoading(false);
+          Alert.alert("Erreur", "Authentification annulée. EC=0xB");
+        }
+      });
+    }
   }
 
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
@@ -277,7 +275,7 @@ function LoginPage({ navigation }) {
 }
 
 // Page de connexion à l'application si les identifiants sont sauvegardés
-function LoggedPage({ navigation, route }) {
+function LoggedPage({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   function handleLogin() {
@@ -335,7 +333,6 @@ function LoggedPage({ navigation, route }) {
       SecureStore.deleteItemAsync("username");
       SecureStore.deleteItemAsync("passkey");
       SecureStore.deleteItemAsync("name");
-      SecureStore.deleteItemAsync("avatar");
       username = null;
       password = null;
       logout(navigation);
@@ -347,7 +344,7 @@ function LoggedPage({ navigation, route }) {
         <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/icon.png')} />
         <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner votre nom d'utilisateur pour continuer.</Text>
-        <Chip onPress={ () => handleLogin() } avatar={<Image source={require("./assets/icon.png")}/>}>{username} - {name}</Chip>
+        <Chip onPress={ () => handleLogin() } icon="face-recognition" >{username} - {name}</Chip>
         <Divider style={{ marginBottom: 16 }} />
         <Button style={{ marginBottom: 16 }} icon="account" mode="contained-tonal" onPress={ () => deleteData() }> Changer d'utilisateur </Button>
         <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
@@ -376,10 +373,6 @@ function Semesters ({ navigation }) {
   
   // Changement du texte en fonction de l'heure
   useEffect(() => {
-    if(avatar != null) {
-      avatar = fetch("https://api.unice.hugofnm.fr/avatar64");
-      save("avatar", avatar);
-    }
     save("name", name);
     let date = new Date();
     let hours = date.getHours();
@@ -540,7 +533,11 @@ function ShowGrades( { navigation } ) {
             coeff += parseFloat(grade[1][1]);
           }
           else {
-            coeff += parseFloat((grade[1][0].replace("(coeff ", "")).replace(")",""));
+            if(grade[1][0].includes("ABI")) {
+              coeff += parseFloat((grade[1][0].replace("ABI (coeff ", "")).replace(")",""));
+            } else {
+              coeff += parseFloat((grade[1][0].replace("(coeff ", "")).replace(")",""));
+            }
           }
         })
         moyenneGenerale += moyenneCache * coeff;
@@ -600,7 +597,6 @@ function ShowSettings( { navigation } ) {
       SecureStore.deleteItemAsync("username");
       SecureStore.deleteItemAsync("passkey");
       SecureStore.deleteItemAsync("name");
-      SecureStore.deleteItemAsync("avatar");
       username = null;
       password = null;
       Alert.alert("Données supprimées", "Retour à la page de connexion.");
