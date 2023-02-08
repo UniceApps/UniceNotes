@@ -10,7 +10,7 @@
 
 **✨ Disponible sur iOS**
 
-<a href='https://get.unice.cf/ios'><img width='200' alt='Get the beta on TestFlight' src='https://github.com/UniceApps/UniceNotes-Website/raw/main/assets/img/testflight.png'/></a>
+<a href='https://get.unice.cf/ios'><img width='200' alt='Get the beta on TestFlight' src='https://github.com/UniceApps/UniceNotes-Website/raw/main/assets/img/appstore.png'/></a>
 
 **✨ Disponible sur Android**
 
