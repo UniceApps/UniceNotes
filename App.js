@@ -121,6 +121,15 @@ function LoginPage({ navigation }) {
   });
   
   async function verifyLogin() {
+    // Vérification de la version de l'application
+    var response = await fetch('https://github.com/UniceApps/UniceNotes/releases/latest');
+    response = response._bodyBlob._data.name.toString().replace("v", "");
+    if(response != appVersion) {
+      Alert.alert("Mise à jour disponible", "Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.", 
+      [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr") } ]);
+    }
+
+    // Vérification de la disponibilité des usernames et mots de passe enregistrés
     if(!isDataStored) {
       setUsername(await SecureStore.getItemAsync("username"));
       setPassword(await SecureStore.getItemAsync("passkey"));
@@ -179,11 +188,10 @@ function LoginPage({ navigation }) {
       if(!apiResp.ok){
         Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
         setLoading(false);
+        setEditable(true);
       }
 
       let json = await apiResp.json();
-    
-      console.log(json);
     
       if(json.success) {
 
@@ -196,11 +204,11 @@ function LoginPage({ navigation }) {
         isConnected = true;
         name = json.name;
         semesters = json.semesters;
-        console.log(semesters);
         setLoading(false);
         navigation.navigate('Semesters');
       } else {
         setLoading(false);
+        setEditable(true);
         Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
       }
     }
@@ -237,8 +245,7 @@ function LoginPage({ navigation }) {
 
   return (
     <View style={style.container}>
-    <SafeAreaView style={style.container}>
-      <Avatar.Image style={{ alignSelf: "center", marginBottom: 8 }} size={100} source={require('./assets/icon.png')} />
+      <Avatar.Image style={{ alignSelf: "center", marginBottom: 8, marginTop: 64 }} size={100} source={require('./assets/icon.png')} />
       <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez entrer vos identifiants Sésame (I.U.T. Nice Côte d'Azur) pour continuer.</Text>
       <TextInput
@@ -266,10 +273,9 @@ function LoginPage({ navigation }) {
       <Button style={{ marginBottom: 16 }} icon={loginMethod} mode="contained-tonal" onPress={ () => handleLogin() }> {loginText} </Button>
       <Divider style={{ marginBottom: 16 }} />
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
-      <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
+      <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
       <Button style={{ marginBottom: 16 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
       <ActivityIndicator animating={loading} size="large" />
-    </SafeAreaView>
     </View>
   );
 }
@@ -314,12 +320,9 @@ function LoggedPage({ navigation }) {
   
         let json = await apiResp.json();
       
-        console.log(json);
-      
         if(json.success) { 
           isConnected = true;
           semesters = json.semesters;
-          console.log(semesters);
           setLoading(false);
           navigation.navigate('Semesters');
         } else {
@@ -344,10 +347,10 @@ function LoggedPage({ navigation }) {
         <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/icon.png')} />
         <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner votre nom d'utilisateur pour continuer.</Text>
-        <Chip onPress={ () => handleLogin() } icon="face-recognition" >{username} - {name}</Chip>
-        <Divider style={{ marginBottom: 16 }} />
+        <Chip style={{ height: 64, marginBottom: 8 }} onPress={ () => handleLogin() } icon="face-recognition" >{username} - {name}</Chip>
         <Button style={{ marginBottom: 16 }} icon="account" mode="contained-tonal" onPress={ () => deleteData() }> Changer d'utilisateur </Button>
-        <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
+        <Divider style={{ marginBottom: 16 }} />
+        <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
         <Button style={{ marginBottom: 16 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
         <ActivityIndicator animating={loading} size="large" />
       </SafeAreaView>
@@ -442,9 +445,8 @@ function APIConnect ({ navigation }) {
   return (
     <View style={style.container}>
       <Avatar.Icon style={{ alignSelf: "center", marginBottom: 32 }} size={200} icon="sync" />
-
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Chargement des données...</Text>
       <ProgressBar progress={progress} style={{ marginBottom: 32 }} />
-
       <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained-tonal" onPress={ () => logout(navigation) }> Annuler </Button>
     </View>
   );
@@ -607,7 +609,7 @@ function ShowSettings( { navigation } ) {
     <View style={style.container}>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Paramètres</Text>
       <Button style={{ marginBottom: 8 }} icon="arrow-left" mode="contained-tonal" onPress={ () => navigation.goBack() }> Retourner en arrière </Button>
-      <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.unice.cf/bug") }> Signaler un bug </Button>
+      <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/bug") }> Signaler un bug </Button>
       <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
       <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer les données de connexion </Button>
       
@@ -618,10 +620,9 @@ function ShowSettings( { navigation } ) {
         <Text style={style.textLink} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
       </Text>
       <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur.</Text>
-      <Button style={{ marginTop: 32 }} icon="license" onPress={ () => handleURL("https://notes.unice.cf/credits") }> Mentions légales </Button>
+      <Button style={{ marginTop: 32 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
       <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
       <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
-      <Button style={{ marginTop: 4 }} icon="cash-fast" onPress={ () => handleURL("https://revolut.me/hugofnm") }> Soutenir le développement de l'application </Button>
     </View>
   );
 }
