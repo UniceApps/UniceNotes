@@ -10,7 +10,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Alert, View, StyleSheet, 
   StatusBar, ScrollView, Image, 
   Appearance, BackHandler, SafeAreaView,
-  SafeAreaProvider, Keyboard
+  SafeAreaProvider, Keyboard, RefreshControl
 } from 'react-native';
 
 // Material Design 3 API (React Native Paper)
@@ -29,7 +29,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-var appVersion = '1.0.0';
+var appVersion = '1.1.0';
 
 var isLoggedIn = false; // App login
 var isConnected = false; // UniceAPI login
@@ -92,11 +92,64 @@ function logout(navigation) {
     CommonActions.reset({
       index: 0,
       routes: [
-        { name: 'Login' }
+        { name: 'SplashScreen' }
       ],
     })
   );
   
+}
+
+// Page de transition (splashscreen)
+function SplashScreen({ navigation }) {
+  const [count, setCount] = useState(0);
+  const [isDataStored, setIsDataStored] = useState(false);
+
+  useEffect(() => {
+    if(count == 0) {
+      setCount(1);
+      verifyLogin();
+    }
+  });
+  
+  async function verifyLogin() {
+    // Vérification de la version de l'application
+    var response = await fetch('https://github.com/UniceApps/UniceNotes/releases/latest');
+    response = response._bodyBlob._data.name.toString().replace("v", "");
+    if(response != appVersion) {
+      Alert.alert("Mise à jour disponible", "Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.", 
+      [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr") } ]);
+    }
+
+    // Vérification de la disponibilité des usernames et mots de passe enregistrés
+    if(!isDataStored) {
+      setUsername(await SecureStore.getItemAsync("username"));
+      setPassword(await SecureStore.getItemAsync("passkey"));
+
+      if (username != null && password != null) {
+        navigation.navigate('LoggedPage');
+      } else {
+        username = null;
+        password = null;
+        setIsDataStored(false);
+        navigation.navigate('Login');
+      }
+    }
+  }
+
+  function setUsername(text) {
+    username = text;
+  }
+
+  function setPassword(text) {
+    password = text;
+  }
+
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: choosenTheme.colors.background }}>
+      <Image source={require('./assets/color.png')} style={{ width: 200, height: 200, marginBottom: 16 }} />
+      <Text style={{ textAlign: 'center' }} variant="displayLarge">UniceNotes</Text>
+    </View>
+  );
 }
 
 // Page de connexion à l'application (login)
@@ -121,14 +174,6 @@ function LoginPage({ navigation }) {
   });
   
   async function verifyLogin() {
-    // Vérification de la version de l'application
-    var response = await fetch('https://github.com/UniceApps/UniceNotes/releases/latest');
-    response = response._bodyBlob._data.name.toString().replace("v", "");
-    if(response != appVersion) {
-      Alert.alert("Mise à jour disponible", "Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.", 
-      [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr") } ]);
-    }
-
     // Vérification de la disponibilité des usernames et mots de passe enregistrés
     if(!isDataStored) {
       setUsername(await SecureStore.getItemAsync("username"));
@@ -245,7 +290,7 @@ function LoginPage({ navigation }) {
 
   return (
     <View style={style.container}>
-      <Avatar.Image style={{ alignSelf: "center", marginBottom: 8, marginTop: 64 }} size={100} source={require('./assets/icon.png')} />
+      <Avatar.Image style={{ alignSelf: "center", marginBottom: 8, marginTop: 64 }} size={100} source={require('./assets/white.png')} />
       <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez entrer vos identifiants Sésame (I.U.T. Nice Côte d'Azur) pour continuer.</Text>
       <TextInput
@@ -344,7 +389,7 @@ function LoggedPage({ navigation }) {
   return (
     <View style={style.container}>
       <SafeAreaView style={style.container}>
-        <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/icon.png')} />
+        <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/white.png')} />
         <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner votre nom d'utilisateur pour continuer.</Text>
         <Chip style={{ height: 64, marginBottom: 8 }} onPress={ () => handleLogin() } icon="face-recognition" >{username} - {name}</Chip>
@@ -406,6 +451,14 @@ function Semesters ({ navigation }) {
 // Page de chargement des données
 function APIConnect ({ navigation }) {
   const [progress, setProgress] = useState(0.1);
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if(count == 0) {
+      setCount(1);
+      loginAPI();
+    }
+  });
 
   async function loginAPI() {
     if(dataIsLoaded == false){
@@ -440,8 +493,6 @@ function APIConnect ({ navigation }) {
     dataIsLoaded = true;
   }
 
-  loginAPI();
-
   return (
     <View style={style.container}>
       <Avatar.Icon style={{ alignSelf: "center", marginBottom: 32 }} size={200} icon="sync" />
@@ -454,11 +505,52 @@ function APIConnect ({ navigation }) {
 
 // Page d'affichage des notes
 function ShowGrades( { navigation } ) {
+  const [refreshing, setRefreshing] = useState(false);
 
   var moyenneGenerale = 0.0;
   var moyenneCache = 0.0;
   var coeffGeneral = 0.0;
   var coeff = 0.0;
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    if (forceRefresh() == true) {
+      setRefreshing(false);
+    }
+  }, []);
+
+  async function forceRefresh() {
+    var res;
+    dataIsLoaded = false;
+    let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: username,
+        password: password
+      }),
+      headers: {
+        "Accept": "application/json",
+        "Content-type": "application/json",
+        "Charset": "utf-8"
+      }
+    })
+  
+    if(!apiResp.ok){
+      Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
+      res = false;
+    } else {
+      res = true;
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            { name: 'APIConnect' }
+          ],
+        })
+      );
+    }
+    return res;
+  }
 
   function showInfos(grade){
     var res;
@@ -555,7 +647,10 @@ function ShowGrades( { navigation } ) {
   return (
     <View style={styleShowGrades.container}>
       <Text style={{ textAlign: 'left', marginBottom: 16, paddingLeft: 25 }} variant="displayLarge">Notes</Text>
-      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
+      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }} 
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }>
         <Button style={style.buttonLogout} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
         <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Moyenne générale : {showGlobalAverage()} (calculée)</Text>
@@ -615,10 +710,11 @@ function ShowSettings( { navigation } ) {
       
       <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
       <Text style={{ textAlign: 'left' }} variant="titleMedium">Visualisez vos notes. Sans PDF.</Text>
-      <Text style={{ textAlign: 'left' }} variant="titleMedium">Version: {appVersion}</Text>
-      <Text style={{ textAlign: 'left' }} variant="titleMedium">Développé par 
+      <Text style={{ textAlign: 'left' }} variant="titleMedium">⚡ Version : {appVersion}</Text>
+      <Text style={{ textAlign: 'left' }} variant="titleMedium">❤️ Fièrement développé par un GEII : 
         <Text style={style.textLink} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
       </Text>
+
       <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur.</Text>
       <Button style={{ marginTop: 32 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
       <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
@@ -633,6 +729,7 @@ function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator>
+        <Stack.Screen name="SplashScreen" component={SplashScreen} options={{ title: 'UniceNotes', headerShown: false }} />
         <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false }} />
         <Stack.Screen name="LoggedPage" component={LoggedPage} options={{ title: 'Se connecter', headerShown: false }} />
         <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false }} />  
