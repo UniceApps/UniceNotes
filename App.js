@@ -104,7 +104,7 @@ function SplashScreen({ navigation }) {
   const [count, setCount] = useState(0);
   const [isDataStored, setIsDataStored] = useState(false);
 
-  useEffect(() => {
+  useEffect(() => { 
     if(count == 0) {
       setCount(1);
       verifyLogin();
@@ -113,11 +113,13 @@ function SplashScreen({ navigation }) {
   
   async function verifyLogin() {
     // Vérification de la version de l'application
-    var response = await fetch('https://github.com/UniceApps/UniceNotes/releases/latest');
-    response = response._bodyBlob._data.name.toString().replace("v", "");
-    if(response != appVersion) {
+    var res;
+    await fetch('https://api.unice.hugofnm.fr/version').then((response) => res = response.text());
+    res = res._z.toString().replace("v", "");
+
+    if(res != appVersion) {
       Alert.alert("Mise à jour disponible", "Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.", 
-      [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr") } ]);
+      [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr/get") } ]);
     }
 
     // Vérification de la disponibilité des usernames et mots de passe enregistrés
@@ -730,8 +732,8 @@ function App() {
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen name="SplashScreen" component={SplashScreen} options={{ title: 'UniceNotes', headerShown: false }} />
-        <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false }} />
-        <Stack.Screen name="LoggedPage" component={LoggedPage} options={{ title: 'Se connecter', headerShown: false }} />
+        <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="LoggedPage" component={LoggedPage} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false }} />  
         <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false, gestureEnabled: false}} />

@@ -10,11 +10,11 @@
 
 **✨ Disponible sur iOS**
 
-<a href='https://get.unice.cf/ios'><img width='200' alt='Get the beta on TestFlight' src='https://github.com/UniceApps/UniceNotes-Website/raw/main/assets/img/appstore.png'/></a>
+<a href='https://notes.metrixmedia.fr/get'><img width='200' alt='Get the app on App Store' src='https://github.com/UniceApps/UniceNotes-Website/raw/main/assets/img/appstore.png'/></a>
 
 **✨ Disponible sur Android**
 
-<a href='https://get.unice.cf/android'><img width='200' alt='Get the beta on TestFlight' src='https://github.com/UniceApps/UniceNotes-Website/raw/main/assets/img/android.png'/></a>
+<a href='https://notes.metrixmedia.fr/get'><img width='200' alt='Get the app on Play Store' src='https://github.com/UniceApps/UniceNotes-Website/raw/main/assets/img/googleplay.png'/></a>
 
 ## ⚠️ Erreurs pouvant apparaître sur l'application
 
@@ -41,3 +41,9 @@ L'application UniceNotes ne collecte aucune donnée personnelle.
 Les données sont **stockées sur votre appareil** et ne sont pas envoyées sur un serveur (sauf l'API communiquant avec Intracursus). 
 \
 Les données sont stockées dans un format **crypté** et ne peuvent être lues que par l'application lorsque l'utilisateur s'identifie grâce à un moyen biométrique / code. [Voir l'API SecureStore](https://docs.expo.dev/versions/v47.0.0/sdk/securestore/)
+
+## 📄 Légal
+
+The Apple logo® and the App Store® are trademarks of Apple Inc., registered in the U.S. and other countries. 
+
+The Google Play Store logo® and the Google Play Store® are trademarks of Google Inc., registered in the U.S. and other countries.
