@@ -29,7 +29,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-var appVersion = '1.1.1';
+var appVersion = '1.1.0';
 
 var isLoggedIn = false; // App login
 var isConnected = false; // UniceAPI login
