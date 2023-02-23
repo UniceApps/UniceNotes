@@ -203,16 +203,21 @@ function LoginPage({ navigation }) {
     } else {
       Keyboard.dismiss();
       setLoading(true);
-      // Connexion par TouchID/FaceID
-      LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
-        if (result.success) {
-          setEditable(false);
-          ssoUnice(username, password);
-        } else {
-          setLoading(false);
-          Alert.alert("Erreur", "Authentification annulée. EC=0xB");
-        }
-      });
+      if(username == "demo") {
+        setEditable(false);
+        ssoUnice(username, password);
+      } else {
+        // Connexion par TouchID/FaceID
+        LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
+          if (result.success) {
+            setEditable(false);
+            ssoUnice(username, password);
+          } else {
+            setLoading(false);
+            Alert.alert("Erreur", "Authentification annulée. EC=0xB");
+          }
+        });
+      }
     }
   }
 
@@ -333,15 +338,19 @@ function LoggedPage({ navigation }) {
 
   function handleLogin() {
     setLoading(true);
-    // Connexion par TouchID/FaceID
-    LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
-      if (result.success) {
-        ssoUnice(username, password);
-      } else {
-        setLoading(false);
-        Alert.alert("Erreur", "Authentification annulée. EC=0xB");
-      }
-    });
+    if(username == "demo") {
+      ssoUnice(username, password);
+    } else {
+      // Connexion par TouchID/FaceID
+      LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
+        if (result.success) {
+          ssoUnice(username, password);
+        } else {
+          setLoading(false);
+          Alert.alert("Erreur", "Authentification annulée. EC=0xB");
+        }
+      });
+    }
   }
 
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
@@ -613,6 +622,12 @@ function ShowGrades( { navigation } ) {
       )
     }
     else {
+      if(grade[1][0].includes("ABI")) {
+        return (
+          <><DataTable.Cell numeric> ABI (0) </DataTable.Cell>
+          <DataTable.Cell numeric>{(((grade[1][0].replace("ABI (coeff ", "")).replace(")",""))).replace(")","")}</DataTable.Cell></>
+        )
+      }
       return (
         <><DataTable.Cell numeric> X </DataTable.Cell>
         <DataTable.Cell numeric>{(grade[1][0].replace("(coeff ", "")).replace(")","")}</DataTable.Cell></>
@@ -666,13 +681,45 @@ function ShowGrades( { navigation } ) {
 
 // Page d'affichage de l'emploi du temps
 function ShowEDT( { navigation } ) {
+  
+  async function getMyCal() {
+    let cal = await fetch('https://api.unice.hugofnm.fr/edt', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: username
+      }),
+      headers: {
+        "Accept": "application/json",
+        "Content-type": "application/json",
+        "Charset": "utf-8"
+      }
+    })
+    const data = await cal.text();
+
+    const { VCALENDAR } = parse(data);
+    const events = VCALENDAR.VEVENT;
+
+    return(
+      events.map((event) => (
+        <Card key={event.UID}>
+          <Card.Content>
+            <Title>{event.SUMMARY}</Title>
+            <Paragraph>{moment(event.DTSTART).format('MMMM Do YYYY, h:mm a')}</Paragraph>
+          </Card.Content>
+        </Card>
+      ))
+    )
+  }
+
   return (
-    <View style={{ flex: 1, justifyContent: 'center', marginLeft: 25, marginRight: 25 }}>
+    <View style={style.container}>
       <Text style={{ textAlign: 'left' }} variant="displayLarge">Emploi du temps</Text>
       <Button style={{ marginTop: 16, marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
       <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
       <Divider style={{ marginBottom: 16 }} />
-      <Text>Emploi du temps bientôt disponible...</Text>
+      
+      {getMyCal()}
+
     </View>
   );
 }
