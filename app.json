@@ -2,17 +2,12 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "unicenotes",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "updates": {
       "fallbackToCacheTimeout": 0
     },
@@ -27,10 +22,11 @@
         "NSNotificationsUsageDescription": "Recevez des notifications pour être informé des nouvelles notes."
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "1"
+      "buildNumber": "7"
     },
     "android": {
-      "package": "fr.hugofnm.unicenotes"
+      "package": "fr.hugofnm.unicenotes",
+      "versionCode": "2"
     },
     "extra": {
       "eas": {
