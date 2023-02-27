@@ -8,9 +8,9 @@ MIT License
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Alert, View, StyleSheet, 
-  StatusBar, ScrollView, Image, 
+  StatusBar, ScrollView, RefreshControl,
   Appearance, BackHandler, SafeAreaView,
-  SafeAreaProvider, Keyboard, RefreshControl
+  SafeAreaProvider, Keyboard
 } from 'react-native';
 
 // Material Design 3 API (React Native Paper)
@@ -25,11 +25,13 @@ import { Avatar, Text, TextInput,
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
+import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-var appVersion = '1.1.1';
+var appVersion = '1.1.2';
 
 var isLoggedIn = false; // App login
 var isConnected = false; // UniceAPI login
@@ -69,6 +71,10 @@ var average = ""; // User's average
 var admission = ""; // User's admission
 var position = ""; // User's position
 
+// ---------------------------------------------
+// FONCTIONS GLOBALES
+// ---------------------------------------------
+
 // SecureStore API
 async function save(key, value) {
   await SecureStore.setItemAsync(key, value);
@@ -76,11 +82,13 @@ async function save(key, value) {
 
 // Ouverture de pages web dans le navigateur par défaut
 const handleURL = async (url) => {
+  Haptics.selectionAsync();
   await WebBrowser.openBrowserAsync(url);
 };
 
 // Fonction de déconnexion (API UniceNotes + app si "Se souvenir de moi" est désactivé)
 function logout(navigation) {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
   isConnected = false;
   isLoggedIn = false;
   dataIsLoaded = false;
@@ -99,6 +107,16 @@ function logout(navigation) {
   
 }
 
+// Fonction navigate vers paramètres
+function goToSettings(navigation) {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  navigation.navigate('ShowSettings');
+}
+
+// ---------------------------------------------
+// FONCTIONS VIEW (ECRANS DE L'APPLICATION)
+// ---------------------------------------------
+
 // Page de transition (splashscreen)
 function SplashScreen({ navigation }) {
   const [count, setCount] = useState(0);
@@ -112,11 +130,15 @@ function SplashScreen({ navigation }) {
   });
   
   async function verifyLogin() {
-    // Vérification de la version de l'application
+    // Vérification de la version de l'application en récupérant le json contenant la dernière version
     var res;
-    await fetch('https://api.unice.hugofnm.fr/version').then((response) => res = response.text());
-    res = res._z.toString().replace("v", "");
-
+    await fetch('https://api.unice.hugofnm.fr/version')
+    .then((response) => response.json())
+    .then((json) => {
+      res = json.version;
+    })
+    
+    res = res.toString().replace("v", "")
     if(res != appVersion) {
       Alert.alert("Mise à jour disponible", "Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.", 
       [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr/get") } ]);
@@ -175,6 +197,7 @@ function LoginPage({ navigation }) {
     }
   });
   
+  // DEPRECATED (voir SplashScreen) à enlever au plus vite
   async function verifyLogin() {
     // Vérification de la disponibilité des usernames et mots de passe enregistrés
     if(!isDataStored) {
@@ -199,9 +222,11 @@ function LoginPage({ navigation }) {
   // Résultat du bouton "Se connecter"
   function handleLogin() {
     if (username == null || password == null) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert("Erreur", "Veuillez entrer un nom d'utilisateur et un mot de passe.");
     } else {
       Keyboard.dismiss();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setLoading(true);
       if(username == "demo") {
         setEditable(false);
@@ -213,6 +238,7 @@ function LoginPage({ navigation }) {
             setEditable(false);
             ssoUnice(username, password);
           } else {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             setLoading(false);
             Alert.alert("Erreur", "Authentification annulée. EC=0xB");
           }
@@ -238,6 +264,7 @@ function LoginPage({ navigation }) {
       })
     
       if(!apiResp.ok){
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
         setLoading(false);
         setEditable(true);
@@ -257,10 +284,12 @@ function LoginPage({ navigation }) {
         name = json.name;
         semesters = json.semesters;
         setLoading(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         navigation.navigate('Semesters');
       } else {
         setLoading(false);
         setEditable(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
       }
     }
@@ -273,8 +302,10 @@ function LoginPage({ navigation }) {
     } else if (isDataStored == true) {
       LocalAuthentication.authenticateAsync().then((result) => {
         if (result.success) {
+          Haptics.selectionAsync();
           setSeePassword(!seePassword);
         } else {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           Alert.alert("Erreur", "Authentification annulée. EC=0xB");
         }
       });
@@ -304,14 +335,18 @@ function LoginPage({ navigation }) {
         label="Nom d'utilisateur"
         defaultValue={username}
         onChangeText={(text) => setUsername(text)}
+        onPressIn={() => Haptics.selectionAsync()}
         returnKeyType="next"
+        onSubmitEditing={() => passwordInput.focus()}
         editable={editable}
         style={{ marginBottom: 8 }}
       />
       <TextInput
+        ref={(input) => passwordInput = input}
         label='Mot de passe'
         defaultValue={password}
         onChangeText={(text) => setPassword(text)}
+        onPressIn={() => Haptics.selectionAsync()}
         secureTextEntry={seePassword}
         returnKeyType="go"
         editable={editable}
@@ -337,6 +372,7 @@ function LoggedPage({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   function handleLogin() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
     if(username == "demo") {
       ssoUnice(username, password);
@@ -347,6 +383,7 @@ function LoggedPage({ navigation }) {
           ssoUnice(username, password);
         } else {
           setLoading(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           Alert.alert("Erreur", "Authentification annulée. EC=0xB");
         }
       });
@@ -370,6 +407,7 @@ function LoggedPage({ navigation }) {
         })
       
         if(!apiResp.ok){
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
           setLoading(false);
         }
@@ -380,20 +418,25 @@ function LoggedPage({ navigation }) {
           isConnected = true;
           semesters = json.semesters;
           setLoading(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           navigation.navigate('Semesters');
         } else {
           setLoading(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
         }
       }
   };
 
   function deleteData() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       SecureStore.deleteItemAsync("username");
       SecureStore.deleteItemAsync("passkey");
       SecureStore.deleteItemAsync("name");
       username = null;
       password = null;
+      Image.clearDiskCache();
+      Image.clearMemoryCache();
       logout(navigation);
   }
   
@@ -426,6 +469,7 @@ function Semesters ({ navigation }) {
 
   // Fonction de chargement des notes
   function loadGrades(sel) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       semester = sel.toString();
       navigation.navigate('APIConnect', { semester: sel });
   }
@@ -444,7 +488,13 @@ function Semesters ({ navigation }) {
 
   return (
     <View style={style.container}>
-      <Avatar.Image style={{ alignSelf: "center", marginBottom: 16 }} size={100} source={{ uri: "https://api.unice.hugofnm.fr/avatar" }} />
+      <Image 
+        source={{
+          uri: "https://api.unice.hugofnm.fr/avatar"
+        }} 
+        style={{ alignSelf: "center", marginBottom: 16, width: 125, height: 125, borderRadius: 100 }}
+        placeholder={require('./assets/profile.png')}
+      />
       <Text style={{ textAlign: 'left' }} variant="displayLarge">{jourNuit},</Text>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayMedium">{name} !</Text>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
@@ -453,7 +503,7 @@ function Semesters ({ navigation }) {
         <Button style={{ marginBottom: 8 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
       ))}
 
-      <Button style={{ marginBottom: 8, marginTop: 8 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
+      <Button style={{ marginBottom: 8, marginTop: 8 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
       <Button style={ style.buttonLogout } icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
     </View>
   );
@@ -489,6 +539,7 @@ function APIConnect ({ navigation }) {
         if(json.grades) {
           grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
         } else {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           Alert.alert("Erreur", "Une erreur est survenue. EC=0xG");
         }
         admission = json.admission; // admission oui/non
@@ -498,6 +549,7 @@ function APIConnect ({ navigation }) {
         navigation.navigate('ShowGrades');
       }
       else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert("Erreur", "Une erreur est survenue. EC=0xL");
       }
     }
@@ -669,7 +721,7 @@ function ShowGrades( { navigation } ) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }>
         <Button style={style.buttonLogout} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
-        <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
+        <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Moyenne générale : {showGlobalAverage()} (calculée)</Text>
         <Divider style={{ marginBottom: 16 }} />
         {showHeader()}
@@ -728,6 +780,7 @@ function ShowEDT( { navigation } ) {
 function ShowSettings( { navigation } ) {
 
   function askDeleteData() {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Alert.alert("Suppression des données", "Voulez-vous vraiment supprimer les données de l'application ?", [
       {
         text: "Annuler",
@@ -745,14 +798,22 @@ function ShowSettings( { navigation } ) {
       SecureStore.deleteItemAsync("name");
       username = null;
       password = null;
+      Image.clearDiskCache();
+      Image.clearMemoryCache();
       Alert.alert("Données supprimées", "Retour à la page de connexion.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       logout(navigation);
+  }
+
+  function goBack() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    navigation.goBack();
   }
 
   return (
     <View style={style.container}>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Paramètres</Text>
-      <Button style={{ marginBottom: 8 }} icon="arrow-left" mode="contained-tonal" onPress={ () => navigation.goBack() }> Retourner en arrière </Button>
+      <Button style={{ marginBottom: 8 }} icon="arrow-left" mode="contained-tonal" onPress={ () => goBack() }> Retourner en arrière </Button>
       <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/bug") }> Signaler un bug </Button>
       <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
       <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer les données de connexion </Button>
@@ -772,8 +833,10 @@ function ShowSettings( { navigation } ) {
   );
 }
 
+// Création du stack de navigation
 const Stack = createNativeStackNavigator();
 
+// Fonction principale de l'application
 function App() {
   return (
     <NavigationContainer>
