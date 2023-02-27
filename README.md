@@ -47,3 +47,11 @@ Les données sont stockées dans un format **crypté** et ne peuvent être lues 
 The Apple logo® and the App Store® are trademarks of Apple Inc., registered in the U.S. and other countries. 
 
 The Google Play Store logo® and the Google Play Store® are trademarks of Google Inc., registered in the U.S. and other countries.
+
+## 📝 Notes
+
+UniceNotes n'est aucunement affilié à l'Université Côte d'Azur ou à l'I.U.T. Nice Côte d'Azur.
+
+L'application UniceNotes utilise Expo.
+\
+<img width='50' src='https://avatars.githubusercontent.com/u/12504344?s=200&v=4'/>
