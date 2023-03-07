@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "1.1.2",
+    "version": "1.1.3",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -22,11 +22,11 @@
         "NSNotificationsUsageDescription": "Recevez des notifications pour être informé des nouvelles notes."
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "2.2.0"
+      "buildNumber": "2.3.0"
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 3
+      "versionCode": 4
     },
     "extra": {
       "eas": {
