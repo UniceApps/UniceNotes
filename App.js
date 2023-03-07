@@ -31,9 +31,11 @@ import * as Haptics from 'expo-haptics';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-var appVersion = '1.1.2';
+// IMPORTANT !!!
+var appVersion = '1.1.3';
+var isBeta = true;
+// IMPORTANT !!!
 
-var isLoggedIn = false; // App login
 var isConnected = false; // UniceAPI login
 var dataIsLoaded = false; // JSONPDF loaded
 var semesters = []; // User's all semesters
@@ -139,9 +141,11 @@ function SplashScreen({ navigation }) {
     })
     
     res = res.toString().replace("v", "")
-    if(res != appVersion) {
-      Alert.alert("Mise à jour disponible", "Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.", 
-      [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr/get") } ]);
+    if(!isBeta) {
+      if(res != appVersion) {
+        Alert.alert("Mise à jour disponible", "Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.", 
+        [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr/get") } ]);
+      }
     }
 
     // Vérification de la disponibilité des usernames et mots de passe enregistrés
@@ -168,10 +172,21 @@ function SplashScreen({ navigation }) {
     password = text;
   }
 
+  function betaText() {
+    if(isBeta) {
+      return (
+        <Text style={{ textAlign: 'center' }} variant="displaySmall">BETA</Text>
+      );
+    }
+  }
+
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: choosenTheme.colors.background }}>
       <Image source={require('./assets/color.png')} style={{ width: 200, height: 200, marginBottom: 16 }} />
       <Text style={{ textAlign: 'center' }} variant="displayLarge">UniceNotes</Text>
+
+      {betaText()}
+
     </View>
   );
 }
@@ -181,43 +196,9 @@ function LoginPage({ navigation }) {
 
   const [loading, setLoading] = useState(false);
   const [seePassword, setSeePassword] = useState(true);
-  const [isDataStored, setIsDataStored] = useState(false);
-  const [count, setCount] = useState(0);
   const [editable, setEditable] = useState(true);
+  const [remember, setRemember] = useState(rememberMe);
 
-  // Text and icons variables
-  const [loginMethod, setLoginMethod] = useState("login");
-  const [loginText, setLoginText] = useState("Se connecter");
-  const [rememberMeOn, setRememberMeOn] = useState(false); // "Se souvenir de moi" clickable
-
-  useEffect(() => {
-    if(count == 0) {
-      setCount(1);
-      verifyLogin();
-    }
-  });
-  
-  // DEPRECATED (voir SplashScreen) à enlever au plus vite
-  async function verifyLogin() {
-    // Vérification de la disponibilité des usernames et mots de passe enregistrés
-    if(!isDataStored) {
-      setUsername(await SecureStore.getItemAsync("username"));
-      setPassword(await SecureStore.getItemAsync("passkey"));
-
-      if (username != null && password != null) {
-        navigation.navigate('LoggedPage');
-        setLoginMethod("face-recognition");
-        setLoginText("Se connecter avec TouchID/FaceID");
-        setRememberMeOn(true);
-        setIsDataStored(true);
-        setEditable(false);
-      } else {
-        username = null;
-        password = null;
-        setIsDataStored(false);
-      }
-    }
-  }
   
   // Résultat du bouton "Se connecter"
   function handleLogin() {
@@ -295,25 +276,6 @@ function LoginPage({ navigation }) {
     }
   };
 
-  // Affichage en clair du mot de passe si clic sur l'oeil
-  function viewPass() {
-    if (seePassword == false) {
-      setSeePassword(!seePassword);
-    } else if (isDataStored == true) {
-      LocalAuthentication.authenticateAsync().then((result) => {
-        if (result.success) {
-          Haptics.selectionAsync();
-          setSeePassword(!seePassword);
-        } else {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          Alert.alert("Erreur", "Authentification annulée. EC=0xB");
-        }
-      });
-    } else {
-      setSeePassword(!seePassword);
-    }
-  }
-
   function setUsername(text) {
     username = text;
   }
@@ -323,6 +285,7 @@ function LoginPage({ navigation }) {
   }
 
   function setRememberMe(bool) {
+    setRemember(bool);
     rememberMe = bool;
   }
 
@@ -350,14 +313,14 @@ function LoginPage({ navigation }) {
         secureTextEntry={seePassword}
         returnKeyType="go"
         editable={editable}
-        right={<TextInput.Icon icon="eye" onPress={ () => viewPass() } />}
+        right={<TextInput.Icon icon="eye" onPress={ () => setSeePassword(!seePassword) } />}
         style={{ marginBottom: 16 }}
       />
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:16 }} >
-          <Switch disabled={rememberMeOn} value={rememberMe} onValueChange={setRememberMe}/>
+          <Switch onValueChange={ (value) => setRememberMe(value) } value={rememberMe}/>
           <Text style={{ marginLeft:8}}> Se souvenir de moi</Text>
         </View>
-      <Button style={{ marginBottom: 16 }} icon={loginMethod} mode="contained-tonal" onPress={ () => handleLogin() }> {loginText} </Button>
+      <Button style={{ marginBottom: 16 }} icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
       <Divider style={{ marginBottom: 16 }} />
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
       <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
@@ -599,8 +562,8 @@ function ShowGrades( { navigation } ) {
     })
   
     if(!apiResp.ok){
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
-      res = false;
     } else {
       res = true;
       navigation.dispatch(
@@ -613,6 +576,41 @@ function ShowGrades( { navigation } ) {
       );
     }
     return res;
+  }
+
+  async function changeSemester() {
+    dataIsLoaded = false;
+    let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: username,
+        password: password
+      }),
+      headers: {
+        "Accept": "application/json",
+        "Content-type": "application/json",
+        "Charset": "utf-8"
+      }
+    })
+  
+    if(!apiResp.ok){
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
+    } else {
+      let json = await apiResp.json();
+      
+      if(json.success) { 
+        semesters = json.semesters;
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              { name: 'Semesters' }
+            ],
+          })
+        );
+      }
+    }
   }
 
   function showInfos(grade){
@@ -710,7 +708,13 @@ function ShowGrades( { navigation } ) {
       }
     });
     moyenneGenerale = moyenneGenerale / coeffGeneral;
-    return moyenneGenerale.toFixed(2);
+    moyenneGenerale = moyenneGenerale.toFixed(2);
+
+    if (moyenneGenerale == "NaN") {
+      return "Non disponible";
+    }
+
+    return moyenneGenerale;
   }
 
   return (
@@ -720,7 +724,7 @@ function ShowGrades( { navigation } ) {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }>
-        <Button style={style.buttonLogout} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
+        <Button style={style.buttonChangeSemester} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
         <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Moyenne générale : {showGlobalAverage()} (calculée)</Text>
         <Divider style={{ marginBottom: 16 }} />
@@ -968,6 +972,9 @@ const style = StyleSheet.create({
   },
   buttonLogout: {
     backgroundColor: choosenTheme.colors.errorContainer
+  },
+  buttonChangeSemester: {
+    backgroundColor: choosenTheme.colors.tertiaryContainer
   },
   textLink: {
     color: choosenTheme.colors.primary
