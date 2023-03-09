@@ -33,7 +33,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // IMPORTANT !!!
 var appVersion = '1.1.3';
-var isBeta = true;
+var isBeta = false;
 // IMPORTANT !!!
 
 var isConnected = false; // UniceAPI login
@@ -209,22 +209,8 @@ function LoginPage({ navigation }) {
       Keyboard.dismiss();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setLoading(true);
-      if(username == "demo") {
-        setEditable(false);
-        ssoUnice(username, password);
-      } else {
-        // Connexion par TouchID/FaceID
-        LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
-          if (result.success) {
-            setEditable(false);
-            ssoUnice(username, password);
-          } else {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            setLoading(false);
-            Alert.alert("Erreur", "Authentification annulée. EC=0xB");
-          }
-        });
-      }
+      setEditable(false);
+      ssoUnice(username, password);
     }
   }
 
@@ -409,8 +395,9 @@ function LoggedPage({ navigation }) {
         <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/white.png')} />
         <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner votre nom d'utilisateur pour continuer.</Text>
-        <Chip style={{ height: 64, marginBottom: 8 }} onPress={ () => handleLogin() } icon="face-recognition" >{username} - {name}</Chip>
-        <Button style={{ marginBottom: 16 }} icon="account" mode="contained-tonal" onPress={ () => deleteData() }> Changer d'utilisateur </Button>
+        <Chip style={{ height: 64, marginBottom: 16 }} onPress={ () => handleLogin() } icon="face-recognition" >{username} - {name}</Chip>
+        <Button style={{ marginBottom: 8 }} icon="account" mode="contained-tonal" onPress={ () => deleteData() }> Changer d'utilisateur </Button>
+        <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         <Divider style={{ marginBottom: 16 }} />
         <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
         <Button style={{ marginBottom: 16 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
@@ -524,7 +511,7 @@ function APIConnect ({ navigation }) {
       <Avatar.Icon style={{ alignSelf: "center", marginBottom: 32 }} size={200} icon="sync" />
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Chargement des données...</Text>
       <ProgressBar progress={progress} style={{ marginBottom: 32 }} />
-      <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained-tonal" onPress={ () => logout(navigation) }> Annuler </Button>
+      <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained" onPress={ () => logout(navigation) }> Annuler </Button>
     </View>
   );
 }
@@ -532,6 +519,7 @@ function APIConnect ({ navigation }) {
 // Page d'affichage des notes
 function ShowGrades( { navigation } ) {
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   var moyenneGenerale = 0.0;
   var moyenneCache = 0.0;
@@ -579,6 +567,8 @@ function ShowGrades( { navigation } ) {
   }
 
   async function changeSemester() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLoading(true);
     dataIsLoaded = false;
     let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
       method: 'POST',
@@ -597,6 +587,7 @@ function ShowGrades( { navigation } ) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
     } else {
+      setLoading(false);
       let json = await apiResp.json();
       
       if(json.success) { 
@@ -724,7 +715,7 @@ function ShowGrades( { navigation } ) {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }>
-        <Button style={style.buttonChangeSemester} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
+        <Button style={style.buttonChangeSemester} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
         <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Moyenne générale : {showGlobalAverage()} (calculée)</Text>
         <Divider style={{ marginBottom: 16 }} />

@@ -22,7 +22,7 @@
         "NSNotificationsUsageDescription": "Recevez des notifications pour être informé des nouvelles notes."
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "2.3.0"
+      "buildNumber": "2.3.1"
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
