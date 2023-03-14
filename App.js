@@ -32,7 +32,7 @@ import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // IMPORTANT !!!
-var appVersion = '1.1.3';
+var appVersion = '1.1.4';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -133,18 +133,26 @@ function SplashScreen({ navigation }) {
   
   async function verifyLogin() {
     // Vérification de la version de l'application en récupérant le json contenant la dernière version
-    var res;
-    await fetch('https://api.unice.hugofnm.fr/version')
+    var version, isAvailable, maintenance;
+    await fetch('https://api.unice.hugofnm.fr/status')
     .then((response) => response.json())
     .then((json) => {
-      res = json.version;
+      version = json.version;
+      isAvailable = json.isAvailable;
+      maintenance = json.maintenance;
     })
-    
-    res = res.toString().replace("v", "")
+
+    if (maintenance != "") {
+      Alert.alert("Maintenance", maintenance);
+    }
+
+    version = version.toString().replace("v", "")
     if(!isBeta) {
-      if(res != appVersion) {
-        Alert.alert("Mise à jour disponible", "Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.", 
-        [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr/get") } ]);
+      if(isAvailable == true) {
+        if(version != appVersion) {
+          Alert.alert("Mise à jour disponible", "Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.", 
+          [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr/get") } ]);
+        }
       }
     }
 
@@ -511,7 +519,7 @@ function APIConnect ({ navigation }) {
       <Avatar.Icon style={{ alignSelf: "center", marginBottom: 32 }} size={200} icon="sync" />
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Chargement des données...</Text>
       <ProgressBar progress={progress} style={{ marginBottom: 32 }} />
-      <Button style={{ marginBottom: 16 }}icon="account-child-circle" mode="contained" onPress={ () => logout(navigation) }> Annuler </Button>
+      <Button style={{ marginBottom: 16 }}icon="location-exit" mode="contained" onPress={ () => logout(navigation) }> Annuler </Button>
     </View>
   );
 }
@@ -525,6 +533,7 @@ function ShowGrades( { navigation } ) {
   var moyenneCache = 0.0;
   var coeffGeneral = 0.0;
   var coeff = 0.0;
+  var bonus = 0.0;
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -536,23 +545,14 @@ function ShowGrades( { navigation } ) {
   async function forceRefresh() {
     var res;
     dataIsLoaded = false;
-    let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: username,
-        password: password
-      }),
-      headers: {
-        "Accept": "application/json",
-        "Content-type": "application/json",
-        "Charset": "utf-8"
-      }
+
+    await fetch('https://api.unice.hugofnm.fr/whoami')
+    .then((response) => response.json())
+    .then((json) => {
+      logged = json.username;
     })
-  
-    if(!apiResp.ok){
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
-    } else {
+
+    if(logged == username) { // Si l'utilisateur est connecté
       res = true;
       navigation.dispatch(
         CommonActions.reset({
@@ -562,44 +562,93 @@ function ShowGrades( { navigation } ) {
           ],
         })
       );
+    } else { // Si l'utilisateur n'est pas connecté
+      let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: username,
+          password: password
+        }),
+        headers: {
+          "Accept": "application/json",
+          "Content-type": "application/json",
+          "Charset": "utf-8"
+        }
+      })
+    
+      if(!apiResp.ok){
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
+      } else {
+        res = true;
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              { name: 'APIConnect' }
+            ],
+          })
+        );
+      }
     }
-    return res;
+    return res; // Retourne true/false pour terminer le refresh
   }
 
   async function changeSemester() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLoading(true);
     dataIsLoaded = false;
-    let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: username,
-        password: password
-      }),
-      headers: {
-        "Accept": "application/json",
-        "Content-type": "application/json",
-        "Charset": "utf-8"
-      }
+
+    var logged;
+
+    await fetch('https://api.unice.hugofnm.fr/whoami')
+    .then((response) => response.json())
+    .then((json) => {
+      logged = json.username;
+      semesters = json.semesters;
     })
+
+    if (logged == username) { // Si l'utilisateur est toujours connecté, on peut changer de semestre
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            { name: 'Semesters' }
+          ],
+        })
+      );
+    } else { // Si l'utilisateur n'est pas connecté, se reconnecter
+      let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: username,
+          password: password
+        }),
+        headers: {
+          "Accept": "application/json",
+          "Content-type": "application/json",
+          "Charset": "utf-8"
+        }
+      })
   
-    if(!apiResp.ok){
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
-    } else {
-      setLoading(false);
-      let json = await apiResp.json();
-      
-      if(json.success) { 
-        semesters = json.semesters;
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [
-              { name: 'Semesters' }
-            ],
-          })
-        );
+      if(!apiResp.ok){
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
+      } else {
+        setLoading(false);
+        let json = await apiResp.json();
+
+        if(json.success) { 
+          semesters = json.semesters;
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [
+                { name: 'Semesters' }
+              ],
+            })
+          );
+        }
       }
     }
   }
@@ -615,16 +664,11 @@ function ShowGrades( { navigation } ) {
     Alert.alert(grade[0], res);
   }
 
-  function showHeader() {
-    if(admission != "" && average != "" && position != "") {
-      return (
-        <View>
-          <Text style={{ textAlign: 'left' }} variant="titleMedium"> {semester} </Text>
-          <Text style={{ textAlign: 'left' }} variant="titleMedium"> {average} </Text>
-          <Text style={{ textAlign: 'left' }} variant="titleMedium"> {admission} </Text>
-          <Text style={{ textAlign: 'left' }} variant="titleMedium"> Position bientôt affichée... </Text>
-        </View>
-      );
+  function isCalculated() {
+    if (average != "") {
+      return (average)
+    } else {
+      return (showGlobalAverage() + " (calculée)")
     }
   }
 
@@ -676,32 +720,47 @@ function ShowGrades( { navigation } ) {
     }
   }
 
+  /* 
+  -- ALGORITHME DE CALCUL DE MOYENNE UNICENOTES - COPYRIGHT (c) HUGO MELEIRO - Licence MIT 
+  */
   function showGlobalAverage() {
     grades.forEach(element => {
-      if(element.average.toString() != "Pas de moyenne disponible") {
-        moyenneCache = parseFloat(element.average.replace(" (calculée)", "").toString());
-        element.grades.forEach((grade) => {
+      if(element.average.toString() != "Pas de moyenne disponible") { // Si la moyenne est disponible
+
+        if((element.name.toString().toLowerCase().includes("absence") || element.name.toString().toLowerCase().includes("bonus")) && autoSet) {
+          if(element.name.toString().toLowerCase().includes("absence")) { // Si c'est une absence on la soustrait à la moyenne
+            bonus -= parseFloat(element.average.toString());
+          }
+          if(element.name.toString().toLowerCase().includes("bonus")) { // Si c'est un bonus on l'ajoute à la moyenne
+            bonus += parseFloat(element.average.toString());
+          }
+        }
+
+        moyenneCache = parseFloat(element.average.replace(" (calculée)", "").toString()); // On récupère la moyenne en chiffre lisible
+
+        element.grades.forEach((grade) => { // On récupère les coefficients
           if(!grade[1][0].includes("coeff")){
             coeff += parseFloat(grade[1][1]);
           }
           else {
             if(grade[1][0].includes("ABI")) {
-              coeff += parseFloat((grade[1][0].replace("ABI (coeff ", "")).replace(")",""));
+              coeff += parseFloat((grade[1][0].replace("ABI (coeff ", "")).replace(")","")); // Si c'est un ABI
             } else {
-              coeff += parseFloat((grade[1][0].replace("(coeff ", "")).replace(")",""));
+              coeff += parseFloat((grade[1][0].replace("(coeff ", "")).replace(")","")); // Si c'est un coefficient
             }
           }
         })
-        moyenneGenerale += moyenneCache * coeff;
-        coeffGeneral += coeff;
-        coeff = 0;
-        moyenneCache = 0;
+        moyenneGenerale += moyenneCache * coeff; // On multiplie la moyenne cache par le coefficient et on l'ajoute à la moyenne générale
+        coeffGeneral += coeff; // On ajoute le coefficient au coefficient général
+        coeff = 0; // On remet le coefficient à 0
+        moyenneCache = 0; // On remet la moyenne cache à 0
       }
     });
-    moyenneGenerale = moyenneGenerale / coeffGeneral;
-    moyenneGenerale = moyenneGenerale.toFixed(2);
+    moyenneGenerale = moyenneGenerale / coeffGeneral; // On divise la moyenne générale par le coefficient général
+    moyenneGenerale += bonus; // On ajoute le bonus à la moyenne générale
+    moyenneGenerale = moyenneGenerale.toFixed(2); // On arrondi la moyenne générale à 2 chiffres après la virgule
 
-    if (moyenneGenerale == "NaN") {
+    if (moyenneGenerale == "NaN") { // Si la moyenne générale est NaN 
       return "Non disponible";
     }
 
@@ -717,9 +776,8 @@ function ShowGrades( { navigation } ) {
       }>
         <Button style={style.buttonChangeSemester} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
         <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
-        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Moyenne générale : {showGlobalAverage()} (calculée)</Text>
+        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
         <Divider style={{ marginBottom: 16 }} />
-        {showHeader()}
         {showTable()}
       </ScrollView>
     </View>
