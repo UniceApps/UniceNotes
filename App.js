@@ -16,9 +16,8 @@ import { Alert, View, StyleSheet,
 // Material Design 3 API (React Native Paper)
 import { Avatar, Text, TextInput, 
   Button, Switch, Divider, 
-  ActivityIndicator, ProgressBar, BottomNavigation, 
+  ActivityIndicator, ProgressBar, Chip,
   DataTable, Card, Provider as PaperProvider,
-  withTheme, Chip
 } from 'react-native-paper';
 
 // Expo API
@@ -27,13 +26,15 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
+import { TimelineCalendar, EventItem, MomentConfig } from '@howljs/calendar-kit';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // IMPORTANT !!!
-var appVersion = '1.1.4';
-var isBeta = false;
+var appVersion = '1.2.0';
+var isBeta = true;
 // IMPORTANT !!!
 
 var isConnected = false; // UniceAPI login
@@ -41,7 +42,7 @@ var dataIsLoaded = false; // JSONPDF loaded
 var semesters = []; // User's all semesters
 var semester = ''; // Selected semesters
 
-// Temporary variables
+// Temporary variables - SecureStore
 var username = SecureStore.getItemAsync("username").then((result) => {
   if (result != "") {
     username = result;
@@ -66,12 +67,39 @@ var name = SecureStore.getItemAsync("name").then((result) => {
   }
 }); // User's name
 
+// Temporary variables - AsyncStorage
+var autoSet = AsyncStorage.getItem("autoSet").then((result) => {
+  if (result != null) {
+    autoSet = (result === 'true');
+  } else {
+    autoSet = true;
+  }
+}); // autoSet pour la moyenne générale
+
+var hapticsOn = AsyncStorage.getItem("haptics").then((result) => {
+  if (result != null) {
+    hapticsOn = (result === 'true');
+  } else {
+    hapticsOn = true;
+  }
+}); // Haptics on/off
+
+var calendar = AsyncStorage.getItem("calendar").then((result) => {
+  if (result != null) {
+    calendar = JSON.parse(result);
+  } else {
+    calendar = null;
+  }
+}); // Emploi du temps sur le calendrier
+
 var rememberMe = true; // Remember me
 
 var grades = []; // User's grades
 var average = ""; // User's average
 var admission = ""; // User's admission
 var position = ""; // User's position
+
+var subjects = []; // User's subjects
 
 // ---------------------------------------------
 // FONCTIONS GLOBALES
@@ -82,6 +110,10 @@ async function save(key, value) {
   await SecureStore.setItemAsync(key, value);
 }
 
+async function saveUserdata(key, value) {
+  await AsyncStorage.setItem(key, value);
+}
+
 // Ouverture de pages web dans le navigateur par défaut
 const handleURL = async (url) => {
   Haptics.selectionAsync();
@@ -90,7 +122,7 @@ const handleURL = async (url) => {
 
 // Fonction de déconnexion (API UniceNotes + app si "Se souvenir de moi" est désactivé)
 function logout(navigation) {
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+  haptics("heavy");
   isConnected = false;
   isLoggedIn = false;
   dataIsLoaded = false;
@@ -109,10 +141,42 @@ function logout(navigation) {
   
 }
 
+// Fonction de retour haptique
+function haptics(intensity) {
+  if(hapticsOn == true) {
+    switch(intensity) {
+      case "light":
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        break;
+      case "medium":
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        break;
+      case "heavy":
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        break;
+      case "error":
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        break;
+      case "success":
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        break;
+      case "warning":
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        break;
+    }
+  }
+}
+
 // Fonction navigate vers paramètres
 function goToSettings(navigation) {
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  haptics("medium");
   navigation.navigate('ShowSettings');
+}
+
+// Fonction navigate vers emploi du temps
+function goToTimetable(navigation) {
+  haptics("medium");
+  navigation.navigate('ShowEDT');
 }
 
 // ---------------------------------------------
@@ -211,11 +275,11 @@ function LoginPage({ navigation }) {
   // Résultat du bouton "Se connecter"
   function handleLogin() {
     if (username == null || password == null) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      haptics("warning");
       Alert.alert("Erreur", "Veuillez entrer un nom d'utilisateur et un mot de passe.");
     } else {
       Keyboard.dismiss();
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics("medium");
       setLoading(true);
       setEditable(false);
       ssoUnice(username, password);
@@ -239,7 +303,7 @@ function LoginPage({ navigation }) {
       })
     
       if(!apiResp.ok){
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        haptics("error");
         Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
         setLoading(false);
         setEditable(true);
@@ -259,12 +323,12 @@ function LoginPage({ navigation }) {
         name = json.name;
         semesters = json.semesters;
         setLoading(false);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        haptics("success");
         navigation.navigate('Semesters');
       } else {
         setLoading(false);
         setEditable(true);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        haptics("warning");
         Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
       }
     }
@@ -313,7 +377,7 @@ function LoginPage({ navigation }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:16 }} >
           <Switch onValueChange={ (value) => setRememberMe(value) } value={rememberMe}/>
           <Text style={{ marginLeft:8}}> Se souvenir de moi</Text>
-        </View>
+      </View>
       <Button style={{ marginBottom: 16 }} icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
       <Divider style={{ marginBottom: 16 }} />
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
@@ -329,7 +393,7 @@ function LoggedPage({ navigation }) {
   const [loading, setLoading] = useState(false);
 
   function handleLogin() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics("medium");
     setLoading(true);
     if(username == "demo") {
       ssoUnice(username, password);
@@ -340,11 +404,101 @@ function LoggedPage({ navigation }) {
           ssoUnice(username, password);
         } else {
           setLoading(false);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          haptics("error");
           Alert.alert("Erreur", "Authentification annulée. EC=0xB");
         }
       });
     }
+  }
+
+  // Lighten the color
+  const pSBC=(p,c0,c1,l)=>{
+    let r,g,b,P,f,t,h,i=parseInt,m=Math.round,a=typeof(c1)=="string";
+    if(typeof(p)!="number"||p<-1||p>1||typeof(c0)!="string"||(c0[0]!='r'&&c0[0]!='#')||(c1&&!a))return null;
+    if(!this.pSBCr)this.pSBCr=(d)=>{
+        let n=d.length,x={};
+        if(n>9){
+            [r,g,b,a]=d=d.split(","),n=d.length;
+            if(n<3||n>4)return null;
+            x.r=i(r[3]=="a"?r.slice(5):r.slice(4)),x.g=i(g),x.b=i(b),x.a=a?parseFloat(a):-1
+        }else{
+            if(n==8||n==6||n<4)return null;
+            if(n<6)d="#"+d[1]+d[1]+d[2]+d[2]+d[3]+d[3]+(n>4?d[4]+d[4]:"");
+            d=i(d.slice(1),16);
+            if(n==9||n==5)x.r=d>>24&255,x.g=d>>16&255,x.b=d>>8&255,x.a=m((d&255)/0.255)/1000;
+            else x.r=d>>16,x.g=d>>8&255,x.b=d&255,x.a=-1
+        }return x};
+    h=c0.length>9,h=a?c1.length>9?true:c1=="c"?!h:false:h,f=this.pSBCr(c0),P=p<0,t=c1&&c1!="c"?this.pSBCr(c1):P?{r:0,g:0,b:0,a:-1}:{r:255,g:255,b:255,a:-1},p=P?p*-1:p,P=1-p;
+    if(!f||!t)return null;
+    if(l)r=m(P*f.r+p*t.r),g=m(P*f.g+p*t.g),b=m(P*f.b+p*t.b);
+    else r=m((P*f.r**2+p*t.r**2)**0.5),g=m((P*f.g**2+p*t.g**2)**0.5),b=m((P*f.b**2+p*t.b**2)**0.5);
+    a=f.a,t=t.a,f=a>=0||t>=0,a=f?a<0?t:t<0?a:a*P+t*p:0;
+    if(h)return"rgb"+(f?"a(":"(")+r+","+g+","+b+(f?","+m(a*1000)/1000:"")+")";
+    else return"#"+(4294967296+r*16777216+g*65536+b*256+(f?m(a*255):0)).toString(16).slice(1,f?undefined:-2)
+  }
+
+  // Convert a string to a color
+  var stringToColour = function(str) {
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    var colour = '#';
+    for (var i = 0; i < 3; i++) {
+      var value = (hash >> (i * 8)) & 0xFF;
+      colour += ('00' + value.toString(16)).substr(-2);
+    }
+    return pSBC(0.5, colour);
+  }
+
+  // Récupération du calendrier de l'utilisateur
+  async function getMyCal(navigation) {
+    haptics("medium");
+    setLoading(true);
+    let cal = await fetch('https://api.unice.hugofnm.fr/edt', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: username
+      }),
+      headers: {
+        "Accept": "application/json",
+        "Content-type": "application/json",
+        "Charset": "utf-8"
+      }
+    })
+
+    if (cal.status != 200) {
+      cal = AsyncStorage.getItem("calendar").then((result) => {
+        if (result != null) {
+          cal = JSON.parse(result);
+          setLoading(false);
+        } else {
+          setLoading(false);
+          haptics("error");
+          Alert.alert("Erreur", "Impossible de récupérer le calendrier. EC=0xC");
+          return;
+        }
+      });
+    }
+
+    cal = await cal.json();
+
+    formattedCal = [];
+
+    cal.map((item) => {
+      formattedCal.push({
+        start: item.start_time,
+        end: item.end_time,
+        title: item.description,
+        description: item.location,
+        color: stringToColour(item.description)
+      })
+    });
+
+    saveUserdata("calendar", formattedCal.toString());
+    calendar = formattedCal;
+    setLoading(false);
+    navigation.navigate('ShowEDT');
   }
 
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
@@ -364,7 +518,7 @@ function LoggedPage({ navigation }) {
         })
       
         if(!apiResp.ok){
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          haptics("error");
           Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
           setLoading(false);
         }
@@ -375,26 +529,31 @@ function LoggedPage({ navigation }) {
           isConnected = true;
           semesters = json.semesters;
           setLoading(false);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          haptics("success");
           navigation.navigate('Semesters');
         } else {
           setLoading(false);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          haptics("warning");
           Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
         }
       }
   };
 
-  function deleteData() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      SecureStore.deleteItemAsync("username");
-      SecureStore.deleteItemAsync("passkey");
-      SecureStore.deleteItemAsync("name");
-      username = null;
-      password = null;
-      Image.clearDiskCache();
-      Image.clearMemoryCache();
-      logout(navigation);
+  async function deleteData() {
+    haptics("warning");
+    await SecureStore.deleteItemAsync("username");
+    await SecureStore.deleteItemAsync("passkey");
+    await SecureStore.deleteItemAsync("name");
+    await AsyncStorage.removeItem("autoSet");
+    await AsyncStorage.removeItem("haptics");
+    await AsyncStorage.removeItem("calendar");
+    username = null;
+    password = null;
+    autoSet = true;
+    hapticsOn = true;
+    Image.clearDiskCache();
+    Image.clearMemoryCache();
+    logout(navigation);
   }
   
   return (
@@ -403,7 +562,8 @@ function LoggedPage({ navigation }) {
         <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/white.png')} />
         <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner votre nom d'utilisateur pour continuer.</Text>
-        <Chip style={{ height: 64, marginBottom: 16 }} onPress={ () => handleLogin() } icon="face-recognition" >{username} - {name}</Chip>
+        <Chip style={{ height: 64, marginBottom: 8 }} onPress={ () => handleLogin() } icon="face-recognition" >{username} - {name}</Chip>
+        <Chip style={{ height: 32, marginBottom: 16 }} onPress={ () => getMyCal(navigation) } icon="calendar" >BETA - Emploi du temps</Chip>
         <Button style={{ marginBottom: 8 }} icon="account" mode="contained-tonal" onPress={ () => deleteData() }> Changer d'utilisateur </Button>
         <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         <Divider style={{ marginBottom: 16 }} />
@@ -418,6 +578,7 @@ function LoggedPage({ navigation }) {
 // Page de sélection du semestre
 function Semesters ({ navigation }) {
   const [jourNuit, setJourNuit] = useState("Bonjour");
+  const [large, setLarge] = useState(false);
 
   // Correction du nom de l'étudiant
   name = name
@@ -427,7 +588,7 @@ function Semesters ({ navigation }) {
 
   // Fonction de chargement des notes
   function loadGrades(sel) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      haptics("medium");
       semester = sel.toString();
       navigation.navigate('APIConnect', { semester: sel });
   }
@@ -444,6 +605,16 @@ function Semesters ({ navigation }) {
     }
   }, []);
 
+  function getMySemesters() {
+    if (semesters.length >= 3) {
+      setLarge(true);
+    }
+
+    return semesters.map((semester) => (
+      <Button style={{ marginBottom: 8 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
+    ))
+  }
+
   return (
     <View style={style.container}>
       <Image 
@@ -457,10 +628,7 @@ function Semesters ({ navigation }) {
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayMedium">{name} !</Text>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
 
-      {semesters.map((semester) => (
-        <Button style={{ marginBottom: 8 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
-      ))}
-
+      {getMySemesters()}
       <Button style={{ marginBottom: 8, marginTop: 8 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
       <Button style={ style.buttonLogout } icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
     </View>
@@ -497,7 +665,7 @@ function APIConnect ({ navigation }) {
         if(json.grades) {
           grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
         } else {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          haptics("error");
           Alert.alert("Erreur", "Une erreur est survenue. EC=0xG");
         }
         admission = json.admission; // admission oui/non
@@ -507,7 +675,7 @@ function APIConnect ({ navigation }) {
         navigation.navigate('ShowGrades');
       }
       else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        haptics("error");
         Alert.alert("Erreur", "Une erreur est survenue. EC=0xL");
       }
     }
@@ -534,6 +702,10 @@ function ShowGrades( { navigation } ) {
   var coeffGeneral = 0.0;
   var coeff = 0.0;
   var bonus = 0.0;
+
+  grades.map((item) => {
+    subjects.push(item.subject);
+  })
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -577,7 +749,7 @@ function ShowGrades( { navigation } ) {
       })
     
       if(!apiResp.ok){
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        haptics("error");
         Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
       } else {
         res = true;
@@ -595,7 +767,7 @@ function ShowGrades( { navigation } ) {
   }
 
   async function changeSemester() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics("medium");
     setLoading(true);
     dataIsLoaded = false;
 
@@ -632,7 +804,7 @@ function ShowGrades( { navigation } ) {
       })
   
       if(!apiResp.ok){
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        haptics("error");
         Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
       } else {
         setLoading(false);
@@ -669,6 +841,14 @@ function ShowGrades( { navigation } ) {
       return (average)
     } else {
       return (showGlobalAverage() + " (calculée)")
+    }
+  }
+  
+  function isRanking() {
+    if (position != "") {
+      return (position)
+    } else {
+      return ("Non disponible")
     }
   }
 
@@ -768,7 +948,7 @@ function ShowGrades( { navigation } ) {
   }
 
   return (
-    <View style={styleShowGrades.container}>
+    <View style={styleScrollable.container}>
       <Text style={{ textAlign: 'left', marginBottom: 16, paddingLeft: 25 }} variant="displayLarge">Notes</Text>
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }} 
         refreshControl={
@@ -776,7 +956,8 @@ function ShowGrades( { navigation } ) {
       }>
         <Button style={style.buttonChangeSemester} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
         <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
-        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
+        <Text style={{ textAlign: 'left', marginBottom: 8 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
+        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Position : {isRanking()}</Text>
         <Divider style={{ marginBottom: 16 }} />
         {showTable()}
       </ScrollView>
@@ -784,46 +965,250 @@ function ShowGrades( { navigation } ) {
   );
 }
 
-// Page d'affichage de l'emploi du temps
-function ShowEDT( { navigation } ) {
-  
-  async function getMyCal() {
-    let cal = await fetch('https://api.unice.hugofnm.fr/edt', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: username
-      }),
-      headers: {
-        "Accept": "application/json",
-        "Content-type": "application/json",
-        "Charset": "utf-8"
-      }
-    })
-    const data = await cal.text();
+// Page de configuration de la moyenne (80% fonctionnel)
+function AverageConfig( { navigation } ) {
 
-    const { VCALENDAR } = parse(data);
-    const events = VCALENDAR.VEVENT;
+  const [automatique, setAutomatique] = useState(autoSet);
 
-    return(
-      events.map((event) => (
-        <Card key={event.UID}>
-          <Card.Content>
-            <Title>{event.SUMMARY}</Title>
-            <Paragraph>{moment(event.DTSTART).format('MMMM Do YYYY, h:mm a')}</Paragraph>
-          </Card.Content>
-        </Card>
-      ))
-    )
+  const [malus, setMalus] = useState(false);
+  const [bonus, setBonus] = useState(false);
+
+  const [matiereBonus, setMatiereBonus] = useState(null);
+  const [matiereMalus, setMatiereMalus] = useState(null);
+
+  function validate() {
+    Keyboard.dismiss();
+    if(malus == true && matiereBonus != "" || bonus == true && matiereMalus != "") {
+      saveUserdata("matiereBonus", matiereBonus);
+      saveUserdata("matiereMalus", matiereMalus);
+    }
+    navigation.goBack();
+  }
+
+  function helpMe() {
+    Keyboard.dismiss();
+    Alert.alert("Syntaxe", "Vous devez écrire le nom de la matière à l'identique comme affichée sur UniceNotes \n Exemple : 'Absences S1; Bonus Sport'");
+  }
+
+  function setAutoSet(value) {
+    autoSet = value;
+    setAutomatique(value);
+    saveUserdata("autoSet", value.toString());
   }
 
   return (
     <View style={style.container}>
-      <Text style={{ textAlign: 'left' }} variant="displayLarge">Emploi du temps</Text>
-      <Button style={{ marginTop: 16, marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
-      <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => navigation.navigate('ShowSettings') }> Paramètres </Button>
-      <Divider style={{ marginBottom: 16 }} />
-      
-      {getMyCal()}
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Configuration</Text>
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleLarge'>Afin de pouvoir afficher votre moyenne générale correctement, vous devez configurer les bonus et malus appliqués.</Text>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
+          <Switch onValueChange={ () => setAutoSet(!autoSet) } value={autoSet}/>
+          <Text style={{ marginLeft:8}}> Automatique (recommandé)</Text>
+      </View>
+
+      { // Montre switch bonus
+        !autoSet ? ( 
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:8 }} >
+              <Switch onValueChange={ () => setBonus(!bonus) } value={bonus}/>
+              <Text style={{ marginLeft: 8, marginBottom: 8}}> Bonus</Text>
+          </View>
+        ) : null
+      }
+
+      { // Matière bonus
+        bonus ? ( 
+          <><TextInput
+            label="Matières bonus"
+            defaultValue={matiereBonus}
+            onChangeText={(text) => setMatiereBonus(text)}
+            onPressIn={() => Haptics.selectionAsync()}
+            right={<TextInput.Icon icon="information" onPress={ () => helpMe() } />}
+            onSubmitEditing={() => Keyboard.dismiss()}
+            style={{ marginBottom: 16 }}
+          /></> ) : null
+      }
+        
+      { // Montrer switch malus
+        !autoSet ? ( 
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:8 }} >
+              <Switch onValueChange={ () => setMalus(!malus) } value={malus}/>
+              <Text style={{ marginLeft:8}}> Malus</Text>
+          </View>
+        ) : null
+      }
+
+      { // Matière malus
+        malus ? ( 
+          <><TextInput
+            label="Matières malus"
+            defaultValue={matiereMalus}
+            onChangeText={(text) => setMatiereMalus(text)}
+            onPressIn={() => Haptics.selectionAsync()}
+            right={<TextInput.Icon icon="information" onPress={ () => helpMe() } />}
+            onSubmitEditing={() => Keyboard.dismiss()}
+            style={{ marginBottom: 8 }}
+          /></> ) : null
+      }
+
+      <Button style={{ marginTop: 8 }} icon="check" mode="contained" onPress={() => validate()}> Valider </Button>
+    </View>
+  );
+}
+
+// Page de premier démarrage à changer (v2.0.0) -- Non fonctionnel
+function OOBE( { navigation } ) {
+
+  const [malus, setMalus] = useState(false);
+  const [bonus, setBonus] = useState(false);
+
+  const [matiereMalus, setMatiereMalus] = useState("");
+  const [matiereBonus, setMatiereBonus] = useState("");
+
+  const [text, setText] = useState(['Afin de pouvoir afficher votre moyenne générale, vous devez configurer certains éléments.', 'Tout d\'abord, avez-vous sur vos notes, une \"Pénalité d\'absence\" ?','Ensuite, veuillez préciser si oui ou non vous avez un bonus sur votre moyenne', 'Merci, veuillez vérifier et valider vos choix.','Veuillez sélectionner la matière correspondante :']);
+  const [whichText, setWhichText] = useState(0);
+
+  const [showFirst, setShowFirst] = useState(false);
+  const [showSecond, setShowSecond] = useState(false);
+  const [showThird, setShowThird] = useState(false);
+  const [showSubMalus, setSubMalus] = useState(false);
+  const [showSubBonus, setSubBonus] = useState(false);
+
+  function cancel() {
+    // changer ca pour que ca affiche button config sur grade
+    // configAverage = true;
+    // navigation.goBack();
+    
+    setWhichText(0);
+    setShowFirst(false);
+    setShowSecond(false);
+    setShowThird(false);
+    setSubMalus(false);
+    setSubBonus(false);
+    setMalus(false);
+    setBonus(false);
+  }
+
+  function firstDialogue() {
+    setWhichText(1);
+    setShowFirst(true);
+  }
+
+  function secondDialogue() {
+    if(malus == true) {
+      grades.map((item) => {
+        console.log(item.name);
+      })
+      setShowFirst(false);
+      setWhichText(4);
+      setSubMalus(true);
+    } else {
+    setWhichText(2);
+    setShowFirst(false);
+    setShowSecond(true);
+    }
+  }
+
+  function thirdDialogue() {
+    if(bonus == true) {
+      setShowSecond(false);
+      setWhichText(4);
+      setSubBonus(true);
+    }
+    setWhichText(3);
+    setShowSecond(false);
+    setShowThird(true);
+  }
+
+  function validate() {
+  }
+
+  return (
+    <View style={style.container}>
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Configuration</Text>
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleLarge'>{text[whichText]}</Text>
+
+      { // Demande si le malus est présent
+      showFirst ? ( 
+        <><Switch value={malus} onValueChange={() => setMalus(!malus)} />
+        <Button style={{ marginTop: 16 }} mode="contained-tonal" onPress={() => secondDialogue()}> Suivant </Button></> ) : null
+      }
+
+      { // Demande si le bonus est présent
+      showSecond ? ( 
+        <><Switch value={bonus} onValueChange={() => setBonus(!bonus)} />
+        <Button style={{ marginTop: 16 }} mode="contained-tonal" onPress={() => thirdDialogue()}> Suivant </Button></> ) : null
+      }
+
+      { // Demande validation
+      showThird ? ( 
+        <><Text style={{ textAlign: 'left', marginBottom: 8 }} variant='titleLarge'>Malus : {matiereMalus}</Text>
+        <Text style={{ textAlign: 'left' }} variant='titleLarge'>Bonus : {matiereBonus}</Text>
+        <Button style={{ marginTop: 16 }} icon="check" mode="contained" onPress={() => validate()}> Valider </Button></> ) : null
+      }
+
+      {
+      showSubMalus ? (
+        <View>
+          {grades.map((grade) => {
+              <><Chip style={{ marginTop: 16 }} mode="flat" onPress={() => setMatiereMalus(grade.name)}> {grade.name} </Chip></>
+          })}
+          <Chip style={{ marginTop: 16 }} mode="flat" onPress={() => setMatiereMalus("hallo")}> hallo </Chip>
+        </View> ) : null
+      }
+
+      { // Demande matière malus
+        grades.map((grade) => {
+          if(showSubMalus == true) {
+            <Chip style={{ marginTop: 16 }} mode="flat" onPress={() => setMatiereMalus(grade.name)}> {grade.name} </Chip>
+          }
+        })
+      }
+
+      { // Premier bouton
+      !showFirst && !showSecond && !showThird && !showSubMalus && !showSubBonus ? (
+        <Button style={{ marginTop: 16 }} mode="contained-tonal" onPress={ () => firstDialogue() }> Suivant </Button> ) : null
+      }
+
+      { // Bouton annuler
+      !showThird ? (
+        <Button style={{ marginTop: 16 }} icon="location-exit" mode="contained" onPress={ () => cancel() }> Annuler </Button> ) : null
+      }
+    </View>
+  );
+}
+
+// Page d'affichage de l'emploi du temps
+function ShowEDT( { navigation } ) {
+  const [cal, setCalendar] = useState(calendar);
+
+  MomentConfig.updateLocale('fr', {
+    weekdaysShort: 'Lundi_Mardi_Mercredi_Jeudi_Vendredi_Samedi_Dimanche'.split('_'),
+  });
+  
+  if(cal == null) {
+    AsyncStorage.getItem("calendar").then((result) => {
+      if (result != null) {
+        setCalendar(JSON.parse(result));
+      } else {
+        navigation.goBack();
+      }
+    });
+  }
+
+  return (
+    <View style={styleScrollable.container}>
+      <Text style={{ textAlign: 'left', paddingLeft: 25, marginBottom: 16 }} variant="displayLarge">EDT (Bêta)</Text>
+      <Button style={{ marginLeft: 25, marginRight: 25, marginBottom: 16 }} icon="home" mode="contained-tonal" onPress={ () => navigation.goBack() }> Menu </Button>
+      <Divider style={{ marginBottom: 16 }} />      
+
+      <TimelineCalendar viewMode="threeDays" events={cal} allowPinchToZoom start={5} end={22} locale="fr" renderEventContent={(event) => {
+          return (
+            <SafeAreaView style={{ margin: 10 }}>
+              <Text style={{ fontWeight: 'bold', color:'black' }}>{event.title}</Text>
+              <Text style={{ color:'black' }}>{event.description}</Text>
+            </SafeAreaView>
+          );
+      }}/>
 
     </View>
   );
@@ -831,9 +1216,10 @@ function ShowEDT( { navigation } ) {
 
 // Page de paramètres
 function ShowSettings( { navigation } ) {
+  const [vibrations, setVibrations] = useState(hapticsOn);
 
   function askDeleteData() {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    haptics("warning");
     Alert.alert("Suppression des données", "Voulez-vous vraiment supprimer les données de l'application ?", [
       {
         text: "Annuler",
@@ -845,43 +1231,63 @@ function ShowSettings( { navigation } ) {
       }]);
   }
 
-  function deleteData() {
-      SecureStore.deleteItemAsync("username");
-      SecureStore.deleteItemAsync("passkey");
-      SecureStore.deleteItemAsync("name");
+  async function deleteData() {
+      await SecureStore.deleteItemAsync("username");
+      await SecureStore.deleteItemAsync("passkey");
+      await SecureStore.deleteItemAsync("name");
+      await AsyncStorage.removeItem("autoSet");
+      await AsyncStorage.removeItem("haptics");
+      await AsyncStorage.removeItem("calendar");
       username = null;
       password = null;
+      autoSet = true;
+      hapticsOn = true;
       Image.clearDiskCache();
       Image.clearMemoryCache();
       Alert.alert("Données supprimées", "Retour à la page de connexion.");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      haptics("success");
       logout(navigation);
   }
 
   function goBack() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptics("medium");
     navigation.goBack();
   }
 
-  return (
-    <View style={style.container}>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Paramètres</Text>
-      <Button style={{ marginBottom: 8 }} icon="arrow-left" mode="contained-tonal" onPress={ () => goBack() }> Retourner en arrière </Button>
-      <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/bug") }> Signaler un bug </Button>
-      <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
-      <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer les données de connexion </Button>
-      
-      <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
-      <Text style={{ textAlign: 'left' }} variant="titleMedium">Visualisez vos notes. Sans PDF.</Text>
-      <Text style={{ textAlign: 'left' }} variant="titleMedium">⚡ Version : {appVersion}</Text>
-      <Text style={{ textAlign: 'left' }} variant="titleMedium">❤️ Fièrement développé par un GEII : 
-        <Text style={style.textLink} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
-      </Text>
+  function setHapticsBool(value) {
+    setVibrations(value);
+    hapticsOn = value;
+    saveUserdata("haptics", value.toString());
+  }
 
-      <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur.</Text>
-      <Button style={{ marginTop: 32 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
-      <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
-      <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
+  return (
+    <View style={styleScrollable.container}>
+      <Text style={{ textAlign: 'left', marginBottom: 16, paddingLeft: 25 }} variant="displayLarge">Paramètres</Text>
+      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
+        <Button style={{ marginBottom: 8 }} icon="arrow-left" mode="contained-tonal" onPress={ () => goBack() }> Retourner en arrière </Button>
+        <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/bug") }> Signaler un bug </Button>
+        <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
+        <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer les données de connexion </Button>
+
+        <Button style={{ marginTop: 16 }} icon="calculator" mode="contained" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop:16 }} >
+            <Switch onValueChange={ (value) => setHapticsBool(value) } value={hapticsOn}/>
+            <Text style={{ marginLeft:8}}> Activer les retours haptiques (vibrations)</Text>
+        </View>
+
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
+        <Text style={{ textAlign: 'left' }} variant="titleSmall">Visualisez vos notes. Sans PDF.</Text>
+        <Text style={{ textAlign: 'left' }} variant="titleSmall">⚡ Version : {appVersion}</Text>
+        <Text style={{ textAlign: 'left' }} variant="titleSmall">❤️ Fièrement développé par un GEII : 
+          <Text style={style.textLink} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
+        </Text>
+
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur.</Text>
+        <Button style={{ marginTop: 32 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
+        <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
+        <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
+      </ScrollView>
     </View>
   );
 }
@@ -902,6 +1308,7 @@ function App() {
         <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false, gestureEnabled: false}} />
         <Stack.Screen name="ShowEDT" component={ShowEDT} options={{ title: 'Emploi du temps', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres', headerShown: false }} />
+        <Stack.Screen name="AverageConfig" component={AverageConfig} options={{ title: 'Configuration', presentation: 'modal',headerShown: false, gestureEnabled: false}} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -1030,7 +1437,7 @@ const style = StyleSheet.create({
   },
 });
 
-const styleShowGrades = StyleSheet.create({
+const styleScrollable = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: choosenTheme.colors.background,
