@@ -1426,10 +1426,10 @@
   dependencies:
     "@hapi/hoek" "^9.0.0"
 
-"@howljs/calendar-kit@^1.13.1":
-  version "1.13.1"
-  resolved "https://registry.yarnpkg.com/@howljs/calendar-kit/-/calendar-kit-1.13.1.tgz#419d73f70a28bb6da591760cb043d28ecc2491b2"
-  integrity sha512-C3A9LlILshBcZJkCe94UZOuNx6cqXhrtQE8EBrhb8WdDWbsOFpmAPzhjjLbdfhKQyaExlY4ni4aucZGKVQ0v0A==
+"@howljs/calendar-kit@^1.13.2":
+  version "1.13.2"
+  resolved "https://registry.yarnpkg.com/@howljs/calendar-kit/-/calendar-kit-1.13.2.tgz#e3de1ca82dec38fae6f6bc6d08f757715a29390b"
+  integrity sha512-b999N+5w5ETxlbWlXzj1ckKCMAAErjBinUWQxzCZVT+9X3+xmrBu4eMTKJjyE29WFRtNZjjR6uqKA6KQYnB73w==
   dependencies:
     lodash "^4.17.21"
     moment-timezone "^0.5.40"
