@@ -18,6 +18,7 @@ import { Avatar, Text, TextInput,
   Button, Switch, Divider, 
   ActivityIndicator, ProgressBar, Chip,
   DataTable, Card, Provider as PaperProvider,
+  IconButton
 } from 'react-native-paper';
 
 // Expo API
@@ -26,11 +27,12 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
-import { TimelineCalendar, EventItem, MomentConfig } from '@howljs/calendar-kit';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { TimelineCalendar, EventItem, MomentConfig } from '@howljs/calendar-kit';
+import 'react-native-gesture-handler';
 
 // IMPORTANT !!!
 var appVersion = '1.2.0';
@@ -173,10 +175,98 @@ function goToSettings(navigation) {
   navigation.navigate('ShowSettings');
 }
 
-// Fonction navigate vers emploi du temps
-function goToTimetable(navigation) {
-  haptics("medium");
-  navigation.navigate('ShowEDT');
+// ---------------------------------------------
+// FONCTIONS API Calendrier
+// ---------------------------------------------
+
+// Lighten the color
+const pSBC=(p,c0,c1,l)=>{
+    let r,g,b,P,f,t,h,i=parseInt,m=Math.round,a=typeof(c1)=="string";
+    if(typeof(p)!="number"||p<-1||p>1||typeof(c0)!="string"||(c0[0]!='r'&&c0[0]!='#')||(c1&&!a))return null;
+    if(!this.pSBCr)this.pSBCr=(d)=>{
+        let n=d.length,x={};
+        if(n>9){
+            [r,g,b,a]=d=d.split(","),n=d.length;
+            if(n<3||n>4)return null;
+            x.r=i(r[3]=="a"?r.slice(5):r.slice(4)),x.g=i(g),x.b=i(b),x.a=a?parseFloat(a):-1
+        }else{
+            if(n==8||n==6||n<4)return null;
+            if(n<6)d="#"+d[1]+d[1]+d[2]+d[2]+d[3]+d[3]+(n>4?d[4]+d[4]:"");
+            d=i(d.slice(1),16);
+            if(n==9||n==5)x.r=d>>24&255,x.g=d>>16&255,x.b=d>>8&255,x.a=m((d&255)/0.255)/1000;
+            else x.r=d>>16,x.g=d>>8&255,x.b=d&255,x.a=-1
+        }return x};
+    h=c0.length>9,h=a?c1.length>9?true:c1=="c"?!h:false:h,f=this.pSBCr(c0),P=p<0,t=c1&&c1!="c"?this.pSBCr(c1):P?{r:0,g:0,b:0,a:-1}:{r:255,g:255,b:255,a:-1},p=P?p*-1:p,P=1-p;
+    if(!f||!t)return null;
+    if(l)r=m(P*f.r+p*t.r),g=m(P*f.g+p*t.g),b=m(P*f.b+p*t.b);
+    else r=m((P*f.r**2+p*t.r**2)**0.5),g=m((P*f.g**2+p*t.g**2)**0.5),b=m((P*f.b**2+p*t.b**2)**0.5);
+    a=f.a,t=t.a,f=a>=0||t>=0,a=f?a<0?t:t<0?a:a*P+t*p:0;
+    if(h)return"rgb"+(f?"a(":"(")+r+","+g+","+b+(f?","+m(a*1000)/1000:"")+")";
+    else return"#"+(4294967296+r*16777216+g*65536+b*256+(f?m(a*255):0)).toString(16).slice(1,f?undefined:-2)
+}
+
+// Convert a string to a color
+var stringToColour = function(str) {
+    var hash = 0;
+    for (var i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    var colour = '#';
+    for (var i = 0; i < 3; i++) {
+      var value = (hash >> (i * 8)) & 0xFF;
+      colour += ('00' + value.toString(16)).substr(-2);
+    }
+    return pSBC(0.4, colour);
+}
+
+// Récupération du calendrier de l'utilisateur
+async function getCalendar() {
+    haptics("medium");
+    let cal = await fetch('https://api.unice.hugofnm.fr/edt', {
+      method: 'POST',
+      body: JSON.stringify({
+        username: username
+      }),
+      headers: {
+        "Accept": "application/json",
+        "Content-type": "application/json",
+        "Charset": "utf-8"
+      }
+    })
+
+    /*
+    if (cal.status != 200) {
+      cal = AsyncStorage.getItem("calendar").then((result) => {
+        if (result != null) {
+          cal = JSON.parse(result);
+          setLoading(false);
+        } else {
+          setLoading(false);
+          haptics("error");
+          Alert.alert("Erreur", "Impossible de récupérer le calendrier. EC=0xC");
+          return;
+        }
+      });
+    }
+    */
+
+    cal = await cal.json();
+
+    formattedCal = [];
+
+    cal.map((item) => {
+      formattedCal.push({
+        id : item.id,
+        start: item.start_time,
+        end: item.end_time,
+        title: item.description,
+        description: item.location,
+        color: stringToColour(item.description)
+      })
+    });
+
+    saveUserdata("calendar", formattedCal.toString());
+    calendar = formattedCal;
 }
 
 // ---------------------------------------------
@@ -411,96 +501,6 @@ function LoggedPage({ navigation }) {
     }
   }
 
-  // Lighten the color
-  const pSBC=(p,c0,c1,l)=>{
-    let r,g,b,P,f,t,h,i=parseInt,m=Math.round,a=typeof(c1)=="string";
-    if(typeof(p)!="number"||p<-1||p>1||typeof(c0)!="string"||(c0[0]!='r'&&c0[0]!='#')||(c1&&!a))return null;
-    if(!this.pSBCr)this.pSBCr=(d)=>{
-        let n=d.length,x={};
-        if(n>9){
-            [r,g,b,a]=d=d.split(","),n=d.length;
-            if(n<3||n>4)return null;
-            x.r=i(r[3]=="a"?r.slice(5):r.slice(4)),x.g=i(g),x.b=i(b),x.a=a?parseFloat(a):-1
-        }else{
-            if(n==8||n==6||n<4)return null;
-            if(n<6)d="#"+d[1]+d[1]+d[2]+d[2]+d[3]+d[3]+(n>4?d[4]+d[4]:"");
-            d=i(d.slice(1),16);
-            if(n==9||n==5)x.r=d>>24&255,x.g=d>>16&255,x.b=d>>8&255,x.a=m((d&255)/0.255)/1000;
-            else x.r=d>>16,x.g=d>>8&255,x.b=d&255,x.a=-1
-        }return x};
-    h=c0.length>9,h=a?c1.length>9?true:c1=="c"?!h:false:h,f=this.pSBCr(c0),P=p<0,t=c1&&c1!="c"?this.pSBCr(c1):P?{r:0,g:0,b:0,a:-1}:{r:255,g:255,b:255,a:-1},p=P?p*-1:p,P=1-p;
-    if(!f||!t)return null;
-    if(l)r=m(P*f.r+p*t.r),g=m(P*f.g+p*t.g),b=m(P*f.b+p*t.b);
-    else r=m((P*f.r**2+p*t.r**2)**0.5),g=m((P*f.g**2+p*t.g**2)**0.5),b=m((P*f.b**2+p*t.b**2)**0.5);
-    a=f.a,t=t.a,f=a>=0||t>=0,a=f?a<0?t:t<0?a:a*P+t*p:0;
-    if(h)return"rgb"+(f?"a(":"(")+r+","+g+","+b+(f?","+m(a*1000)/1000:"")+")";
-    else return"#"+(4294967296+r*16777216+g*65536+b*256+(f?m(a*255):0)).toString(16).slice(1,f?undefined:-2)
-  }
-
-  // Convert a string to a color
-  var stringToColour = function(str) {
-    var hash = 0;
-    for (var i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    var colour = '#';
-    for (var i = 0; i < 3; i++) {
-      var value = (hash >> (i * 8)) & 0xFF;
-      colour += ('00' + value.toString(16)).substr(-2);
-    }
-    return pSBC(0.5, colour);
-  }
-
-  // Récupération du calendrier de l'utilisateur
-  async function getMyCal(navigation) {
-    haptics("medium");
-    setLoading(true);
-    let cal = await fetch('https://api.unice.hugofnm.fr/edt', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: username
-      }),
-      headers: {
-        "Accept": "application/json",
-        "Content-type": "application/json",
-        "Charset": "utf-8"
-      }
-    })
-
-    if (cal.status != 200) {
-      cal = AsyncStorage.getItem("calendar").then((result) => {
-        if (result != null) {
-          cal = JSON.parse(result);
-          setLoading(false);
-        } else {
-          setLoading(false);
-          haptics("error");
-          Alert.alert("Erreur", "Impossible de récupérer le calendrier. EC=0xC");
-          return;
-        }
-      });
-    }
-
-    cal = await cal.json();
-
-    formattedCal = [];
-
-    cal.map((item) => {
-      formattedCal.push({
-        start: item.start_time,
-        end: item.end_time,
-        title: item.description,
-        description: item.location,
-        color: stringToColour(item.description)
-      })
-    });
-
-    saveUserdata("calendar", formattedCal.toString());
-    calendar = formattedCal;
-    setLoading(false);
-    navigation.navigate('ShowEDT');
-  }
-
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
   async function ssoUnice(username, password) {
       if(!isConnected) {
@@ -555,7 +555,14 @@ function LoggedPage({ navigation }) {
     Image.clearMemoryCache();
     logout(navigation);
   }
-  
+
+  async function getMyCal(navigation) {
+    setLoading(true);
+    await getCalendar(navigation);
+    setLoading(false);
+    navigation.navigate('ShowEDT');
+  }
+
   return (
     <View style={style.container}>
       <SafeAreaView style={style.container}>
@@ -579,6 +586,7 @@ function LoggedPage({ navigation }) {
 function Semesters ({ navigation }) {
   const [jourNuit, setJourNuit] = useState("Bonjour");
   const [large, setLarge] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Correction du nom de l'étudiant
   name = name
@@ -615,6 +623,13 @@ function Semesters ({ navigation }) {
     ))
   }
 
+  async function getMyCal(navigation) {
+    setLoading(true);
+    await getCalendar(navigation);
+    setLoading(false);
+    navigation.navigate('ShowEDT');
+  }
+
   return (
     <View style={style.container}>
       <Image 
@@ -629,8 +644,10 @@ function Semesters ({ navigation }) {
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
 
       {getMySemesters()}
+      <Button style={{ marginBottom: 8, marginTop: 8 }} icon="calendar" mode="contained-tonal" onPress={ () => getMyCal(navigation) }> Emploi du temps </Button>
       <Button style={{ marginBottom: 8, marginTop: 8 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
       <Button style={ style.buttonLogout } icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
+      <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
     </View>
   );
 }
@@ -907,8 +924,8 @@ function ShowGrades( { navigation } ) {
     grades.forEach(element => {
       if(element.average.toString() != "Pas de moyenne disponible") { // Si la moyenne est disponible
 
-        if((element.name.toString().toLowerCase().includes("absence") || element.name.toString().toLowerCase().includes("bonus")) && autoSet) {
-          if(element.name.toString().toLowerCase().includes("absence")) { // Si c'est une absence on la soustrait à la moyenne
+        if((element.name.toString().toLowerCase().includes("absences") || element.name.toString().toLowerCase().includes("bonus")) && autoSet) {
+          if(element.name.toString().toLowerCase().includes("absences")) { // Si c'est une absence on la soustrait à la moyenne
             bonus -= parseFloat(element.average.toString());
           }
           if(element.name.toString().toLowerCase().includes("bonus")) { // Si c'est un bonus on l'ajoute à la moyenne
@@ -1180,10 +1197,11 @@ function OOBE( { navigation } ) {
 // Page d'affichage de l'emploi du temps
 function ShowEDT( { navigation } ) {
   const [cal, setCalendar] = useState(calendar);
+  const calendarRef = useRef(null);
 
-  MomentConfig.updateLocale('fr', {
-    weekdaysShort: 'Lundi_Mardi_Mercredi_Jeudi_Vendredi_Samedi_Dimanche'.split('_'),
-  });
+  //MomentConfig.updateLocale('fr', {
+  //  weekdaysShort: 'Lundi_Mardi_Mercredi_Jeudi_Vendredi_Samedi_Dimanche'.split('_'),
+  //});
   
   if(cal == null) {
     AsyncStorage.getItem("calendar").then((result) => {
@@ -1195,13 +1213,25 @@ function ShowEDT( { navigation } ) {
     });
   }
 
+  function goToToday() {
+    haptics("medium");
+    var today = new Date();
+    calendarRef.current?.goToDate({date: today, hourScroll: true, animatedDate: true, animatedHour: true})
+  }
+
   return (
     <View style={styleScrollable.container}>
-      <Text style={{ textAlign: 'left', paddingLeft: 25, marginBottom: 16 }} variant="displayLarge">EDT (Bêta)</Text>
-      <Button style={{ marginLeft: 25, marginRight: 25, marginBottom: 16 }} icon="home" mode="contained-tonal" onPress={ () => navigation.goBack() }> Menu </Button>
-      <Divider style={{ marginBottom: 16 }} />      
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">
+        <IconButton
+          style={{ marginLeft: 25, marginRight: 12.5 }}
+          icon="home"
+          size={20}
+          onPress={() => navigation.goBack()}
+        />
+      EDT</Text>
+      <Button style={{ marginLeft: 25, marginRight: 25, marginBottom: 16 }} icon="update" mode="contained-tonal" onPress={ () => goToToday() }> Aujourd'hui </Button>  
 
-      <TimelineCalendar viewMode="threeDays" events={cal} allowPinchToZoom start={5} end={22} locale="fr" renderEventContent={(event) => {
+      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} viewMode="threeDays" events={cal} allowPinchToZoom start={5} end={22} /*locale="fr"*/ renderEventContent={(event) => {
           return (
             <SafeAreaView style={{ margin: 10 }}>
               <Text style={{ fontWeight: 'bold', color:'black' }}>{event.title}</Text>
@@ -1443,6 +1473,14 @@ const styleScrollable = StyleSheet.create({
     backgroundColor: choosenTheme.colors.background,
     justifyContent: 'center',
     paddingTop: 75
+  },
+});
+
+const styleCalendar = StyleSheet.create({
+  container: {
+    backgroundColor: choosenTheme.colors.background,
+    cellBorderColor: choosenTheme.colors.surfaceVariant,
+    hourText: {color: choosenTheme.colors.onBackground},    
   },
 });
 
