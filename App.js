@@ -1,11 +1,17 @@
 /*
 
 UniceNotes
+Visualisez vos notes. Sans PDF.
 Développé par Hugo Meleiro (@hugofnm)
 MIT License
 
 */
 
+// ---------------------------------------------
+// IMPORTS
+// ---------------------------------------------
+
+// React API
 import React, { useState, useEffect, useRef } from 'react';
 import { Alert, View, StyleSheet, 
   StatusBar, ScrollView, RefreshControl,
@@ -28,15 +34,20 @@ import * as WebBrowser from 'expo-web-browser';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 
+// Third-party API
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TimelineCalendar, EventItem, MomentConfig } from '@howljs/calendar-kit';
 import 'react-native-gesture-handler';
 
+// ---------------------------------------------
+// VARIABLES GLOBALES
+// ---------------------------------------------
+
 // IMPORTANT !!!
 var appVersion = '1.2.0';
-var isBeta = true;
+var isBeta = false;
 // IMPORTANT !!!
 
 var isConnected = false; // UniceAPI login
@@ -94,6 +105,30 @@ var calendar = AsyncStorage.getItem("calendar").then((result) => {
   }
 }); // Emploi du temps sur le calendrier
 
+var configAverage = AsyncStorage.getItem("configAverage").then((result) => {
+  if (result != null) {
+    configAverage = result.toString();
+  } else {
+    configAverage = "";
+  }
+}); // Configuration de la moyenne générale
+
+var matiereBonus = AsyncStorage.getItem("matiereBonus").then((result) => {
+  if (result != null) {
+    matiereBonus = result.split(",");
+  } else {
+    matiereBonus = [];
+  }
+}); // Matières bonus
+
+var matiereMalus = AsyncStorage.getItem("matiereMalus").then((result) => {
+  if (result != null) {
+    matiereMalus = result.split(",");
+  } else {
+    matiereMalus = [];
+  }
+}); // Matières malus
+
 var rememberMe = true; // Remember me
 
 var grades = []; // User's grades
@@ -114,6 +149,40 @@ async function save(key, value) {
 
 async function saveUserdata(key, value) {
   await AsyncStorage.setItem(key, value);
+}
+
+async function deleteData(warnings = false, navigation) {
+  if (warnings) {
+    haptics("warning");
+  }
+
+  // Suppression des données
+  await SecureStore.deleteItemAsync("username");
+  username = null;
+  await SecureStore.deleteItemAsync("passkey");
+  password = null;
+  await SecureStore.deleteItemAsync("name");
+  name = null;
+  await AsyncStorage.removeItem("autoSet");
+  autoSet = true;
+  await AsyncStorage.removeItem("haptics");
+  hapticsOn = true;
+  await AsyncStorage.removeItem("calendar");
+  calendar = null;
+  await AsyncStorage.removeItem("configAverage");
+  configAverage = "";
+  await AsyncStorage.removeItem("matiereBonus");
+  matiereBonus = [];
+  await AsyncStorage.removeItem("matiereMalus");
+  matiereMalus = [];
+
+  Image.clearDiskCache();
+  Image.clearMemoryCache();
+  if (warnings) {
+    Alert.alert("Données supprimées", "Retour à la page de connexion.");
+    haptics("success");
+  }
+  logout(navigation);
 }
 
 // Ouverture de pages web dans le navigateur par défaut
@@ -234,6 +303,7 @@ async function getCalendar() {
       }
     })
 
+    // TODO : Offline mode
     /*
     if (cal.status != 200) {
       cal = AsyncStorage.getItem("calendar").then((result) => {
@@ -539,23 +609,6 @@ function LoggedPage({ navigation }) {
       }
   };
 
-  async function deleteData() {
-    haptics("warning");
-    await SecureStore.deleteItemAsync("username");
-    await SecureStore.deleteItemAsync("passkey");
-    await SecureStore.deleteItemAsync("name");
-    await AsyncStorage.removeItem("autoSet");
-    await AsyncStorage.removeItem("haptics");
-    await AsyncStorage.removeItem("calendar");
-    username = null;
-    password = null;
-    autoSet = true;
-    hapticsOn = true;
-    Image.clearDiskCache();
-    Image.clearMemoryCache();
-    logout(navigation);
-  }
-
   async function getMyCal(navigation) {
     setLoading(true);
     await getCalendar(navigation);
@@ -571,7 +624,7 @@ function LoggedPage({ navigation }) {
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner votre nom d'utilisateur pour continuer.</Text>
         <Chip style={{ height: 64, marginBottom: 8 }} onPress={ () => handleLogin() } icon="face-recognition" >{username} - {name}</Chip>
         <Chip style={{ height: 32, marginBottom: 16 }} onPress={ () => getMyCal(navigation) } icon="calendar" >BETA - Emploi du temps</Chip>
-        <Button style={{ marginBottom: 8 }} icon="account" mode="contained-tonal" onPress={ () => deleteData() }> Changer d'utilisateur </Button>
+        <Button style={{ marginBottom: 8 }} icon="account" mode="contained-tonal" onPress={ () => deleteData(false, navigation) }> Changer d'utilisateur </Button>
         <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         <Divider style={{ marginBottom: 16 }} />
         <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
@@ -966,7 +1019,14 @@ function ShowGrades( { navigation } ) {
 
   return (
     <View style={styleScrollable.container}>
-      <Text style={{ textAlign: 'left', marginBottom: 16, paddingLeft: 25 }} variant="displayLarge">Notes</Text>
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">
+        <IconButton
+          style={{ marginLeft: 25, marginRight: 12.5 }}
+          icon="home"
+          size={20}
+          onPress={() => logout(navigation)}
+        />
+      Notes</Text>
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }} 
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -978,96 +1038,6 @@ function ShowGrades( { navigation } ) {
         <Divider style={{ marginBottom: 16 }} />
         {showTable()}
       </ScrollView>
-    </View>
-  );
-}
-
-// Page de configuration de la moyenne (80% fonctionnel)
-function AverageConfig( { navigation } ) {
-
-  const [automatique, setAutomatique] = useState(autoSet);
-
-  const [malus, setMalus] = useState(false);
-  const [bonus, setBonus] = useState(false);
-
-  const [matiereBonus, setMatiereBonus] = useState(null);
-  const [matiereMalus, setMatiereMalus] = useState(null);
-
-  function validate() {
-    Keyboard.dismiss();
-    if(malus == true && matiereBonus != "" || bonus == true && matiereMalus != "") {
-      saveUserdata("matiereBonus", matiereBonus);
-      saveUserdata("matiereMalus", matiereMalus);
-    }
-    navigation.goBack();
-  }
-
-  function helpMe() {
-    Keyboard.dismiss();
-    Alert.alert("Syntaxe", "Vous devez écrire le nom de la matière à l'identique comme affichée sur UniceNotes \n Exemple : 'Absences S1; Bonus Sport'");
-  }
-
-  function setAutoSet(value) {
-    autoSet = value;
-    setAutomatique(value);
-    saveUserdata("autoSet", value.toString());
-  }
-
-  return (
-    <View style={style.container}>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Configuration</Text>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleLarge'>Afin de pouvoir afficher votre moyenne générale correctement, vous devez configurer les bonus et malus appliqués.</Text>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
-          <Switch onValueChange={ () => setAutoSet(!autoSet) } value={autoSet}/>
-          <Text style={{ marginLeft:8}}> Automatique (recommandé)</Text>
-      </View>
-
-      { // Montre switch bonus
-        !autoSet ? ( 
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:8 }} >
-              <Switch onValueChange={ () => setBonus(!bonus) } value={bonus}/>
-              <Text style={{ marginLeft: 8, marginBottom: 8}}> Bonus</Text>
-          </View>
-        ) : null
-      }
-
-      { // Matière bonus
-        bonus ? ( 
-          <><TextInput
-            label="Matières bonus"
-            defaultValue={matiereBonus}
-            onChangeText={(text) => setMatiereBonus(text)}
-            onPressIn={() => Haptics.selectionAsync()}
-            right={<TextInput.Icon icon="information" onPress={ () => helpMe() } />}
-            onSubmitEditing={() => Keyboard.dismiss()}
-            style={{ marginBottom: 16 }}
-          /></> ) : null
-      }
-        
-      { // Montrer switch malus
-        !autoSet ? ( 
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:8 }} >
-              <Switch onValueChange={ () => setMalus(!malus) } value={malus}/>
-              <Text style={{ marginLeft:8}}> Malus</Text>
-          </View>
-        ) : null
-      }
-
-      { // Matière malus
-        malus ? ( 
-          <><TextInput
-            label="Matières malus"
-            defaultValue={matiereMalus}
-            onChangeText={(text) => setMatiereMalus(text)}
-            onPressIn={() => Haptics.selectionAsync()}
-            right={<TextInput.Icon icon="information" onPress={ () => helpMe() } />}
-            onSubmitEditing={() => Keyboard.dismiss()}
-            style={{ marginBottom: 8 }}
-          /></> ) : null
-      }
-
-      <Button style={{ marginTop: 8 }} icon="check" mode="contained" onPress={() => validate()}> Valider </Button>
     </View>
   );
 }
@@ -1257,26 +1227,8 @@ function ShowSettings( { navigation } ) {
       },
       { 
         text: "Supprimer", 
-        onPress: (() => deleteData())
+        onPress: (() => deleteData(true, navigation))
       }]);
-  }
-
-  async function deleteData() {
-      await SecureStore.deleteItemAsync("username");
-      await SecureStore.deleteItemAsync("passkey");
-      await SecureStore.deleteItemAsync("name");
-      await AsyncStorage.removeItem("autoSet");
-      await AsyncStorage.removeItem("haptics");
-      await AsyncStorage.removeItem("calendar");
-      username = null;
-      password = null;
-      autoSet = true;
-      hapticsOn = true;
-      Image.clearDiskCache();
-      Image.clearMemoryCache();
-      Alert.alert("Données supprimées", "Retour à la page de connexion.");
-      haptics("success");
-      logout(navigation);
   }
 
   function goBack() {
@@ -1299,7 +1251,7 @@ function ShowSettings( { navigation } ) {
         <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
         <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer les données de connexion </Button>
 
-        <Button style={{ marginTop: 16 }} icon="calculator" mode="contained" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
+        { /* <Button style={{ marginTop: 16 }} icon="calculator" mode="contained" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button> */ }
 
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop:16 }} >
             <Switch onValueChange={ (value) => setHapticsBool(value) } value={hapticsOn}/>
@@ -1318,6 +1270,108 @@ function ShowSettings( { navigation } ) {
         <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
         <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
       </ScrollView>
+    </View>
+  );
+}
+
+// Page de configuration de la moyenne (90% fonctionnel, manque l'application des changements sur la moyenne)
+function AverageConfig( { navigation } ) {
+  const [automatique, setAutomatique] = useState(autoSet);
+
+  const [malus, setMalus] = useState(configAverage.includes("M"));
+  const [bonus, setBonus] = useState(configAverage.includes("B"));
+
+  const [matiereB, setMatiereBonus] = useState(matiereBonus.toString());
+  const [matiereM, setMatiereMalus] = useState(matiereMalus.toString());
+
+  function validate() {
+    Keyboard.dismiss();
+    var config = "";
+    if(malus) {
+      matiereMalus = matiereM.split(";");
+      config += "M ";
+      console.log(matiereM)
+      saveUserdata("matiereMalus", matiereMalus.toString());
+      
+    }
+    if(bonus) {
+      matiereBonus = matiereB.split(";");
+      config += "B ";
+      console.log(matiereB)
+      saveUserdata("matiereBonus", matiereBonus.toString());
+    }
+    console.log(config)
+    configAverage = config;
+    saveUserdata("configAverage", config);
+    navigation.goBack();
+  }
+
+  function helpMe() {
+    Keyboard.dismiss();
+    Alert.alert("Syntaxe", "Vous devez écrire le nom de la matière à l'identique comme affichée sur UniceNotes \n Exemple : 'Absences S1;Bonus Sport'");
+  }
+
+  function setAutoSet(value) {
+    autoSet = value;
+    setAutomatique(value);
+    saveUserdata("autoSet", value.toString());
+  }
+
+  return (
+    <View style={style.container}>
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Moyenne</Text>
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleLarge'>Afin de pouvoir afficher votre moyenne générale correctement, vous devez configurer les bonus et malus appliqués.</Text>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
+          <Switch onValueChange={ () => setAutoSet(!autoSet) } value={autoSet}/>
+          <Text style={{ marginLeft:8}}> Automatique (recommandé)</Text>
+      </View>
+
+      { // Montre switch bonus
+        !autoSet ? ( 
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:8 }} >
+              <Switch onValueChange={ () => setBonus(!bonus) } value={bonus}/>
+              <Text style={{ marginLeft: 8, marginBottom: 8}}> Bonus</Text>
+          </View>
+        ) : null
+      }
+
+      { // Matière bonus
+        bonus ? ( 
+          <><TextInput
+            label="Matières bonus"
+            defaultValue={matiereB.toString()}
+            onChangeText={(text) => setMatiereBonus(text)}
+            onPressIn={() => Haptics.selectionAsync()}
+            right={<TextInput.Icon icon="information" onPress={ () => helpMe() } />}
+            onSubmitEditing={() => Keyboard.dismiss()}
+            style={{ marginBottom: 16 }}
+          /></> ) : null
+      }
+        
+      { // Montrer switch malus
+        !autoSet ? ( 
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:8 }} >
+              <Switch onValueChange={ () => setMalus(!malus) } value={malus}/>
+              <Text style={{ marginLeft:8}}> Malus</Text>
+          </View>
+        ) : null
+      }
+
+      { // Matière malus
+        malus ? ( 
+          <><TextInput
+            label="Matières malus"
+            defaultValue={matiereM.toString()}
+            onChangeText={(text) => setMatiereMalus(text)}
+            onPressIn={() => Haptics.selectionAsync()}
+            right={<TextInput.Icon icon="information" onPress={ () => helpMe() } />}
+            onSubmitEditing={() => Keyboard.dismiss()}
+            style={{ marginBottom: 8 }}
+          /></> ) : null
+      }
+
+      <Button style={{ marginTop: 8 }} icon="check" mode="contained" onPress={() => validate()}> Valider </Button>
     </View>
   );
 }
