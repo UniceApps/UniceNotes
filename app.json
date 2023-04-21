@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,14 +19,15 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSFaceIDUsageDescription": "Connectez-vous sur l'application grâce à FaceID / TouchID.",
-        "NSNotificationsUsageDescription": "Recevez des notifications pour être informé des nouvelles notes."
+        "NSNotificationsUsageDescription": "Recevez des notifications pour être informé des nouvelles notes.",
+        "RCTAsyncStorageExcludeFromBackup": false
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "3.0.5"
+      "buildNumber": "3.1.0"
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 6
+      "versionCode": 7
     },
     "extra": {
       "eas": {

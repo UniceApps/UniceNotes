@@ -16,7 +16,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Alert, View, StyleSheet, 
   StatusBar, ScrollView, RefreshControl,
   Appearance, BackHandler, SafeAreaView,
-  SafeAreaProvider, Keyboard
+  SafeAreaProvider, Keyboard, AppState
 } from 'react-native';
 
 // Material Design 3 API (React Native Paper)
@@ -24,7 +24,7 @@ import { Avatar, Text, TextInput,
   Button, Switch, Divider, 
   ActivityIndicator, ProgressBar, Chip,
   DataTable, Card, Provider as PaperProvider,
-  IconButton
+  IconButton, Banner
 } from 'react-native-paper';
 
 // Expo API
@@ -40,13 +40,14 @@ import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TimelineCalendar, EventItem, MomentConfig } from '@howljs/calendar-kit';
 import 'react-native-gesture-handler';
+import { log } from 'react-native-reanimated';
 
 // ---------------------------------------------
 // VARIABLES GLOBALES
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.2.0';
+var appVersion = '1.2.1';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -54,6 +55,11 @@ var isConnected = false; // UniceAPI login
 var dataIsLoaded = false; // JSONPDF loaded
 var semesters = []; // User's all semesters
 var semester = ''; // Selected semesters
+
+const servers = [
+  "https://api.unice.hugofnm.fr",
+  "https://backup.api.unice.hugofnm.fr"
+]; // UniceAPI servers
 
 // Temporary variables - SecureStore
 var username = SecureStore.getItemAsync("username").then((result) => {
@@ -115,7 +121,7 @@ var configAverage = AsyncStorage.getItem("configAverage").then((result) => {
 
 var matiereBonus = AsyncStorage.getItem("matiereBonus").then((result) => {
   if (result != null) {
-    matiereBonus = result.split(",");
+    matiereBonus = result.split(";");
   } else {
     matiereBonus = [];
   }
@@ -123,11 +129,19 @@ var matiereBonus = AsyncStorage.getItem("matiereBonus").then((result) => {
 
 var matiereMalus = AsyncStorage.getItem("matiereMalus").then((result) => {
   if (result != null) {
-    matiereMalus = result.split(",");
+    matiereMalus = result.split(";");
   } else {
     matiereMalus = [];
   }
 }); // Matières malus
+
+var selectedServer = AsyncStorage.getItem("server").then((result) => {
+  if (result != null && servers.includes(result)) {
+    selectedServer = result.toString();
+  } else {
+    selectedServer = servers[0].toString();
+  }
+}); // Serveur sélectionné
 
 var rememberMe = true; // Remember me
 
@@ -187,7 +201,7 @@ async function deleteData(warnings = false, navigation) {
 
 // Ouverture de pages web dans le navigateur par défaut
 const handleURL = async (url) => {
-  Haptics.selectionAsync();
+  haptics("selection");
   await WebBrowser.openBrowserAsync(url);
 };
 
@@ -200,7 +214,7 @@ function logout(navigation) {
   if (rememberMe == false) {
     password = null;
   }
-  fetch('https://api.unice.hugofnm.fr/logout');
+  fetch(selectedServer + '/logout');
   navigation.dispatch(
     CommonActions.reset({
       index: 0,
@@ -234,6 +248,9 @@ function haptics(intensity) {
       case "warning":
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         break;
+      case "selection":
+        Haptics.selectionAsync();
+        break;
     }
   }
 }
@@ -245,7 +262,7 @@ function goToSettings(navigation) {
 }
 
 // ---------------------------------------------
-// FONCTIONS API Calendrier
+// FONCTIONS API EMPLOI DU TEMPS
 // ---------------------------------------------
 
 // Lighten the color
@@ -291,7 +308,7 @@ var stringToColour = function(str) {
 // Récupération du calendrier de l'utilisateur
 async function getCalendar() {
     haptics("medium");
-    let cal = await fetch('https://api.unice.hugofnm.fr/edt', {
+    let cal = await fetch(selectedServer + '/edt', {
       method: 'POST',
       body: JSON.stringify({
         username: username
@@ -330,6 +347,7 @@ async function getCalendar() {
         start: item.start_time,
         end: item.end_time,
         title: item.description,
+        subtitle: item.summary,
         description: item.location,
         color: stringToColour(item.description)
       })
@@ -354,11 +372,16 @@ function SplashScreen({ navigation }) {
       verifyLogin();
     }
   });
-  
+
   async function verifyLogin() {
     // Vérification de la version de l'application en récupérant le json contenant la dernière version
     var version, isAvailable, maintenance;
-    await fetch('https://api.unice.hugofnm.fr/status')
+
+    if (selectedServer == servers[1]) {
+      Alert.alert("Backup", "Vous êtes actuellement connecté au serveur Backup. Toutes les fonctionnalités ne sont pas disponibles.");
+    }
+
+    await fetch(selectedServer + '/status')
     .then((response) => response.json())
     .then((json) => {
       version = json.version;
@@ -449,7 +472,7 @@ function LoginPage({ navigation }) {
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
   async function ssoUnice(username, password) {
     if(!isConnected) {
-      let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
+      let apiResp = await fetch(selectedServer + '/login', {
         method: 'POST',
         body: JSON.stringify({
           username: username,
@@ -516,7 +539,7 @@ function LoginPage({ navigation }) {
         label="Nom d'utilisateur"
         defaultValue={username}
         onChangeText={(text) => setUsername(text)}
-        onPressIn={() => Haptics.selectionAsync()}
+        onPressIn={() => haptics("selection")}
         returnKeyType="next"
         onSubmitEditing={() => passwordInput.focus()}
         editable={editable}
@@ -527,20 +550,21 @@ function LoginPage({ navigation }) {
         label='Mot de passe'
         defaultValue={password}
         onChangeText={(text) => setPassword(text)}
-        onPressIn={() => Haptics.selectionAsync()}
+        onPressIn={() => haptics("selection")}
         secureTextEntry={seePassword}
         returnKeyType="go"
         editable={editable}
         right={<TextInput.Icon icon="eye" onPress={ () => setSeePassword(!seePassword) } />}
         style={{ marginBottom: 16 }}
       />
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:16 }} >
-          <Switch onValueChange={ (value) => setRememberMe(value) } value={rememberMe}/>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
+          <Switch onValueChange={ (value) => setRememberMe(value) } disabled={!editable} value={rememberMe}/>
           <Text style={{ marginLeft:8}}> Se souvenir de moi</Text>
       </View>
-      <Button style={{ marginBottom: 16 }} icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
+      <Button style={{ marginBottom: 16 }} disabled={!editable} icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
       <Divider style={{ marginBottom: 16 }} />
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
+      <Button style={{ marginBottom: 4 }} icon="shield-account" onPress={ () => handleURL("https://sesame.unice.fr") }> J'ai oublié mon mot de passe </Button>
       <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
       <Button style={{ marginBottom: 16 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
       <ActivityIndicator animating={loading} size="large" />
@@ -551,6 +575,7 @@ function LoginPage({ navigation }) {
 // Page de connexion à l'application si les identifiants sont sauvegardés
 function LoggedPage({ navigation }) {
   const [loading, setLoading] = useState(false);
+  const [selectable, setSelectable] = useState(true);
 
   function handleLogin() {
     haptics("medium");
@@ -573,45 +598,58 @@ function LoggedPage({ navigation }) {
 
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
   async function ssoUnice(username, password) {
-      if(!isConnected) {
-        let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
-          method: 'POST',
-          body: JSON.stringify({
-            username: username,
-            password: password
-          }),
-          headers: {
-            "Accept": "application/json",
-            "Content-type": "application/json",
-            "Charset": "utf-8"
-          }
-        })
-      
-        if(!apiResp.ok){
-          haptics("error");
-          Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
-          setLoading(false);
+    setSelectable(false);
+    if(!isConnected) {
+      let apiResp = await fetch(selectedServer + '/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: username,
+          password: password
+        }),
+        headers: {
+          "Accept": "application/json",
+          "Content-type": "application/json",
+          "Charset": "utf-8"
         }
-  
-        let json = await apiResp.json();
-      
-        if(json.success) { 
-          isConnected = true;
-          semesters = json.semesters;
-          setLoading(false);
-          haptics("success");
-          navigation.navigate('Semesters');
-        } else {
-          setLoading(false);
-          haptics("warning");
-          Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
-        }
+      })
+    
+      if(!apiResp.ok){
+        haptics("error");
+        Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
+        setSelectable(true);
+        setLoading(false);
       }
+
+      let json = await apiResp.json();
+    
+      if(json.success) { 
+        isConnected = true;
+        semesters = json.semesters;
+        setLoading(false);
+        setSelectable(true);
+        haptics("success");
+        navigation.navigate('Semesters');
+      } else {
+        setLoading(false);
+        setSelectable(true);
+        haptics("warning");
+        Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
+      }
+    }
   };
 
   async function getMyCal(navigation) {
+    setSelectable(false);
     setLoading(true);
+    if (selectedServer.toString() == servers[1].toString()) {
+      setSelectable(true);
+      setLoading(false);
+      haptics("error");
+      Alert.alert("Erreur", "Le serveur backup ne peut pas être utilisé pour récupérer le calendrier. EC=0xF");
+      return;
+    }
     await getCalendar(navigation);
+    setSelectable(true);
     setLoading(false);
     navigation.navigate('ShowEDT');
   }
@@ -622,8 +660,8 @@ function LoggedPage({ navigation }) {
         <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/white.png')} />
         <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner votre nom d'utilisateur pour continuer.</Text>
-        <Chip style={{ height: 64, marginBottom: 8 }} onPress={ () => handleLogin() } icon="face-recognition" >{username} - {name}</Chip>
-        <Chip style={{ height: 32, marginBottom: 16 }} onPress={ () => getMyCal(navigation) } icon="calendar" >BETA - Emploi du temps</Chip>
+        <Chip style={{ height: 64, marginBottom: 8 }} disabled={!selectable} onPress={ () => handleLogin() } icon="face-recognition" >Notes | {username} - {name}</Chip>
+        <Chip style={{ height: 32, marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
         <Button style={{ marginBottom: 8 }} icon="account" mode="contained-tonal" onPress={ () => deleteData(false, navigation) }> Changer d'utilisateur </Button>
         <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         <Divider style={{ marginBottom: 16 }} />
@@ -640,6 +678,7 @@ function Semesters ({ navigation }) {
   const [jourNuit, setJourNuit] = useState("Bonjour");
   const [large, setLarge] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [selectable, setSelectable] = useState(true);
 
   // Correction du nom de l'étudiant
   name = name
@@ -649,8 +688,10 @@ function Semesters ({ navigation }) {
 
   // Fonction de chargement des notes
   function loadGrades(sel) {
+      setSelectable(false);
       haptics("medium");
       semester = sel.toString();
+      setSelectable(true);
       navigation.navigate('APIConnect', { semester: sel });
   }
   
@@ -672,13 +713,22 @@ function Semesters ({ navigation }) {
     }
 
     return semesters.map((semester) => (
-      <Button style={{ marginBottom: 8 }} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
+      <Button style={{ marginBottom: 8 }} disabled={!selectable} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
     ))
   }
 
   async function getMyCal(navigation) {
+    setSelectable(false);
     setLoading(true);
+    if (selectedServer.toString() == servers[1].toString()) {
+      setSelectable(true);
+      setLoading(false);
+      haptics("error");
+      Alert.alert("Erreur", "Le serveur backup ne peut pas être utilisé pour récupérer le calendrier. EC=0xF");
+      return;
+    }
     await getCalendar(navigation);
+    setSelectable(true);
     setLoading(false);
     navigation.navigate('ShowEDT');
   }
@@ -687,7 +737,7 @@ function Semesters ({ navigation }) {
     <View style={style.container}>
       <Image 
         source={{
-          uri: "https://api.unice.hugofnm.fr/avatar"
+          uri: selectedServer + "/avatar"
         }} 
         style={{ alignSelf: "center", marginBottom: 16, width: 125, height: 125, borderRadius: 100 }}
         placeholder={require('./assets/profile.png')}
@@ -697,7 +747,7 @@ function Semesters ({ navigation }) {
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
 
       {getMySemesters()}
-      <Button style={{ marginBottom: 8, marginTop: 8 }} icon="calendar" mode="contained-tonal" onPress={ () => getMyCal(navigation) }> Emploi du temps </Button>
+      <Button style={{ marginBottom: 8, marginTop: 8 }} disabled={!selectable} icon="calendar" mode="contained-tonal" onPress={ () => getMyCal(navigation) }> Emploi du temps </Button>
       <Button style={{ marginBottom: 8, marginTop: 8 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
       <Button style={ style.buttonLogout } icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
       <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
@@ -719,11 +769,11 @@ function APIConnect ({ navigation }) {
 
   async function loginAPI() {
     if(dataIsLoaded == false){
-      let response = await fetch('https://api.unice.hugofnm.fr/load_pdf?sem=' + semester)
+      let response = await fetch(selectedServer + '/load_pdf?sem=' + semester)
       if(response.status == 200) {
         setProgress(0.5);
   
-        let pdfAPI = await fetch('https://api.unice.hugofnm.fr/scrape_pdf?sem=' + semester);
+        let pdfAPI = await fetch(selectedServer + '/scrape_pdf?sem=' + semester);
     
         if(pdfAPI.status != 200){
           Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
@@ -742,6 +792,7 @@ function APIConnect ({ navigation }) {
         average = json.average; // moyenne générale
         position = json.position; // position dans le classement
         dataIsLoaded = true;
+        navigation.goBack();
         navigation.navigate('ShowGrades');
       }
       else {
@@ -754,7 +805,7 @@ function APIConnect ({ navigation }) {
 
   return (
     <View style={style.container}>
-      <Avatar.Icon style={{ alignSelf: "center", marginBottom: 32 }} size={200} icon="sync" />
+      <Avatar.Icon style={{ alignSelf: "center", marginBottom: 32 }} size={150} icon="sync" />
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Chargement des données...</Text>
       <ProgressBar progress={progress} style={{ marginBottom: 32 }} />
       <Button style={{ marginBottom: 16 }}icon="location-exit" mode="contained" onPress={ () => logout(navigation) }> Annuler </Button>
@@ -788,7 +839,7 @@ function ShowGrades( { navigation } ) {
     var res;
     dataIsLoaded = false;
 
-    await fetch('https://api.unice.hugofnm.fr/whoami')
+    await fetch(selectedServer + '/whoami')
     .then((response) => response.json())
     .then((json) => {
       logged = json.username;
@@ -805,7 +856,7 @@ function ShowGrades( { navigation } ) {
         })
       );
     } else { // Si l'utilisateur n'est pas connecté
-      let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
+      let apiResp = await fetch(selectedServer + '/login', {
         method: 'POST',
         body: JSON.stringify({
           username: username,
@@ -843,7 +894,7 @@ function ShowGrades( { navigation } ) {
 
     var logged;
 
-    await fetch('https://api.unice.hugofnm.fr/whoami')
+    await fetch(selectedServer + '/whoami')
     .then((response) => response.json())
     .then((json) => {
       logged = json.username;
@@ -860,7 +911,7 @@ function ShowGrades( { navigation } ) {
         })
       );
     } else { // Si l'utilisateur n'est pas connecté, se reconnecter
-      let apiResp = await fetch('https://api.unice.hugofnm.fr/login', {
+      let apiResp = await fetch(selectedServer + '/login', {
         method: 'POST',
         body: JSON.stringify({
           username: username,
@@ -977,6 +1028,7 @@ function ShowGrades( { navigation } ) {
     grades.forEach(element => {
       if(element.average.toString() != "Pas de moyenne disponible") { // Si la moyenne est disponible
 
+        // Vérification automatique des absences et bonus
         if((element.name.toString().toLowerCase().includes("absences") || element.name.toString().toLowerCase().includes("bonus")) && autoSet) {
           if(element.name.toString().toLowerCase().includes("absences")) { // Si c'est une absence on la soustrait à la moyenne
             bonus -= parseFloat(element.average.toString());
@@ -984,26 +1036,38 @@ function ShowGrades( { navigation } ) {
           if(element.name.toString().toLowerCase().includes("bonus")) { // Si c'est un bonus on l'ajoute à la moyenne
             bonus += parseFloat(element.average.toString());
           }
-        }
-
-        moyenneCache = parseFloat(element.average.replace(" (calculée)", "").toString()); // On récupère la moyenne en chiffre lisible
-
-        element.grades.forEach((grade) => { // On récupère les coefficients
-          if(!grade[1][0].includes("coeff")){
-            coeff += parseFloat(grade[1][1]);
-          }
-          else {
-            if(grade[1][0].includes("ABI")) {
-              coeff += parseFloat((grade[1][0].replace("ABI (coeff ", "")).replace(")","")); // Si c'est un ABI
-            } else {
-              coeff += parseFloat((grade[1][0].replace("(coeff ", "")).replace(")","")); // Si c'est un coefficient
+        } else if (!autoSet) { // Sinon vérification manuelle
+          if (configAverage.includes("B")) { // User a choisi de mettre le bonus manuel
+            if (matiereBonus.find((matiere) => matiere == element.name.toString())) {
+              bonus += parseFloat(element.average.toString());
             }
           }
-        })
-        moyenneGenerale += moyenneCache * coeff; // On multiplie la moyenne cache par le coefficient et on l'ajoute à la moyenne générale
-        coeffGeneral += coeff; // On ajoute le coefficient au coefficient général
-        coeff = 0; // On remet le coefficient à 0
-        moyenneCache = 0; // On remet la moyenne cache à 0
+          if (configAverage.includes("M")) { // User a choisi de mettre le malus manuel
+            if (matiereMalus.find((matiere) => matiere == element.name.toString())) {
+              bonus -= parseFloat(element.average.toString());
+            }
+          }
+        } 
+        if (!matiereBonus.find((matiere) => matiere == element.name.toString()) && !matiereMalus.find((matiere) => matiere == element.name.toString())) { // Sinon on compte comme une matière normale
+          moyenneCache = parseFloat(element.average.replace(" (calculée)", "").toString()); // On récupère la moyenne en chiffre lisible
+
+          element.grades.forEach((grade) => { // On récupère les coefficients
+            if(!grade[1][0].includes("coeff")){
+              coeff += parseFloat(grade[1][1]);
+            }
+            else {
+              if(grade[1][0].includes("ABI")) {
+                coeff += parseFloat((grade[1][0].replace("ABI (coeff ", "")).replace(")","")); // Si c'est un ABI
+              } else {
+                coeff += parseFloat((grade[1][0].replace("(coeff ", "")).replace(")","")); // Si c'est un coefficient
+              }
+            }
+          })
+          moyenneGenerale += moyenneCache * coeff; // On multiplie la moyenne cache par le coefficient et on l'ajoute à la moyenne générale
+          coeffGeneral += coeff; // On ajoute le coefficient au coefficient général
+          coeff = 0; // On remet le coefficient à 0
+          moyenneCache = 0; // On remet la moyenne cache à 0
+        }
       }
     });
     moyenneGenerale = moyenneGenerale / coeffGeneral; // On divise la moyenne générale par le coefficient général
@@ -1201,10 +1265,11 @@ function ShowEDT( { navigation } ) {
       EDT</Text>
       <Button style={{ marginLeft: 25, marginRight: 25, marginBottom: 16 }} icon="update" mode="contained-tonal" onPress={ () => goToToday() }> Aujourd'hui </Button>  
 
-      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} viewMode="threeDays" events={cal} allowPinchToZoom start={5} end={22} /*locale="fr"*/ renderEventContent={(event) => {
+      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => Alert.alert(eventItem.title, eventItem.subtitle + "\n Salle : " + eventItem.description)} scrollToNow={true} viewMode="threeDays" events={cal} allowPinchToZoom start={5} end={22} /*locale="fr"*/ renderEventContent={(event) => {
           return (
             <SafeAreaView style={{ margin: 10 }}>
               <Text style={{ fontWeight: 'bold', color:'black' }}>{event.title}</Text>
+              <Text style={{ color:'black' }}>{event.subtitle}</Text>
               <Text style={{ color:'black' }}>{event.description}</Text>
             </SafeAreaView>
           );
@@ -1242,21 +1307,60 @@ function ShowSettings( { navigation } ) {
     saveUserdata("haptics", value.toString());
   }
 
+  function setSelectedServer(value) {
+    if (value == "B") {
+      selectedServer = servers[1];
+      saveUserdata("server", servers[1].toString());
+      fetch(servers[1].toString())
+    }
+    if (value == "P") {
+      selectedServer = servers[0];
+      saveUserdata("server", servers[0].toString());
+    }
+    logout(navigation);
+  }
+
+  function whatSelectedServer(value) {
+    var res = "contained-tonal";
+    if (selectedServer == servers[1].toString() && value == "B") {
+      res = "contained";
+    } else if (selectedServer == servers[0].toString() && value == "P") {
+      res = "contained";
+    }
+    return res;
+  }
+
   return (
     <View style={styleScrollable.container}>
-      <Text style={{ textAlign: 'left', marginBottom: 16, paddingLeft: 25 }} variant="displayLarge">Paramètres</Text>
+      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">
+        <IconButton
+          style={{ marginLeft: 25, marginRight: 12.5 }}
+          icon="arrow-left"
+          size={20}
+          onPress={() => goBack() }
+        />
+      Paramètres</Text>
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Button style={{ marginBottom: 8 }} icon="arrow-left" mode="contained-tonal" onPress={ () => goBack() }> Retourner en arrière </Button>
+      <Button style={{ marginBottom: 8 }} icon="calculator" mode="contained-tonal" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
         <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/bug") }> Signaler un bug </Button>
-        <Button style={{ marginBottom: 8 }} icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
         <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer les données de connexion </Button>
-
-        { /* <Button style={{ marginTop: 16 }} icon="calculator" mode="contained" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button> */ }
 
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop:16 }} >
             <Switch onValueChange={ (value) => setHapticsBool(value) } value={hapticsOn}/>
             <Text style={{ marginLeft:8}}> Activer les retours haptiques (vibrations)</Text>
         </View>
+
+        <Card style={{ marginTop:16 }}>
+          <Card.Title
+              title="Sélection du serveur"
+              subtitle="En cas de problème seulement !"
+              left={(props) => <Avatar.Icon {...props} icon="server-network" />}
+          />
+          <Card.Actions>
+            <Button mode={ whatSelectedServer("B") } onPress={ () => setSelectedServer("B") }>Backup</Button>
+            <Button mode={ whatSelectedServer("P") } onPress={ () => setSelectedServer("P") }>Principal</Button>
+          </Card.Actions>
+        </Card>
 
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">Visualisez vos notes. Sans PDF.</Text>
@@ -1274,7 +1378,7 @@ function ShowSettings( { navigation } ) {
   );
 }
 
-// Page de configuration de la moyenne (90% fonctionnel, manque l'application des changements sur la moyenne)
+// Page de configuration de la moyenne générale
 function AverageConfig( { navigation } ) {
   const [automatique, setAutomatique] = useState(autoSet);
 
@@ -1308,13 +1412,28 @@ function AverageConfig( { navigation } ) {
 
   function helpMe() {
     Keyboard.dismiss();
-    Alert.alert("Syntaxe", "Vous devez écrire le nom de la matière à l'identique comme affichée sur UniceNotes \n Exemple : 'Absences S1;Bonus Sport'");
+    Alert.alert("Syntaxe", "Vous devez écrire le nom de la matière à l'identique comme affichée sur UniceNotes séparée par un point-virgule. \n Exemple : 'Absences S1;Bonus Sport'");
   }
 
   function setAutoSet(value) {
     autoSet = value;
     setAutomatique(value);
     saveUserdata("autoSet", value.toString());
+  }
+
+  function disable(value) {
+    switch(value) {
+      case "B":
+        setBonus(!bonus);
+        SecureStore.deleteItemAsync("matiereBonus");
+        matiereBonus = [];
+        break;
+      case "M":
+        setMalus(!malus);
+        SecureStore.deleteItemAsync("matiereMalus");
+        matiereMalus = [];
+        break;
+    }
   }
 
   return (
@@ -1330,7 +1449,7 @@ function AverageConfig( { navigation } ) {
       { // Montre switch bonus
         !autoSet ? ( 
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:8 }} >
-              <Switch onValueChange={ () => setBonus(!bonus) } value={bonus}/>
+              <Switch onValueChange={ () => disable("B") } value={bonus}/>
               <Text style={{ marginLeft: 8, marginBottom: 8}}> Bonus</Text>
           </View>
         ) : null
@@ -1342,7 +1461,7 @@ function AverageConfig( { navigation } ) {
             label="Matières bonus"
             defaultValue={matiereB.toString()}
             onChangeText={(text) => setMatiereBonus(text)}
-            onPressIn={() => Haptics.selectionAsync()}
+            onPressIn={() => haptics("selection")}
             right={<TextInput.Icon icon="information" onPress={ () => helpMe() } />}
             onSubmitEditing={() => Keyboard.dismiss()}
             style={{ marginBottom: 16 }}
@@ -1352,7 +1471,7 @@ function AverageConfig( { navigation } ) {
       { // Montrer switch malus
         !autoSet ? ( 
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:8 }} >
-              <Switch onValueChange={ () => setMalus(!malus) } value={malus}/>
+              <Switch onValueChange={ () => disable("M") } value={malus}/>
               <Text style={{ marginLeft:8}}> Malus</Text>
           </View>
         ) : null
@@ -1364,7 +1483,7 @@ function AverageConfig( { navigation } ) {
             label="Matières malus"
             defaultValue={matiereM.toString()}
             onChangeText={(text) => setMatiereMalus(text)}
-            onPressIn={() => Haptics.selectionAsync()}
+            onPressIn={() => haptics("selection")}
             right={<TextInput.Icon icon="information" onPress={ () => helpMe() } />}
             onSubmitEditing={() => Keyboard.dismiss()}
             style={{ marginBottom: 8 }}
@@ -1375,6 +1494,10 @@ function AverageConfig( { navigation } ) {
     </View>
   );
 }
+
+// ---------------------------------------------
+// FONCTIONS ANNEXES
+// ---------------------------------------------
 
 // Création du stack de navigation
 const Stack = createNativeStackNavigator();
@@ -1388,7 +1511,7 @@ function App() {
         <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="LoggedPage" component={LoggedPage} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false }} />  
-        <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false, gestureEnabled: false}} />
         <Stack.Screen name="ShowEDT" component={ShowEDT} options={{ title: 'Emploi du temps', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres', headerShown: false }} />
@@ -1398,7 +1521,10 @@ function App() {
   );
 }
 
-// Themes
+// ---------------------------------------------
+// THEMES
+// ---------------------------------------------
+
 const lightTheme = {
   "dark": false,
   "version": 3,
@@ -1537,6 +1663,10 @@ const styleCalendar = StyleSheet.create({
     hourText: {color: choosenTheme.colors.onBackground},    
   },
 });
+
+// ---------------------------------------------
+// MAIN
+// ---------------------------------------------
 
 export default function Main() {
   return (
