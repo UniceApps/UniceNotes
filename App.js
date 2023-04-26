@@ -48,7 +48,7 @@ import { log } from 'react-native-reanimated';
 
 // IMPORTANT !!!
 var appVersion = '1.2.1';
-var isBeta = false;
+var isBeta = true;
 // IMPORTANT !!!
 
 var isConnected = false; // UniceAPI login
@@ -136,7 +136,7 @@ var matiereMalus = AsyncStorage.getItem("matiereMalus").then((result) => {
 }); // Matières malus
 
 var selectedServer = AsyncStorage.getItem("server").then((result) => {
-  if (result != null && servers.includes(result)) {
+  if (result != null && servers.includes(result.toString())) {
     selectedServer = result.toString();
   } else {
     selectedServer = servers[0].toString();
@@ -189,6 +189,8 @@ async function deleteData(warnings = false, navigation) {
   matiereBonus = [];
   await AsyncStorage.removeItem("matiereMalus");
   matiereMalus = [];
+  await AsyncStorage.removeItem("server");
+  selectedServer = servers[0].toString();
 
   Image.clearDiskCache();
   Image.clearMemoryCache();
@@ -378,10 +380,14 @@ function SplashScreen({ navigation }) {
     var version, isAvailable, maintenance;
 
     if (selectedServer == servers[1]) {
-      Alert.alert("Backup", "Vous êtes actuellement connecté au serveur Backup. Toutes les fonctionnalités ne sont pas disponibles.");
+      Alert.alert("Serveur Backup", "Toutes les fonctionnalités ne sont pas disponibles en mode Backup.\n Le serveur peut être lent au démarrage.");
     }
 
-    await fetch(selectedServer + '/status')
+    if (!servers.includes(selectedServer)) {
+      selectedServer = servers[0];
+    }
+
+    await fetch(selectedServer + "/status")
     .then((response) => response.json())
     .then((json) => {
       version = json.version;
@@ -659,9 +665,9 @@ function LoggedPage({ navigation }) {
       <SafeAreaView style={style.container}>
         <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/white.png')} />
         <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
-        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner votre nom d'utilisateur pour continuer.</Text>
-        <Chip style={{ height: 64, marginBottom: 8 }} disabled={!selectable} onPress={ () => handleLogin() } icon="face-recognition" >Notes | {username} - {name}</Chip>
-        <Chip style={{ height: 32, marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
+        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vous êtes connecté sous le compte de : {username} - {name}</Text>
+        <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => handleLogin() } icon="school" >Notes</Chip>
+        <Chip style={{ height: 48, marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
         <Button style={{ marginBottom: 8 }} icon="account" mode="contained-tonal" onPress={ () => deleteData(false, navigation) }> Changer d'utilisateur </Button>
         <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         <Divider style={{ marginBottom: 16 }} />
@@ -697,6 +703,10 @@ function Semesters ({ navigation }) {
   
   // Changement du texte en fonction de l'heure
   useEffect(() => {
+    if (name == null) {
+      name = "Étudiant";
+    }
+
     save("name", name);
     let date = new Date();
     let hours = date.getHours();
@@ -713,7 +723,7 @@ function Semesters ({ navigation }) {
     }
 
     return semesters.map((semester) => (
-      <Button style={{ marginBottom: 8 }} disabled={!selectable} icon="arrow-right-drop-circle" mode="contained-tonal" onPress={ () => loadGrades(semester) }> {semester} </Button>
+      <Chip style={{ height: 32, marginBottom: 8 }} disabled={!selectable} onPress={ () => loadGrades(semester) } icon="adjust" > {semester} </Chip>
     ))
   }
 
@@ -747,7 +757,7 @@ function Semesters ({ navigation }) {
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
 
       {getMySemesters()}
-      <Button style={{ marginBottom: 8, marginTop: 8 }} disabled={!selectable} icon="calendar" mode="contained-tonal" onPress={ () => getMyCal(navigation) }> Emploi du temps </Button>
+      <Chip style={{ height: 48, marginBottom: 8, marginTop: 8 }} disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
       <Button style={{ marginBottom: 8, marginTop: 8 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
       <Button style={ style.buttonLogout } icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
       <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
@@ -1311,7 +1321,7 @@ function ShowSettings( { navigation } ) {
     if (value == "B") {
       selectedServer = servers[1];
       saveUserdata("server", servers[1].toString());
-      fetch(servers[1].toString())
+      fetch(servers[1].toString());
     }
     if (value == "P") {
       selectedServer = servers[0];
