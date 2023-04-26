@@ -48,7 +48,7 @@ import { log } from 'react-native-reanimated';
 
 // IMPORTANT !!!
 var appVersion = '1.2.1';
-var isBeta = true;
+var isBeta = false;
 // IMPORTANT !!!
 
 var isConnected = false; // UniceAPI login
