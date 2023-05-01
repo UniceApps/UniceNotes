@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,20 +20,27 @@
       "infoPlist": {
         "NSFaceIDUsageDescription": "Connectez-vous sur l'application grâce à FaceID / TouchID.",
         "NSNotificationsUsageDescription": "Recevez des notifications pour être informé des nouvelles notes.",
-        "RCTAsyncStorageExcludeFromBackup": false
+        "CFBundleLocalizations": ["fr"],
+        "CFBundleDevelopmentRegion": "fr"
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "3.1.1"
+      "buildNumber": "3.2.6"
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 7
+      "versionCode": 8
     },
     "extra": {
       "eas": {
         "projectId": "ec0ebd57-7227-4cd2-a71e-344e0a5fffe5"
+      },
+      "bugsnag": {
+        "apiKey": "$(BUGSNAG_API_KEY)"
       }
     },
-    "owner": "hugofnm"
+    "owner": "hugofnm",
+    "plugins": [
+      "@bugsnag/plugin-expo-eas-sourcemaps"
+    ]
   }
 }

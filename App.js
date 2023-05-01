@@ -41,13 +41,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TimelineCalendar, EventItem, MomentConfig } from '@howljs/calendar-kit';
 import 'react-native-gesture-handler';
 import { log } from 'react-native-reanimated';
+import Bugsnag from '@bugsnag/expo';
 
 // ---------------------------------------------
 // VARIABLES GLOBALES
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.2.1';
+var appVersion = '1.2.2';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -55,6 +56,10 @@ var isConnected = false; // UniceAPI login
 var dataIsLoaded = false; // JSONPDF loaded
 var semesters = []; // User's all semesters
 var semester = ''; // Selected semesters
+
+if (!__DEV__) {
+  Bugsnag.start();
+}
 
 const servers = [
   "https://api.unice.hugofnm.fr",
@@ -105,11 +110,12 @@ var hapticsOn = AsyncStorage.getItem("haptics").then((result) => {
 
 var calendar = AsyncStorage.getItem("calendar").then((result) => {
   if (result != null) {
-    calendar = JSON.parse(result);
+    //calendar = JSON.parse(result);
+    calendar = null;
   } else {
     calendar = null;
   }
-}); // Emploi du temps sur le calendrier
+}); // Emploi du temps sur le calendrier !! REPARER QUAND OFFLINE FONCTIONNEL !!
 
 var configAverage = AsyncStorage.getItem("configAverage").then((result) => {
   if (result != null) {
@@ -380,7 +386,7 @@ function SplashScreen({ navigation }) {
     var version, isAvailable, maintenance;
 
     if (selectedServer == servers[1]) {
-      Alert.alert("Serveur Backup", "Toutes les fonctionnalités ne sont pas disponibles en mode Backup.\n Le serveur peut être lent au démarrage.");
+      Alert.alert("Serveur Backup", "Toutes les fonctionnalités ne sont pas disponibles en mode Backup.");
     }
 
     if (!servers.includes(selectedServer)) {
@@ -391,7 +397,7 @@ function SplashScreen({ navigation }) {
     .then((response) => response.json())
     .then((json) => {
       version = json.version;
-      isAvailable = json.isAvailable;
+      isAvailable = json.disponible;
       maintenance = json.maintenance;
     })
 
@@ -448,6 +454,7 @@ function SplashScreen({ navigation }) {
 
       {betaText()}
 
+      <ActivityIndicator style={{ marginTop: 16 }} size="large" />
     </View>
   );
 }
@@ -513,7 +520,6 @@ function LoginPage({ navigation }) {
         semesters = json.semesters;
         setLoading(false);
         haptics("success");
-        navigation.navigate('Semesters');
       } else {
         setLoading(false);
         setEditable(true);
@@ -522,6 +528,20 @@ function LoginPage({ navigation }) {
       }
     }
   };
+
+  useEffect(() => {
+    if(isConnected) {
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            { name: 'Semesters' }
+          ],
+        })
+      );
+    }
+  }, [isConnected]);
+
 
   function setUsername(text) {
     username = text;
@@ -592,7 +612,9 @@ function LoggedPage({ navigation }) {
       // Connexion par TouchID/FaceID
       LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
         if (result.success) {
-          ssoUnice(username, password);
+          ssoUnice(username, password, () => {
+            navigation.navigate('Semesters');
+          });
         } else {
           setLoading(false);
           haptics("error");
@@ -634,7 +656,6 @@ function LoggedPage({ navigation }) {
         setLoading(false);
         setSelectable(true);
         haptics("success");
-        navigation.navigate('Semesters');
       } else {
         setLoading(false);
         setSelectable(true);
@@ -643,6 +664,19 @@ function LoggedPage({ navigation }) {
       }
     }
   };
+
+  useEffect(() => {
+    if(isConnected) {
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            { name: 'Semesters' }
+          ],
+        })
+      );
+    }
+  }, [isConnected]);
 
   async function getMyCal(navigation) {
     setSelectable(false);
@@ -654,7 +688,7 @@ function LoggedPage({ navigation }) {
       Alert.alert("Erreur", "Le serveur backup ne peut pas être utilisé pour récupérer le calendrier. EC=0xF");
       return;
     }
-    await getCalendar(navigation);
+    await getCalendar();
     setSelectable(true);
     setLoading(false);
     navigation.navigate('ShowEDT');
@@ -685,12 +719,7 @@ function Semesters ({ navigation }) {
   const [large, setLarge] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectable, setSelectable] = useState(true);
-
-  // Correction du nom de l'étudiant
-  name = name
-    .split(" ")
-    .map(word => word[0].toUpperCase() + word.substring(1).toLowerCase())
-    .join(" ");
+  const [done, setDone] = useState(false);
 
   // Fonction de chargement des notes
   function loadGrades(sel) {
@@ -703,25 +732,36 @@ function Semesters ({ navigation }) {
   
   // Changement du texte en fonction de l'heure
   useEffect(() => {
-    if (name == null) {
-      name = "Étudiant";
-    }
+    if(!done) {
+      /* TODO: Fixer le bug de l'affichage des semestres si plus de 3 semestres
+        if (semesters.length >= 3) {
+          setLarge(true);
+        }
+      */
+  
+      if (semesters.length == 0 || semesters == null) {
+        deleteData(false, navigation);
+        Alert.alert("Erreur", "Session invalide, veuillez vous reconnecter. EC=0x=P");
+        return;
+      }
 
-    save("name", name);
-    let date = new Date();
-    let hours = date.getHours();
-    if (hours >= 5 && hours < 17) {
-      setJourNuit("Bonjour");
-    } else {
-      setJourNuit("Bonsoir");
+      if (name == null) {
+        name = "Étudiant";
+      }
+
+      save("name", name);
+      let date = new Date();
+      let hours = date.getHours();
+      if (hours >= 5 && hours < 17) {
+        setJourNuit("Bonjour");
+      } else {
+        setJourNuit("Bonsoir");
+      }
+      setDone(true);
     }
-  }, []);
+  }, [done]);
 
   function getMySemesters() {
-    if (semesters.length >= 3) {
-      setLarge(true);
-    }
-
     return semesters.map((semester) => (
       <Chip style={{ height: 32, marginBottom: 8 }} disabled={!selectable} onPress={ () => loadGrades(semester) } icon="adjust" > {semester} </Chip>
     ))
@@ -737,7 +777,7 @@ function Semesters ({ navigation }) {
       Alert.alert("Erreur", "Le serveur backup ne peut pas être utilisé pour récupérer le calendrier. EC=0xF");
       return;
     }
-    await getCalendar(navigation);
+    await getCalendar();
     setSelectable(true);
     setLoading(false);
     navigation.navigate('ShowEDT');
@@ -757,6 +797,7 @@ function Semesters ({ navigation }) {
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
 
       {getMySemesters()}
+
       <Chip style={{ height: 48, marginBottom: 8, marginTop: 8 }} disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
       <Button style={{ marginBottom: 8, marginTop: 8 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
       <Button style={ style.buttonLogout } icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
@@ -1340,6 +1381,10 @@ function ShowSettings( { navigation } ) {
     return res;
   }
 
+  function crashIt() {
+    throw new Error('This is a crash');
+  }
+
   return (
     <View style={styleScrollable.container}>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">
@@ -1353,7 +1398,7 @@ function ShowSettings( { navigation } ) {
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
       <Button style={{ marginBottom: 8 }} icon="calculator" mode="contained-tonal" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
         <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/bug") }> Signaler un bug </Button>
-        <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer les données de connexion </Button>
+        <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer toutes mes données </Button>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop:16 }} >
             <Switch onValueChange={ (value) => setHapticsBool(value) } value={hapticsOn}/>
@@ -1383,6 +1428,12 @@ function ShowSettings( { navigation } ) {
         <Button style={{ marginTop: 32 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
         <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
         <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
+
+        { // Bouton de test de crash
+          isBeta ? ( 
+            <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => crashIt() }> Forcer un crash de l'app </Button> ) : null
+        }
+        
       </ScrollView>
     </View>
   );
