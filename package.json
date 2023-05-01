@@ -9,14 +9,20 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@bugsnag/expo": "^48.1.0",
     "@expo/config-plugins": "~6.0.0",
     "@howljs/calendar-kit": "^1.13.2",
     "@react-native-async-storage/async-storage": "1.17.11",
+    "@react-native-community/netinfo": "9.3.7",
     "@react-navigation/native": "^6.1.2",
     "@react-navigation/native-stack": "^6.9.8",
     "@shopify/flash-list": "1.4.0",
     "expo": "^48.0.4",
+    "expo-application": "~5.1.1",
+    "expo-constants": "~14.2.1",
+    "expo-crypto": "~12.2.1",
     "expo-device": "~5.2.1",
+    "expo-file-system": "~15.2.2",
     "expo-haptics": "~12.2.1",
     "expo-image": "~1.0.0",
     "expo-local-authentication": "~13.3.0",
@@ -34,7 +40,9 @@
     "react-native-screens": "~3.20.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.12.9"
+    "@babel/core": "^7.12.9",
+    "@bugsnag/plugin-expo-eas-sourcemaps": "^48.1.0",
+    "@bugsnag/source-maps": "^2.3.1"
   },
   "private": true
 }
