@@ -24,7 +24,7 @@ import { Avatar, Text, TextInput,
   Button, Switch, Divider, 
   ActivityIndicator, ProgressBar, Chip,
   DataTable, Card, Provider as PaperProvider,
-  IconButton, Banner
+  IconButton, Appbar, Tooltip
 } from 'react-native-paper';
 
 // Expo API
@@ -40,7 +40,7 @@ import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TimelineCalendar, EventItem, MomentConfig } from '@howljs/calendar-kit';
 import 'react-native-gesture-handler';
-import { log } from 'react-native-reanimated';
+import { event, log } from 'react-native-reanimated';
 import Bugsnag from '@bugsnag/expo';
 
 // ---------------------------------------------
@@ -48,7 +48,7 @@ import Bugsnag from '@bugsnag/expo';
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.2.2';
+var appVersion = '1.2.3';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -310,7 +310,7 @@ var stringToColour = function(str) {
       var value = (hash >> (i * 8)) & 0xFF;
       colour += ('00' + value.toString(16)).substr(-2);
     }
-    return pSBC(0.4, colour);
+    return pSBC(0.25, colour);
 }
 
 // Récupération du calendrier de l'utilisateur
@@ -466,6 +466,7 @@ function LoginPage({ navigation }) {
   const [seePassword, setSeePassword] = useState(true);
   const [editable, setEditable] = useState(true);
   const [remember, setRemember] = useState(rememberMe);
+  const [ok, setOk] = useState(false);
 
   
   // Résultat du bouton "Se connecter"
@@ -484,7 +485,7 @@ function LoginPage({ navigation }) {
 
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
   async function ssoUnice(username, password) {
-    if(!isConnected) {
+    if(!isConnected || !ok) {
       let apiResp = await fetch(selectedServer + '/login', {
         method: 'POST',
         body: JSON.stringify({
@@ -515,7 +516,7 @@ function LoginPage({ navigation }) {
           save("passkey", password);
         }
 
-        isConnected = true;
+        setOk(true);
         name = json.name;
         semesters = json.semesters;
         setLoading(false);
@@ -530,17 +531,17 @@ function LoginPage({ navigation }) {
   };
 
   useEffect(() => {
-    if(isConnected) {
+    if(ok) {
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
           routes: [
-            { name: 'Semesters' }
+            { name: 'LoggedPage' }
           ],
         })
       );
     }
-  }, [isConnected]);
+  }, [ok]);
 
 
   function setUsername(text) {
@@ -602,9 +603,11 @@ function LoginPage({ navigation }) {
 function LoggedPage({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [selectable, setSelectable] = useState(true);
+  const [mode, setMode] = useState("notes");
 
-  function handleLogin() {
+  function handleLogin(mode = "notes") {
     haptics("medium");
+    setMode(mode);
     setLoading(true);
     if(username == "demo") {
       ssoUnice(username, password);
@@ -612,9 +615,7 @@ function LoggedPage({ navigation }) {
       // Connexion par TouchID/FaceID
       LocalAuthentication.authenticateAsync({ promptMessage:"Authentifiez-vous pour accéder à UniceNotes." }).then((result) => {
         if (result.success) {
-          ssoUnice(username, password, () => {
-            navigation.navigate('Semesters');
-          });
+          ssoUnice(username, password);
         } else {
           setLoading(false);
           haptics("error");
@@ -667,14 +668,29 @@ function LoggedPage({ navigation }) {
 
   useEffect(() => {
     if(isConnected) {
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [
-            { name: 'Semesters' }
-          ],
-        })
-      );
+      switch(mode) {
+        case "notes":
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [
+                { name: 'Semesters' }
+              ],
+            })
+          );
+          break;
+
+        case "absences":
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [
+                { name: 'ShowAbsences' }
+              ],
+            })
+          );
+          break;
+      }
     }
   }, [isConnected]);
 
@@ -700,7 +716,12 @@ function LoggedPage({ navigation }) {
         <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/white.png')} />
         <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vous êtes connecté sous le compte de : {username} - {name}</Text>
-        <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => handleLogin() } icon="school" >Notes</Chip>
+        <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes</Chip>
+        
+        {
+          //<Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => handleLogin("absences") } icon="account-question" >Absences [BETA]</Chip>
+        }
+
         <Chip style={{ height: 48, marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
         <Button style={{ marginBottom: 8 }} icon="account" mode="contained-tonal" onPress={ () => deleteData(false, navigation) }> Changer d'utilisateur </Button>
         <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
@@ -763,24 +784,8 @@ function Semesters ({ navigation }) {
 
   function getMySemesters() {
     return semesters.map((semester) => (
-      <Chip style={{ height: 32, marginBottom: 8 }} disabled={!selectable} onPress={ () => loadGrades(semester) } icon="adjust" > {semester} </Chip>
+      <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => loadGrades(semester) } icon="adjust" > {semester} </Chip>
     ))
-  }
-
-  async function getMyCal(navigation) {
-    setSelectable(false);
-    setLoading(true);
-    if (selectedServer.toString() == servers[1].toString()) {
-      setSelectable(true);
-      setLoading(false);
-      haptics("error");
-      Alert.alert("Erreur", "Le serveur backup ne peut pas être utilisé pour récupérer le calendrier. EC=0xF");
-      return;
-    }
-    await getCalendar();
-    setSelectable(true);
-    setLoading(false);
-    navigation.navigate('ShowEDT');
   }
 
   return (
@@ -798,7 +803,6 @@ function Semesters ({ navigation }) {
 
       {getMySemesters()}
 
-      <Chip style={{ height: 48, marginBottom: 8, marginTop: 8 }} disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
       <Button style={{ marginBottom: 8, marginTop: 8 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
       <Button style={ style.buttonLogout } icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
       <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
@@ -1134,21 +1138,23 @@ function ShowGrades( { navigation } ) {
 
   return (
     <View style={styleScrollable.container}>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">
-        <IconButton
-          style={{ marginLeft: 25, marginRight: 12.5 }}
-          icon="home"
-          size={20}
-          onPress={() => logout(navigation)}
-        />
-      Notes</Text>
+
+      <Appbar.Header style={{ paddingTop: 0 }}>
+        <Tooltip title="Accueil">
+          <Appbar.BackAction onPress={() => logout(navigation)} />
+        </Tooltip>
+        <Appbar.Content title="Notes" />
+        <Tooltip title="Paramètres">
+          <Appbar.Action icon="cog" onPress={() => goToSettings(navigation)} />
+        </Tooltip>
+      </Appbar.Header>
+
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }} 
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }>
         <Button style={style.buttonChangeSemester} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
-        <Button style={{ marginTop: 8, marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
-        <Text style={{ textAlign: 'left', marginBottom: 8 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
+        <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 16 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Position : {isRanking()}</Text>
         <Divider style={{ marginBottom: 16 }} />
         {showTable()}
@@ -1158,7 +1164,7 @@ function ShowGrades( { navigation } ) {
 }
 
 // Page de premier démarrage à changer (v2.0.0) -- Non fonctionnel
-function OOBE( { navigation } ) {
+function OOBE({ navigation }) {
 
   const [malus, setMalus] = useState(false);
   const [bonus, setBonus] = useState(false);
@@ -1279,14 +1285,55 @@ function OOBE( { navigation } ) {
   );
 }
 
+// Page d'affichage des absences
+function ShowAbsences({ navigation }) {
+
+  async function getAbsences() {
+    var absences = await fetch("https://api.unice.hugofnm.fr/absences");
+  }
+
+  async function showAbsences() {
+    await getAbsences();
+    if(absences != null) {
+      return absences.map((absence, index) => {
+        return (
+          <Card style={{ marginBottom: 16 }} key={index}>
+            <Card.Title title={absence.name} subtitle={absence.date} />
+            <Card.Actions>
+              <Button onPress={() => deleteAbsence(index)}>Supprimer</Button>
+            </Card.Actions>
+          </Card>
+        );
+      });
+    }
+  }
+
+  return (
+    <View style={styleScrollable.container}>
+      <Appbar.Header style={{ paddingTop: 0 }}>
+        <Appbar.BackAction onPress={() => logout(navigation)} />
+        <Appbar.Content title="Absences" />
+        <Appbar.Action icon="cog" onPress={() => goToSettings(navigation)} />
+      </Appbar.Header>
+
+      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
+        <Button style={{ marginBottom: 16 }} icon="plus" mode="contained" onPress={() => handleURL("https://absences.unice.cf")}> Justifier mon absence </Button>
+      </ScrollView>
+    </View>
+  );
+}
+
 // Page d'affichage de l'emploi du temps
 function ShowEDT( { navigation } ) {
   const [cal, setCalendar] = useState(calendar);
+  const [count, setCount] = useState(0);
+  const [view, setView] = useState("threeDays");
+  const [viewIcon, setViewIcon] = useState("magnify-plus");
   const calendarRef = useRef(null);
 
-  //MomentConfig.updateLocale('fr', {
-  //  weekdaysShort: 'Lundi_Mardi_Mercredi_Jeudi_Vendredi_Samedi_Dimanche'.split('_'),
-  //});
+  MomentConfig.updateLocale('fr', {
+    weekdaysShort: 'Lun_Mar_Mer_Jeu_Ven_Sam_Dim'.split('_'),
+  });
   
   if(cal == null) {
     AsyncStorage.getItem("calendar").then((result) => {
@@ -1304,19 +1351,36 @@ function ShowEDT( { navigation } ) {
     calendarRef.current?.goToDate({date: today, hourScroll: true, animatedDate: true, animatedHour: true})
   }
 
+  function changeView() {
+    haptics("medium");
+    if(view == "threeDays") {
+      setView("day");
+      setViewIcon("magnify-minus");
+    } else {
+      setView("threeDays");
+      setViewIcon("magnify-plus");
+    }
+  }
+
   return (
     <View style={styleScrollable.container}>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">
-        <IconButton
-          style={{ marginLeft: 25, marginRight: 12.5 }}
-          icon="home"
-          size={20}
-          onPress={() => navigation.goBack()}
-        />
-      EDT</Text>
-      <Button style={{ marginLeft: 25, marginRight: 25, marginBottom: 16 }} icon="update" mode="contained-tonal" onPress={ () => goToToday() }> Aujourd'hui </Button>  
+      <Appbar.Header style={{ paddingTop: 0 }}>
+        <Tooltip title="Accueil">
+          <Appbar.BackAction onPress={() => navigation.goBack()} />
+        </Tooltip>
+        <Appbar.Content title="EDT" />
+        <Tooltip title="Aujourd'hui">
+          <Appbar.Action icon="update" onPress={() => goToToday()}/>
+        </Tooltip>
+        <Tooltip title="Changer la vue">
+          <Appbar.Action icon={viewIcon} onPress={() => changeView()} />
+        </Tooltip>
+        <Tooltip title="Paramètres">
+          <Appbar.Action icon="cog" onPress={() => goToSettings(navigation)} />
+        </Tooltip>
+      </Appbar.Header>
 
-      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => Alert.alert(eventItem.title, eventItem.subtitle + "\n Salle : " + eventItem.description)} scrollToNow={true} viewMode="threeDays" events={cal} allowPinchToZoom start={5} end={22} /*locale="fr"*/ renderEventContent={(event) => {
+      <TimelineCalendar locale='fr' theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => Alert.alert(eventItem.title, eventItem.subtitle + "\n Salle : " + eventItem.description + "\n" + eventItem.startHour + " - " + eventItem.end)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={5} end={22} /*locale="fr"*/ renderEventContent={(event) => {
           return (
             <SafeAreaView style={{ margin: 10 }}>
               <Text style={{ fontWeight: 'bold', color:'black' }}>{event.title}</Text>
@@ -1387,14 +1451,14 @@ function ShowSettings( { navigation } ) {
 
   return (
     <View style={styleScrollable.container}>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">
-        <IconButton
-          style={{ marginLeft: 25, marginRight: 12.5 }}
-          icon="arrow-left"
-          size={20}
-          onPress={() => goBack() }
-        />
-      Paramètres</Text>
+
+      <Appbar.Header style={{ paddingTop: 0 }}>
+        <Tooltip title="Accueil">
+          <Appbar.BackAction onPress={() => navigation.goBack()} />
+        </Tooltip>
+        <Appbar.Content title="Paramètres" />
+      </Appbar.Header>
+
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
       <Button style={{ marginBottom: 8 }} icon="calculator" mode="contained-tonal" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
         <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/bug") }> Signaler un bug </Button>
@@ -1455,17 +1519,14 @@ function AverageConfig( { navigation } ) {
     if(malus) {
       matiereMalus = matiereM.split(";");
       config += "M ";
-      console.log(matiereM)
       saveUserdata("matiereMalus", matiereMalus.toString());
       
     }
     if(bonus) {
       matiereBonus = matiereB.split(";");
       config += "B ";
-      console.log(matiereB)
       saveUserdata("matiereBonus", matiereBonus.toString());
     }
-    console.log(config)
     configAverage = config;
     saveUserdata("configAverage", config);
     navigation.goBack();
@@ -1571,10 +1632,11 @@ function App() {
         <Stack.Screen name="SplashScreen" component={SplashScreen} options={{ title: 'UniceNotes', headerShown: false }} />
         <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="LoggedPage" component={LoggedPage} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false }} />  
+        <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false, gestureEnabled: false }} />  
         <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false, gestureEnabled: false}} />
         <Stack.Screen name="ShowEDT" component={ShowEDT} options={{ title: 'Emploi du temps', headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="ShowAbsences" component={ShowAbsences} options={{ title: 'Absences', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres', headerShown: false }} />
         <Stack.Screen name="AverageConfig" component={AverageConfig} options={{ title: 'Configuration', presentation: 'modal',headerShown: false, gestureEnabled: false}} />
       </Stack.Navigator>
@@ -1682,7 +1744,7 @@ const darkTheme = {
 };
 
 var choosenTheme = darkTheme;
-const colorScheme = Appearance.getColorScheme();
+var colorScheme = Appearance.getColorScheme();
 if (colorScheme === 'dark') {
   choosenTheme = darkTheme
 } else {
@@ -1712,8 +1774,7 @@ const styleScrollable = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: choosenTheme.colors.background,
-    justifyContent: 'center',
-    paddingTop: 75
+    justifyContent: 'center'
   },
 });
 
@@ -1721,7 +1782,7 @@ const styleCalendar = StyleSheet.create({
   container: {
     backgroundColor: choosenTheme.colors.background,
     cellBorderColor: choosenTheme.colors.surfaceVariant,
-    hourText: {color: choosenTheme.colors.onBackground},    
+    hourText: {color: choosenTheme.colors.onBackground}
   },
 });
 

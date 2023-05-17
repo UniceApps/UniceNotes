@@ -1,12 +1,32 @@
 # Haptics guide
 
-## Inputs
+## New
+
+### Inputs
+
+Text Input -> ```haptics(selection)```
+
+Refresh Input -> ```haptics(light)```
+
+### Buttons
+
+Normal Button -> ```haptics(medium)```
+
+URL Buttons -> ```haptics(selection)```
+
+Logout Button -> ```haptics(heavy)```
+
+Delete Button -> ```haptics(warning)```
+
+## Deprecated
+
+### Inputs
 
 Text Input -> ```Haptics.selectionAsync()```
 
 Refresh Input -> ```Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)```
 
-## Buttons
+### Buttons
 
 Normal Button -> ```Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)```
 

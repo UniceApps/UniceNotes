@@ -3,7 +3,7 @@
   <h2 align="center">UniceNotes</h2>
 
 <p align="center">
-  <b>UniceNotes</b> est un client mobile non-officiel du site web Intracursus de l'Université Côte d'Azur. Utilisant React Native, il est compatible avec la grande majorité des dispositifs mobiles (<b>iOS et Android</b>). <b>Visualisez vos notes. Sans PDF.</b>
+  <b>UniceNotes</b> est un client mobile non-officiel donnant accès à de multiples ressources provenant de l'Espace Numérique de Travail de l'I.U.T de Nice Côte d'Azur (Notes via Intracursus / Emploi du temps et Absences via GPU). Utilisant React Native, il est compatible avec la grande majorité des dispositifs mobiles (<b>iOS et Android</b>). <b>Visualisez vos notes. Sans PDF.</b>
 </p>
 
 ## ⚡️ Téléchargement
@@ -16,15 +16,10 @@
 
 <a href='https://play.google.com/store/apps/details?id=fr.hugofnm.unicenotes'><img width='200' alt='Get the app on Play Store' src='https://github.com/UniceApps/UniceNotes-Website/raw/main/assets/img/googleplay.png'/></a>
 
-## ⚠️ Erreurs pouvant apparaître sur l'application
+## ⚠️ Documentation
 
-- ```EC=0xL``` -> Erreur au login
-- ```EC=0xG``` -> Erreur à la récupération des notes
-- ```EC=0xP``` -> Erreur à la récupération des semestres
-- ```EC=0xS``` -> Erreur à la connexion au serveur
-- ```EC=0xI``` -> Mot de passe ou nom d'utilisateur incorrect
-- ```EC=0xB``` -> Authentification via SecureStore annulée (FaceID ou TouchID)
-- ```EC=0xF``` -> Connexion à des services indisponibles via le serveur de backup
+- Erreurs : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/ERRORS.md)
+- Haptics : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/HAPTICS.md)
 
 ## ⚙️ Contribution
 
@@ -49,14 +44,17 @@ L'application UniceNotes utilise :
 - La photo de profil
 - Les notes (avec les moyennes)
 - L'emploi du temps
+- Les absences, retards et exclusions
 
 
 avec votre consentement (en vous connectant sur l'application) afin de vous fournir une expérience utilisateur optimale.
-Ces données sont récupérées depuis le site web Intracursus de l'Université Côte d'Azur et ne quittent pas votre appareil.
+Ces données sont récupérées depuis le site web Intracursus ou GPU de l'Université Côte d'Azur et ne quittent pas votre appareil.
 \
-Les données sont **stockées sur votre appareil** et ne sont pas envoyées sur un serveur (sauf l'API communiquant avec Intracursus). 
+Les données sont **stockées sur votre appareil** et ne sont pas envoyées sur un serveur (Seuls vos identifiants sont utilisés sur ```login.unice.fr``` afin de vous identifier et créer un token). 
 \
-Les données sont stockées dans un format **crypté** et ne peuvent être lues que par l'application lorsque l'utilisateur s'identifie grâce à un moyen biométrique / code. [Voir l'API SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
+Les données de connexion (critiques) sont stockées dans un format **crypté** dans la Keychain d'Apple / Keystore d'Android et ne peuvent être déchiffrées que par l'utilisateur lorsqu'il s'identifie grâce à un moyen biométrique / code. [Voir l'API SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
+\
+Les données non-critiques sont stockées dans un stockage persistant nommé AsyncStorage de React Native. [Voir l'API AsyncStorage](https://react-native-async-storage.github.io/async-storage/docs/usage/)
 
 ## 📄 Légal
 
@@ -68,6 +66,8 @@ The Google Play Store logo® and the Google Play Store® are trademarks of Googl
 
 UniceNotes n'est aucunement affilié à l'Université Côte d'Azur ou à l'I.U.T. Nice Côte d'Azur.
 
-L'application UniceNotes utilise Expo.
+Toute ressemblance avec le nom de l'application, le logo et l'interface ne saurait être que fortuite.
+
+L'application UniceNotes utilise Expo, un framework basé sur React Native.
 \
-<img width='50' src='https://avatars.githubusercontent.com/u/12504344?s=200&v=4'/>
+<img src='https://repository-images.githubusercontent.com/65750241/79017180-d4ce-11e9-9955-3f0a7be00c7a'/>
