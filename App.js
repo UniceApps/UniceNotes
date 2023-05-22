@@ -2,8 +2,9 @@
 
 UniceNotes
 Visualisez vos notes. Sans PDF.
-Développé par Hugo Meleiro (@hugofnm)
+Développé par Hugo Meleiro (@hugofnm) / MetrixMedia
 MIT License
+2023
 
 */
 
@@ -38,7 +39,7 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { TimelineCalendar, EventItem, MomentConfig } from '@howljs/calendar-kit';
+import { TimelineCalendar, EventItem } from '@howljs/calendar-kit';
 import 'react-native-gesture-handler';
 import { event, log } from 'react-native-reanimated';
 import Bugsnag from '@bugsnag/expo';
@@ -48,7 +49,7 @@ import Bugsnag from '@bugsnag/expo';
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.2.3';
+var appVersion = '1.2.4';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -397,7 +398,7 @@ function SplashScreen({ navigation }) {
     .then((response) => response.json())
     .then((json) => {
       version = json.version;
-      isAvailable = json.disponible;
+      isAvailable = json.isAvailable;
       maintenance = json.maintenance;
     })
 
@@ -518,6 +519,13 @@ function LoginPage({ navigation }) {
 
         setOk(true);
         name = json.name;
+
+        if (name == null) {
+          name = "Étudiant";
+        }
+  
+        save("name", name);
+
         semesters = json.semesters;
         setLoading(false);
         haptics("success");
@@ -766,11 +774,6 @@ function Semesters ({ navigation }) {
         return;
       }
 
-      if (name == null) {
-        name = "Étudiant";
-      }
-
-      save("name", name);
       let date = new Date();
       let hours = date.getHours();
       if (hours >= 5 && hours < 17) {
@@ -797,8 +800,7 @@ function Semesters ({ navigation }) {
         style={{ alignSelf: "center", marginBottom: 16, width: 125, height: 125, borderRadius: 100 }}
         placeholder={require('./assets/profile.png')}
       />
-      <Text style={{ textAlign: 'left' }} variant="displayLarge">{jourNuit},</Text>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayMedium">{name} !</Text>
+      <Text style={{ textAlign: 'left' }} variant="displayLarge">{jourNuit} !</Text>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
 
       {getMySemesters()}
@@ -1153,7 +1155,7 @@ function ShowGrades( { navigation } ) {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }>
-        <Button style={style.buttonChangeSemester} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
+        <Button style={style.buttonActionChange} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
         <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 16 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Position : {isRanking()}</Text>
         <Divider style={{ marginBottom: 16 }} />
@@ -1330,10 +1332,6 @@ function ShowEDT( { navigation } ) {
   const [view, setView] = useState("threeDays");
   const [viewIcon, setViewIcon] = useState("magnify-plus");
   const calendarRef = useRef(null);
-
-  MomentConfig.updateLocale('fr', {
-    weekdaysShort: 'Lun_Mar_Mer_Jeu_Ven_Sam_Dim'.split('_'),
-  });
   
   if(cal == null) {
     AsyncStorage.getItem("calendar").then((result) => {
@@ -1380,7 +1378,7 @@ function ShowEDT( { navigation } ) {
         </Tooltip>
       </Appbar.Header>
 
-      <TimelineCalendar locale='fr' theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => Alert.alert(eventItem.title, eventItem.subtitle + "\n Salle : " + eventItem.description + "\n" + eventItem.startHour + " - " + eventItem.end)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={5} end={22} /*locale="fr"*/ renderEventContent={(event) => {
+      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => Alert.alert(eventItem.title, eventItem.subtitle + "\n Salle : " + eventItem.description)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={5} end={22} /*locale="fr"*/ renderEventContent={(event) => {
           return (
             <SafeAreaView style={{ margin: 10 }}>
               <Text style={{ fontWeight: 'bold', color:'black' }}>{event.title}</Text>
@@ -1762,7 +1760,7 @@ const style = StyleSheet.create({
   buttonLogout: {
     backgroundColor: choosenTheme.colors.errorContainer
   },
-  buttonChangeSemester: {
+  buttonActionChange: {
     backgroundColor: choosenTheme.colors.tertiaryContainer
   },
   textLink: {
