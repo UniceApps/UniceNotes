@@ -1,5 +1,8 @@
 # Haptics guide
 
+<p align="center">
+  <img src="https://docs.expo.dev/static/images/packages/expo-haptics.png" alt="Haptics" width="50"/>
+
 ## New
 
 ### Inputs
