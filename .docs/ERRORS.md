@@ -1,5 +1,8 @@
 # Errors guide
 
+<p align="center">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/7/74/Feedbin-Icon-error.svg" alt="Errors" width="50"/>
+
 ## Erreurs pouvant apparaître sur l'application
 
 - ```EC=0xL``` -> Erreur au login
@@ -9,3 +12,4 @@
 - ```EC=0xI``` -> Mot de passe ou nom d'utilisateur incorrect
 - ```EC=0xB``` -> Authentification via SecureStore annulée (FaceID ou TouchID)
 - ```EC=0xF``` -> Connexion à des services indisponibles via le serveur de backup
+- ```EC=0xT``` -> Vous n'êtes pas connecté à Internet

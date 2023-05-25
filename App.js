@@ -25,7 +25,8 @@ import { Avatar, Text, TextInput,
   Button, Switch, Divider, 
   ActivityIndicator, ProgressBar, Chip,
   DataTable, Card, Provider as PaperProvider,
-  IconButton, Appbar, Tooltip
+  IconButton, Appbar, Tooltip,
+  List
 } from 'react-native-paper';
 
 // Expo API
@@ -49,12 +50,13 @@ import Bugsnag from '@bugsnag/expo';
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.2.4';
+var appVersion = '1.3.0';
 var isBeta = false;
 // IMPORTANT !!!
 
 var isConnected = false; // UniceAPI login
 var dataIsLoaded = false; // JSONPDF loaded
+var apiMode = "notes"; // API mode (notes, absences)
 var semesters = []; // User's all semesters
 var semester = ''; // Selected semesters
 
@@ -156,6 +158,10 @@ var grades = []; // User's grades
 var average = ""; // User's average
 var admission = ""; // User's admission
 var position = ""; // User's position
+
+var absences = []; // User's absences
+var retards = []; // User's retards
+var exclusions = []; // User's exclusions
 
 var subjects = []; // User's subjects
 
@@ -401,6 +407,9 @@ function SplashScreen({ navigation }) {
       isAvailable = json.isAvailable;
       maintenance = json.maintenance;
     })
+    .catch((error) => {
+      Alert.alert("Erreur", "Vous n'êtes pas connecté à internet. EC=0xT");
+    });
 
     if (maintenance != "") {
       Alert.alert("Maintenance", maintenance);
@@ -454,6 +463,10 @@ function SplashScreen({ navigation }) {
       <Text style={{ textAlign: 'center' }} variant="displayLarge">UniceNotes</Text>
 
       {betaText()}
+
+
+      <IconButton style={{ marginTop: 16 }} icon="cog" mode="contained" onPress={ () => goToSettings(navigation) }/>
+
 
       <ActivityIndicator style={{ marginTop: 16 }} size="large" />
     </View>
@@ -678,6 +691,7 @@ function LoggedPage({ navigation }) {
     if(isConnected) {
       switch(mode) {
         case "notes":
+          apiMode = "notes";
           navigation.dispatch(
             CommonActions.reset({
               index: 0,
@@ -689,11 +703,12 @@ function LoggedPage({ navigation }) {
           break;
 
         case "absences":
+          apiMode = "absences";
           navigation.dispatch(
             CommonActions.reset({
               index: 0,
               routes: [
-                { name: 'ShowAbsences' }
+                { name: 'APIConnect'}
               ],
             })
           );
@@ -718,6 +733,18 @@ function LoggedPage({ navigation }) {
     navigation.navigate('ShowEDT');
   }
 
+  function getMyAbs() {
+    if (selectedServer.toString() == servers[1].toString()) {
+      setSelectable(true);
+      setLoading(false);
+      haptics("error");
+      Alert.alert("Erreur", "Le serveur backup ne peut pas être utilisé pour récupérer les absences. EC=0xF");
+      return;
+    } else {
+      handleLogin("absences");
+    }
+  }
+
   return (
     <View style={style.container}>
       <SafeAreaView style={style.container}>
@@ -725,10 +752,7 @@ function LoggedPage({ navigation }) {
         <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vous êtes connecté sous le compte de : {username} - {name}</Text>
         <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes</Chip>
-        
-        {
-          //<Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => handleLogin("absences") } icon="account-question" >Absences [BETA]</Chip>
-        }
+        <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => getMyAbs() } icon="account-question" >Absences [BETA]</Chip>
 
         <Chip style={{ height: 48, marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
         <Button style={{ marginBottom: 8 }} icon="account" mode="contained-tonal" onPress={ () => deleteData(false, navigation) }> Changer d'utilisateur </Button>
@@ -756,7 +780,7 @@ function Semesters ({ navigation }) {
       haptics("medium");
       semester = sel.toString();
       setSelectable(true);
-      navigation.navigate('APIConnect', { semester: sel });
+      navigation.navigate('APIConnect');
   }
   
   // Changement du texte en fonction de l'heure
@@ -812,7 +836,7 @@ function Semesters ({ navigation }) {
   );
 }
 
-// Page de chargement des données
+// Page de chargement des données (notes, absences, etc.)
 function APIConnect ({ navigation }) {
   const [progress, setProgress] = useState(0.1);
   const [count, setCount] = useState(0);
@@ -820,44 +844,60 @@ function APIConnect ({ navigation }) {
   useEffect(() => {
     if(count == 0) {
       setCount(1);
-      loginAPI();
+      loginAPI(apiMode);
     }
   });
 
-  async function loginAPI() {
-    if(dataIsLoaded == false){
-      let response = await fetch(selectedServer + '/load_pdf?sem=' + semester)
-      if(response.status == 200) {
-        setProgress(0.5);
-  
-        let pdfAPI = await fetch(selectedServer + '/scrape_pdf?sem=' + semester);
-    
-        if(pdfAPI.status != 200){
-          Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
+  async function loginAPI(mode) {
+    if(mode == "notes") {
+      if(dataIsLoaded == false){
+        let response = await fetch(selectedServer + '/load_pdf?sem=' + semester)
+        if(response.status == 200) {
+          setProgress(0.5);
+        
+          let pdfAPI = await fetch(selectedServer + '/scrape_pdf?sem=' + semester);
+        
+          if(pdfAPI.status != 200){
+            Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
+          }
+        
+          let json = await pdfAPI.json();
+        
+          setProgress(1);
+          if(json.grades) {
+            grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
+          } else {
+            haptics("error");
+            Alert.alert("Erreur", "Une erreur est survenue. EC=0xG");
+          }
+          admission = json.admission; // admission oui/non
+          average = json.average; // moyenne générale
+          position = json.position; // position dans le classement
+          dataIsLoaded = true;
+          navigation.goBack();
+          navigation.navigate('ShowGrades');
         }
-    
-        let json = await pdfAPI.json();
-      
-        setProgress(1);
-        if(json.grades) {
-          grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
-        } else {
+        else {
           haptics("error");
-          Alert.alert("Erreur", "Une erreur est survenue. EC=0xG");
+          Alert.alert("Erreur", "Une erreur est survenue. EC=0xL");
         }
-        admission = json.admission; // admission oui/non
-        average = json.average; // moyenne générale
-        position = json.position; // position dans le classement
-        dataIsLoaded = true;
-        navigation.goBack();
-        navigation.navigate('ShowGrades');
       }
-      else {
-        haptics("error");
-        Alert.alert("Erreur", "Une erreur est survenue. EC=0xL");
+      dataIsLoaded = true;
+    } else if(mode == "absences") {
+      let absAPI = await fetch(selectedServer + '/absences');
+        
+      if(absAPI.status != 200){
+        Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
       }
+    
+      let json = await absAPI.json();
+    
+      setProgress(1);
+      absences = json.absences; // toutes les absences
+      retards = json.retards; // tous les retards
+      exclusions = json.exclusions; // toutes les exclusions
+      navigation.navigate('ShowAbsences');
     }
-    dataIsLoaded = true;
   }
 
   return (
@@ -1290,23 +1330,63 @@ function OOBE({ navigation }) {
 // Page d'affichage des absences
 function ShowAbsences({ navigation }) {
 
-  async function getAbsences() {
-    var absences = await fetch("https://api.unice.hugofnm.fr/absences");
+  function showAbsences() {
+    if (absences.length > 0) {
+      return (absences.map((item) => (
+        <View>
+          <Card style={{ marginBottom: 16, backgroundColor: choosenTheme.colors.primaryContainer }} >
+            <Card.Title title={item.class} subtitle={"Professeur : " + item.prof} />
+            <Card.Content>
+              <Text>Date : {item.date}</Text>
+              <Text>Heure : {item.hour}</Text>
+              <Text>Type de cours : {item.type}</Text>
+              <Text>Raison : {item.reason}</Text>
+              <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
+            </Card.Content>
+          </Card>
+          <Divider style={{ marginBottom: 16 }} />
+        </View>
+      )))
+    }
   }
 
-  async function showAbsences() {
-    await getAbsences();
-    if(absences != null) {
-      return absences.map((absence, index) => {
-        return (
-          <Card style={{ marginBottom: 16 }} key={index}>
-            <Card.Title title={absence.name} subtitle={absence.date} />
-            <Card.Actions>
-              <Button onPress={() => deleteAbsence(index)}>Supprimer</Button>
-            </Card.Actions>
+  function showRetards() {
+    if (retards.length > 0) {
+      return (retards.map((item) => (
+        <View>
+          <Card style={{ marginBottom: 16, backgroundColor: choosenTheme.colors.retard }} >
+            <Card.Title title={item.class} subtitle={"Professeur : " + item.prof} />
+            <Card.Content>
+              <Text>Date : {item.date}</Text>
+              <Text>Heure : {item.hour}</Text>
+              <Text>Type de cours : {item.type}</Text>
+              <Text>Raison : {item.reason}</Text>
+              <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
+            </Card.Content>
           </Card>
-        );
-      });
+          <Divider style={{ marginBottom: 16 }} />
+        </View>
+      )))
+    }
+  }
+
+  function showExclusions() {
+    if (exclusions.length > 0) {
+      return (exclusions.map((item) => (
+        <View>
+          <Card style={{ marginBottom: 16, backgroundColor: choosenTheme.colors.errorContainer }} >
+            <Card.Title title={item.class} subtitle={"Professeur : " + item.prof} />
+            <Card.Content>
+              <Text>Date : {item.date}</Text>
+              <Text>Heure : {item.hour}</Text>
+              <Text>Type de cours : {item.type}</Text>
+              <Text>Raison : {item.reason}</Text>
+              <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
+            </Card.Content>
+          </Card>
+          <Divider style={{ marginBottom: 16 }} />
+        </View>
+      )))
     }
   }
 
@@ -1319,7 +1399,25 @@ function ShowAbsences({ navigation }) {
       </Appbar.Header>
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Button style={{ marginBottom: 16 }} icon="plus" mode="contained" onPress={() => handleURL("https://absences.unice.cf")}> Justifier mon absence </Button>
+        <Button style={ style.buttonActionChange } icon="plus" mode="contained-tonal" onPress={() => handleURL("https://absences.unice.cf")}> Justifier mon absence </Button>
+
+        <List.Accordion style={{ marginTop: 16 }}
+          title={absences.length + " absence(s)"}
+          left={props => <List.Icon {...props} icon="account-question" />}>
+          {showAbsences()}
+        </List.Accordion>
+
+        <List.Accordion
+          title={retards.length + " retard(s)"}
+          left={props => <List.Icon {...props} icon="camera-timer" />}>
+          {showRetards()}
+        </List.Accordion>
+
+        <List.Accordion
+          title={exclusions.length + " exclusion(s)"}
+          left={props => <List.Icon {...props} icon="skull-crossbones" />}>
+          {showExclusions()}
+        </List.Accordion>
       </ScrollView>
     </View>
   );
@@ -1333,15 +1431,21 @@ function ShowEDT( { navigation } ) {
   const [viewIcon, setViewIcon] = useState("magnify-plus");
   const calendarRef = useRef(null);
   
-  if(cal == null) {
-    AsyncStorage.getItem("calendar").then((result) => {
-      if (result != null) {
-        setCalendar(JSON.parse(result));
-      } else {
-        navigation.goBack();
+  useEffect(() => { 
+    if(count == 0) {
+      setCount(1);
+      if(cal == null) {
+        AsyncStorage.getItem("calendar").then((result) => {
+          if (result != null) {
+            setCalendar(JSON.parse(result));
+          } else {
+            navigation.goBack();
+          }
+        });
       }
-    });
-  }
+      setTimeout(() => goToToday(), 500);
+    }
+  });
 
   function goToToday() {
     haptics("medium");
@@ -1358,6 +1462,7 @@ function ShowEDT( { navigation } ) {
       setView("threeDays");
       setViewIcon("magnify-plus");
     }
+    setTimeout(() => goToToday(), 500);
   }
 
   return (
@@ -1378,7 +1483,7 @@ function ShowEDT( { navigation } ) {
         </Tooltip>
       </Appbar.Header>
 
-      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => Alert.alert(eventItem.title, eventItem.subtitle + "\n Salle : " + eventItem.description)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={5} end={22} /*locale="fr"*/ renderEventContent={(event) => {
+      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => Alert.alert(eventItem.title, eventItem.subtitle + "\n Salle : " + eventItem.description)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={5} end={22} renderEventContent={(event) => {
           return (
             <SafeAreaView style={{ margin: 10 }}>
               <Text style={{ fontWeight: 'bold', color:'black' }}>{event.title}</Text>
@@ -1679,6 +1784,7 @@ const lightTheme = {
     "inverseSurface": "rgb(47, 48, 51)",
     "inverseOnSurface": "rgb(241, 240, 244)",
     "inversePrimary": "rgb(155, 203, 255)",
+    "retard": "rgb(255, 220, 198)",
     "elevation": {
       "level0": "transparent",
       "level1": "rgb(239, 244, 250)",
@@ -1727,6 +1833,7 @@ const darkTheme = {
     "inverseSurface": "rgb(226, 226, 230)",
     "inverseOnSurface": "rgb(47, 48, 51)",
     "inversePrimary": "rgb(0, 98, 159)",
+    "retard": "rgb(114, 54, 0)",
     "elevation": {
       "level0": "transparent",
       "level1": "rgb(32, 37, 41)",
