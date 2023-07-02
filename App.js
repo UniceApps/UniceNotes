@@ -35,6 +35,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
+import * as Network from 'expo-network';
 
 // Third-party API
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -42,7 +43,7 @@ import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TimelineCalendar, EventItem } from '@howljs/calendar-kit';
 import 'react-native-gesture-handler';
-import { event, log } from 'react-native-reanimated';
+import { event, log, set } from 'react-native-reanimated';
 import Bugsnag from '@bugsnag/expo';
 
 // ---------------------------------------------
@@ -50,7 +51,7 @@ import Bugsnag from '@bugsnag/expo';
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.3.0';
+var appVersion = '1.3.1';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -380,6 +381,7 @@ async function getCalendar() {
 function SplashScreen({ navigation }) {
   const [count, setCount] = useState(0);
   const [isDataStored, setIsDataStored] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => { 
     if(count == 0) {
@@ -390,7 +392,16 @@ function SplashScreen({ navigation }) {
 
   async function verifyLogin() {
     // Vérification de la version de l'application en récupérant le json contenant la dernière version
-    var version, isAvailable, maintenance;
+    var version, isAvailable, maintenance, netInfos, allowConn = true;
+
+    netInfos = (await Network.getNetworkStateAsync()).isInternetReachable;
+
+    if (netInfos == false) {
+      allowConn = false;
+      setLoading(false);
+      Alert.alert("Erreur", "Vous n'êtes pas connecté à internet ! EC=0xT");
+      return;
+    }
 
     if (selectedServer == servers[1]) {
       Alert.alert("Serveur Backup", "Toutes les fonctionnalités ne sont pas disponibles en mode Backup.");
@@ -408,7 +419,9 @@ function SplashScreen({ navigation }) {
       maintenance = json.maintenance;
     })
     .catch((error) => {
-      Alert.alert("Erreur", "Vous n'êtes pas connecté à internet. EC=0xT");
+      allowConn = false;
+      setLoading(false);
+      Alert.alert("Erreur", "Le serveur n'est pas accessible ! Essayez de changer de serveur dans les paramètres. EC=0xS");
     });
 
     if (maintenance != "") {
@@ -430,13 +443,15 @@ function SplashScreen({ navigation }) {
       setUsername(await SecureStore.getItemAsync("username"));
       setPassword(await SecureStore.getItemAsync("passkey"));
 
-      if (username != null && password != null) {
+      if (username != null && password != null && allowConn == true) {
         navigation.navigate('LoggedPage');
       } else {
         username = null;
         password = null;
         setIsDataStored(false);
-        navigation.navigate('Login');
+        if(allowConn == true) {
+          navigation.navigate('Login');
+        }
       }
     }
   }
@@ -464,11 +479,9 @@ function SplashScreen({ navigation }) {
 
       {betaText()}
 
-
       <IconButton style={{ marginTop: 16 }} icon="cog" mode="contained" onPress={ () => goToSettings(navigation) }/>
 
-
-      <ActivityIndicator style={{ marginTop: 16 }} size="large" />
+      <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
     </View>
   );
 }
@@ -609,13 +622,18 @@ function LoginPage({ navigation }) {
           <Switch onValueChange={ (value) => setRememberMe(value) } disabled={!editable} value={rememberMe}/>
           <Text style={{ marginLeft:8}}> Se souvenir de moi</Text>
       </View>
-      <Button style={{ marginBottom: 16 }} disabled={!editable} icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
+      <Button style={{ marginBottom: 16 }} disabled={!editable} loading={loading} icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
       <Divider style={{ marginBottom: 16 }} />
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
       <Button style={{ marginBottom: 4 }} icon="shield-account" onPress={ () => handleURL("https://sesame.unice.fr") }> J'ai oublié mon mot de passe </Button>
-      <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
-      <Button style={{ marginBottom: 16 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
-      <ActivityIndicator animating={loading} size="large" />
+      <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
+          <Tooltip title="Mentions légales">
+            <IconButton style={{ marginBottom: 4 }} icon="license" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }/>
+          </Tooltip>
+          <Tooltip title="Code source">
+            <IconButton style={{ marginBottom: 16 }} icon="source-branch" mode="contained" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }/>
+          </Tooltip>
+      </View>
     </View>
   );
 }
@@ -625,6 +643,7 @@ function LoggedPage({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [selectable, setSelectable] = useState(true);
   const [mode, setMode] = useState("notes");
+  const [jourNuit, setJourNuit] = useState("Bonjour");
 
   function handleLogin(mode = "notes") {
     haptics("medium");
@@ -688,6 +707,14 @@ function LoggedPage({ navigation }) {
   };
 
   useEffect(() => {
+    let date = new Date();
+    let hours = date.getHours();
+    if (hours >= 5 && hours < 17) {
+      setJourNuit("Bonjour");
+    } else {
+      setJourNuit("Bonsoir");
+    }
+
     if(isConnected) {
       switch(mode) {
         case "notes":
@@ -749,18 +776,23 @@ function LoggedPage({ navigation }) {
     <View style={style.container}>
       <SafeAreaView style={style.container}>
         <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/white.png')} />
-        <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
-        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vous êtes connecté sous le compte de : {username} - {name}</Text>
+        <Text style={{ textAlign: 'center' }} variant="displayLarge">{jourNuit}.</Text>
+        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vous êtes connecté·e·s sous le compte de : {username} - {name}</Text>
         <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes</Chip>
-        <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => getMyAbs() } icon="account-question" >Absences [BETA]</Chip>
-
+        <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => getMyAbs() } icon="account-question" >Absences</Chip>
         <Chip style={{ height: 48, marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
         <Button style={{ marginBottom: 8 }} icon="account" mode="contained-tonal" onPress={ () => deleteData(false, navigation) }> Changer d'utilisateur </Button>
         <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         <Divider style={{ marginBottom: 16 }} />
-        <Button style={{ marginBottom: 4 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
-        <Button style={{ marginBottom: 16 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
-        <ActivityIndicator animating={loading} size="large" />
+        <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
+          <Tooltip title="Mentions légales">
+            <IconButton style={{ marginBottom: 4 }} icon="license" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }/>
+          </Tooltip>
+          <Tooltip title="Code source">
+            <IconButton style={{ marginBottom: 16 }} icon="source-branch" mode="contained" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }/>
+          </Tooltip>
+        </View>
+        <ActivityIndicator style={{ marginTop: 8 }} animating={loading} size="large" />
       </SafeAreaView>
     </View>
   );
@@ -768,8 +800,6 @@ function LoggedPage({ navigation }) {
 
 // Page de sélection du semestre
 function Semesters ({ navigation }) {
-  const [jourNuit, setJourNuit] = useState("Bonjour");
-  const [large, setLarge] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectable, setSelectable] = useState(true);
   const [done, setDone] = useState(false);
@@ -785,53 +815,53 @@ function Semesters ({ navigation }) {
   
   // Changement du texte en fonction de l'heure
   useEffect(() => {
-    if(!done) {
-      /* TODO: Fixer le bug de l'affichage des semestres si plus de 3 semestres
-        if (semesters.length >= 3) {
-          setLarge(true);
-        }
-      */
-  
+    if(!done) {  
       if (semesters.length == 0 || semesters == null) {
-        deleteData(false, navigation);
-        Alert.alert("Erreur", "Session invalide, veuillez vous reconnecter. EC=0x=P");
+        logout(navigation)
+        Alert.alert("Erreur", "Session invalide, veuillez vous reconnecter. EC=0xP");
         return;
-      }
-
-      let date = new Date();
-      let hours = date.getHours();
-      if (hours >= 5 && hours < 17) {
-        setJourNuit("Bonjour");
-      } else {
-        setJourNuit("Bonsoir");
       }
       setDone(true);
     }
   }, [done]);
 
   function getMySemesters() {
+    if (semesters.length == 0 || semesters == null) {
+      return <Text style={{ textAlign: 'center' }} variant="titleMedium">Session expirée... Veuillez vous reconnecter.</Text>
+    }
     return semesters.map((semester) => (
       <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => loadGrades(semester) } icon="adjust" > {semester} </Chip>
     ))
   }
 
   return (
-    <View style={style.container}>
-      <Image 
-        source={{
-          uri: selectedServer + "/avatar"
-        }} 
-        style={{ alignSelf: "center", marginBottom: 16, width: 125, height: 125, borderRadius: 100 }}
-        placeholder={require('./assets/profile.png')}
-      />
-      <Text style={{ textAlign: 'left' }} variant="displayLarge">{jourNuit} !</Text>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Veuillez sélectionner un semestre.</Text>
+    <View style={styleScrollable.container}>
 
-      {getMySemesters()}
+      <Appbar.Header style={{ paddingTop: 0 }}>
+        <Tooltip title="Accueil">
+          <Appbar.BackAction onPress={() => logout(navigation)} />
+        </Tooltip>
+        <Appbar.Content title="Semestres" />
+        <Tooltip title="Semestres">
+          <Appbar.Action icon="cog" onPress={() => goToSettings(navigation)} />
+        </Tooltip>
+      </Appbar.Header>
 
-      <Button style={{ marginBottom: 8, marginTop: 8 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
-      <Button style={ style.buttonLogout } icon="logout" mode="contained-tonal" onPress={ () => logout(navigation) }> Se déconnecter </Button>
-      <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
+      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
+        <Image 
+          source={{
+            uri: selectedServer + "/avatar"
+          }} 
+          style={{ alignSelf: "center", marginBottom: 4, marginTop: 16, width: 125, height: 125, borderRadius: 100 }}
+          placeholder={require('./assets/profile.png')}
+        />
+        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant="titleMedium">{name}</Text>
+        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleLarge'>Veuillez sélectionner un semestre.</Text>
+
+        {getMySemesters()}
+
+        <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
+      </ScrollView>
     </View>
   );
 }
@@ -1523,6 +1553,7 @@ function ShowSettings( { navigation } ) {
     setVibrations(value);
     hapticsOn = value;
     saveUserdata("haptics", value.toString());
+    haptics("error");
   }
 
   function setSelectedServer(value) {
@@ -1548,6 +1579,16 @@ function ShowSettings( { navigation } ) {
     return res;
   }
 
+  function whatHapticMode(value) {
+    var res = "contained-tonal";
+    if (hapticsOn == true && value == "ON") {
+      res = "contained";
+    } else if (hapticsOn == false && value == "OFF") {
+      res = "contained";
+    }
+    return res;
+  }
+
   function crashIt() {
     throw new Error('This is a crash');
   }
@@ -1567,10 +1608,19 @@ function ShowSettings( { navigation } ) {
         <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/bug") }> Signaler un bug </Button>
         <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer toutes mes données </Button>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop:16 }} >
-            <Switch onValueChange={ (value) => setHapticsBool(value) } value={hapticsOn}/>
-            <Text style={{ marginLeft:8}}> Activer les retours haptiques (vibrations)</Text>
-        </View>
+        <Divider style={{ marginTop: 16 }} />
+
+        <Card style={{ marginTop:16 }}>
+          <Card.Title
+              title="Retours haptiques"
+              subtitle="Activer/désactiver les vibrations"
+              left={(props) => <Avatar.Icon {...props} icon="vibrate" />}
+          />
+          <Card.Actions>
+            <Button mode={ whatHapticMode("ON") } onPress={ () => setHapticsBool(true) }>Activer</Button>
+            <Button mode={ whatHapticMode("OFF") } onPress={ () => setHapticsBool(false) }>Désactiver</Button>
+          </Card.Actions>
+        </Card>
 
         <Card style={{ marginTop:16 }}>
           <Card.Title
@@ -1583,6 +1633,8 @@ function ShowSettings( { navigation } ) {
             <Button mode={ whatSelectedServer("P") } onPress={ () => setSelectedServer("P") }>Principal</Button>
           </Card.Actions>
         </Card>
+
+        <Divider style={{ marginTop: 16 }} />
 
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">Visualisez vos notes. Sans PDF.</Text>
