@@ -36,6 +36,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import * as Network from 'expo-network';
+import * as Linking from 'expo-linking';
 
 // Third-party API
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -45,13 +46,14 @@ import { TimelineCalendar, EventItem } from '@howljs/calendar-kit';
 import 'react-native-gesture-handler';
 import { event, log, set } from 'react-native-reanimated';
 import Bugsnag from '@bugsnag/expo';
+import { setAppIcon } from "expo-dynamic-app-icon";
 
 // ---------------------------------------------
 // VARIABLES GLOBALES
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.3.1';
+var appVersion = '1.3.2';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -324,14 +326,10 @@ var stringToColour = function(str) {
 // Récupération du calendrier de l'utilisateur
 async function getCalendar() {
     haptics("medium");
-    let cal = await fetch(selectedServer + '/edt', {
+    let cal = await fetch(selectedServer + '/edt/' + username.toString(), {
       method: 'POST',
-      body: JSON.stringify({
-        username: username
-      }),
       headers: {
         "Accept": "application/json",
-        "Content-type": "application/json",
         "Charset": "utf-8"
       }
     })
@@ -602,6 +600,8 @@ function LoginPage({ navigation }) {
         onChangeText={(text) => setUsername(text)}
         onPressIn={() => haptics("selection")}
         returnKeyType="next"
+        autoCapitalize='none' 
+        autoCorrect={false} 
         onSubmitEditing={() => passwordInput.focus()}
         editable={editable}
         style={{ marginBottom: 8 }}
@@ -614,6 +614,8 @@ function LoginPage({ navigation }) {
         onPressIn={() => haptics("selection")}
         secureTextEntry={seePassword}
         returnKeyType="go"
+        autoCapitalize='none' 
+        autoCorrect={false} 
         editable={editable}
         right={<TextInput.Icon icon="eye" onPress={ () => setSeePassword(!seePassword) } />}
         style={{ marginBottom: 16 }}
@@ -625,13 +627,16 @@ function LoginPage({ navigation }) {
       <Button style={{ marginBottom: 16 }} disabled={!editable} loading={loading} icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
       <Divider style={{ marginBottom: 16 }} />
       <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
-      <Button style={{ marginBottom: 4 }} icon="shield-account" onPress={ () => handleURL("https://sesame.unice.fr") }> J'ai oublié mon mot de passe </Button>
+      <Button style={{ marginBottom: 4 }} icon="shield-account" onPress={ () => handleURL("https://sesame.unice.fr/web/app/prod/Compte/Reinitialisation/saisieNumeroEtudiant") }> J'ai oublié mon mot de passe </Button>
       <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
           <Tooltip title="Mentions légales">
             <IconButton style={{ marginBottom: 4 }} icon="license" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }/>
           </Tooltip>
           <Tooltip title="Code source">
             <IconButton style={{ marginBottom: 16 }} icon="source-branch" mode="contained" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }/>
+          </Tooltip>
+          <Tooltip title="Paramèetres">
+          <IconButton style={{ marginBottom: 4 }} icon="cog" mode="contained" onPress={ () => goToSettings(navigation) }/>
           </Tooltip>
       </View>
     </View>
@@ -785,13 +790,14 @@ function LoggedPage({ navigation }) {
         <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         <Divider style={{ marginBottom: 16 }} />
         <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
-          <Tooltip title="Mentions légales">
+        <Tooltip title="Mentions légales">
             <IconButton style={{ marginBottom: 4 }} icon="license" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }/>
           </Tooltip>
           <Tooltip title="Code source">
             <IconButton style={{ marginBottom: 16 }} icon="source-branch" mode="contained" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }/>
           </Tooltip>
         </View>
+        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleSmall'>Version {appVersion}</Text>
         <ActivityIndicator style={{ marginTop: 8 }} animating={loading} size="large" />
       </SafeAreaView>
     </View>
@@ -1091,14 +1097,6 @@ function ShowGrades( { navigation } ) {
       return (showGlobalAverage() + " (calculée)")
     }
   }
-  
-  function isRanking() {
-    if (position != "") {
-      return (position)
-    } else {
-      return ("Non disponible")
-    }
-  }
 
   function showTable() {
     return (grades.map((item) => (
@@ -1153,15 +1151,17 @@ function ShowGrades( { navigation } ) {
   */
   function showGlobalAverage() {
     grades.forEach(element => {
+      const condition = element.name.toString().toLowerCase(); // On récupère le nom de la matière en minuscule
+
       if(element.average.toString() != "Pas de moyenne disponible") { // Si la moyenne est disponible
 
-        // Vérification automatique des absences et bonus
-        if((element.name.toString().toLowerCase().includes("absences") || element.name.toString().toLowerCase().includes("bonus")) && autoSet) {
-          if(element.name.toString().toLowerCase().includes("absences")) { // Si c'est une absence on la soustrait à la moyenne
-            bonus -= parseFloat(element.average.toString());
-          }
-          if(element.name.toString().toLowerCase().includes("bonus")) { // Si c'est un bonus on l'ajoute à la moyenne
+        // Vérification automatique/manuelle des absences et bonus
+        if((condition.includes("absences") || condition.includes("absence") || condition.includes("bonus")) && autoSet) { // Vérification automatique
+          if(condition.includes("bonus")) { // Si c'est un bonus on l'ajoute à la moyenne
             bonus += parseFloat(element.average.toString());
+          }
+          if(condition.includes("absences") || condition.includes("absence")) { // Si c'est un malus on le soustrait à la moyenne
+            bonus -= parseFloat(element.average.toString());
           }
         } else if (!autoSet) { // Sinon vérification manuelle
           if (configAverage.includes("B")) { // User a choisi de mettre le bonus manuel
@@ -1175,7 +1175,10 @@ function ShowGrades( { navigation } ) {
             }
           }
         } 
-        if (!matiereBonus.find((matiere) => matiere == element.name.toString()) && !matiereMalus.find((matiere) => matiere == element.name.toString())) { // Sinon on compte comme une matière normale
+
+        // Calcul
+        if ((!matiereBonus.find((matiere) => matiere == element.name.toString()) && !matiereMalus.find((matiere) => matiere == element.name.toString())) && !(condition.includes("absences") || condition.includes("absence") || condition.includes("bonus")) ) { 
+          // Sinon on compte comme une matière normale
           moyenneCache = parseFloat(element.average.replace(" (calculée)", "").toString()); // On récupère la moyenne en chiffre lisible
 
           element.grades.forEach((grade) => { // On récupère les coefficients
@@ -1201,7 +1204,7 @@ function ShowGrades( { navigation } ) {
     moyenneGenerale += bonus; // On ajoute le bonus à la moyenne générale
     moyenneGenerale = moyenneGenerale.toFixed(2); // On arrondi la moyenne générale à 2 chiffres après la virgule
 
-    if (moyenneGenerale == "NaN") { // Si la moyenne générale est NaN 
+    if (moyenneGenerale == "NaN") { // Si la moyenne générale est not a number
       return "Non disponible";
     }
 
@@ -1226,133 +1229,17 @@ function ShowGrades( { navigation } ) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }>
         <Button style={style.buttonActionChange} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
-        <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 16 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
-        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">Position : {isRanking()}</Text>
-        <Divider style={{ marginBottom: 16 }} />
+        <Text style={{ textAlign: 'left', marginTop: 16 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
+
+        { // Affiche position si disponible
+          position != "" ? ( 
+            <Text style={{ textAlign: 'left', marginTop: 8 }} variant="titleMedium">Position : {position}</Text>
+          ) : null
+        }
+
+        <Divider style={{ marginBottom: 16, marginTop: 16 }} />
         {showTable()}
       </ScrollView>
-    </View>
-  );
-}
-
-// Page de premier démarrage à changer (v2.0.0) -- Non fonctionnel
-function OOBE({ navigation }) {
-
-  const [malus, setMalus] = useState(false);
-  const [bonus, setBonus] = useState(false);
-
-  const [matiereMalus, setMatiereMalus] = useState("");
-  const [matiereBonus, setMatiereBonus] = useState("");
-
-  const [text, setText] = useState(['Afin de pouvoir afficher votre moyenne générale, vous devez configurer certains éléments.', 'Tout d\'abord, avez-vous sur vos notes, une \"Pénalité d\'absence\" ?','Ensuite, veuillez préciser si oui ou non vous avez un bonus sur votre moyenne', 'Merci, veuillez vérifier et valider vos choix.','Veuillez sélectionner la matière correspondante :']);
-  const [whichText, setWhichText] = useState(0);
-
-  const [showFirst, setShowFirst] = useState(false);
-  const [showSecond, setShowSecond] = useState(false);
-  const [showThird, setShowThird] = useState(false);
-  const [showSubMalus, setSubMalus] = useState(false);
-  const [showSubBonus, setSubBonus] = useState(false);
-
-  function cancel() {
-    // changer ca pour que ca affiche button config sur grade
-    // configAverage = true;
-    // navigation.goBack();
-    
-    setWhichText(0);
-    setShowFirst(false);
-    setShowSecond(false);
-    setShowThird(false);
-    setSubMalus(false);
-    setSubBonus(false);
-    setMalus(false);
-    setBonus(false);
-  }
-
-  function firstDialogue() {
-    setWhichText(1);
-    setShowFirst(true);
-  }
-
-  function secondDialogue() {
-    if(malus == true) {
-      grades.map((item) => {
-        console.log(item.name);
-      })
-      setShowFirst(false);
-      setWhichText(4);
-      setSubMalus(true);
-    } else {
-    setWhichText(2);
-    setShowFirst(false);
-    setShowSecond(true);
-    }
-  }
-
-  function thirdDialogue() {
-    if(bonus == true) {
-      setShowSecond(false);
-      setWhichText(4);
-      setSubBonus(true);
-    }
-    setWhichText(3);
-    setShowSecond(false);
-    setShowThird(true);
-  }
-
-  function validate() {
-  }
-
-  return (
-    <View style={style.container}>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Configuration</Text>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleLarge'>{text[whichText]}</Text>
-
-      { // Demande si le malus est présent
-      showFirst ? ( 
-        <><Switch value={malus} onValueChange={() => setMalus(!malus)} />
-        <Button style={{ marginTop: 16 }} mode="contained-tonal" onPress={() => secondDialogue()}> Suivant </Button></> ) : null
-      }
-
-      { // Demande si le bonus est présent
-      showSecond ? ( 
-        <><Switch value={bonus} onValueChange={() => setBonus(!bonus)} />
-        <Button style={{ marginTop: 16 }} mode="contained-tonal" onPress={() => thirdDialogue()}> Suivant </Button></> ) : null
-      }
-
-      { // Demande validation
-      showThird ? ( 
-        <><Text style={{ textAlign: 'left', marginBottom: 8 }} variant='titleLarge'>Malus : {matiereMalus}</Text>
-        <Text style={{ textAlign: 'left' }} variant='titleLarge'>Bonus : {matiereBonus}</Text>
-        <Button style={{ marginTop: 16 }} icon="check" mode="contained" onPress={() => validate()}> Valider </Button></> ) : null
-      }
-
-      {
-      showSubMalus ? (
-        <View>
-          {grades.map((grade) => {
-              <><Chip style={{ marginTop: 16 }} mode="flat" onPress={() => setMatiereMalus(grade.name)}> {grade.name} </Chip></>
-          })}
-          <Chip style={{ marginTop: 16 }} mode="flat" onPress={() => setMatiereMalus("hallo")}> hallo </Chip>
-        </View> ) : null
-      }
-
-      { // Demande matière malus
-        grades.map((grade) => {
-          if(showSubMalus == true) {
-            <Chip style={{ marginTop: 16 }} mode="flat" onPress={() => setMatiereMalus(grade.name)}> {grade.name} </Chip>
-          }
-        })
-      }
-
-      { // Premier bouton
-      !showFirst && !showSecond && !showThird && !showSubMalus && !showSubBonus ? (
-        <Button style={{ marginTop: 16 }} mode="contained-tonal" onPress={ () => firstDialogue() }> Suivant </Button> ) : null
-      }
-
-      { // Bouton annuler
-      !showThird ? (
-        <Button style={{ marginTop: 16 }} icon="location-exit" mode="contained" onPress={ () => cancel() }> Annuler </Button> ) : null
-      }
     </View>
   );
 }
@@ -1598,7 +1485,7 @@ function ShowSettings( { navigation } ) {
 
       <Appbar.Header style={{ paddingTop: 0 }}>
         <Tooltip title="Accueil">
-          <Appbar.BackAction onPress={() => navigation.goBack()} />
+          <Appbar.BackAction onPress={() => goBack()} />
         </Tooltip>
         <Appbar.Content title="Paramètres" />
       </Appbar.Header>
@@ -1634,6 +1521,17 @@ function ShowSettings( { navigation } ) {
           </Card.Actions>
         </Card>
 
+        <Card style={{ marginTop:16 }}>
+          <Card.Title
+              title="Sélection de l'icône"
+              subtitle="Changez l'icône de l'application"
+              left={(props) => <Avatar.Icon {...props} icon="shape-square-rounded-plus" />}
+          />
+          <Card.Actions>
+            <Button mode={"contained-tonal"} onPress={ () => navigation.navigate("IconConfig") }>Choisir</Button>
+          </Card.Actions>
+        </Card>
+
         <Divider style={{ marginTop: 16 }} />
 
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
@@ -1650,9 +1548,50 @@ function ShowSettings( { navigation } ) {
 
         { // Bouton de test de crash
           isBeta ? ( 
-            <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => crashIt() }> Forcer un crash de l'app </Button> ) : null
+            <>
+              <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => crashIt() }> Forcer un crash de l'app </Button> 
+            </>
+            ) : null
         }
+
+        <Divider style={{ marginTop: 16 }} />
         
+      </ScrollView>
+    </View>
+  );
+}
+
+// Page de changement d'icône
+function IconConfig( { navigation } ) {
+  
+  function changeIconHome(value) {
+    haptics("medium");
+    if(!__DEV__){
+      Alert.alert("Icône modifiée");
+      setAppIcon(value);
+    } else {
+      console.log("Changement d'icône : " + value);
+    }
+  }
+
+  return (
+    <View style={styleScrollable.container}>
+      <Appbar.Header style={{ paddingTop: 0 }}>
+        <Tooltip title="Accueil">
+          <Appbar.BackAction onPress={() => navigation.goBack()} />
+        </Tooltip>
+        <Appbar.Content title="Icône" />
+      </Appbar.Header>
+
+      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Choisissez votre icône :</Text>
+        <Chip style={{ height: 48, marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("default") }> Par défaut </Chip>
+        <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
+        <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_beach.png')}/>} onPress={ () => changeIconHome("beach") }> Beach </Chip>
+        <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_melted.png')}/>} onPress={ () => changeIconHome("melted") }> Melted </Chip>
+        <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_text.png')}/>} onPress={ () => changeIconHome("text") }> Text </Chip>
+        <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_zoomed.png')}/>} onPress={ () => changeIconHome("zoomed") }> Zoomed </Chip>
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Vous trouvez pas "l'icône" qu'il vous faut ? Envoyez-nous vos oeuvres d'art à <Text style={style.textLink} onPress={() => Linking.openURL("mailto://oeuvredartpourlappliunicenotes@metrixmedia.fr")}> oeuvredartpourlappliunicenotes@metrixmedia.fr </Text></Text>
       </ScrollView>
     </View>
   );
@@ -1793,7 +1732,8 @@ function App() {
         <Stack.Screen name="ShowEDT" component={ShowEDT} options={{ title: 'Emploi du temps', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowAbsences" component={ShowAbsences} options={{ title: 'Absences', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres', headerShown: false }} />
-        <Stack.Screen name="AverageConfig" component={AverageConfig} options={{ title: 'Configuration', presentation: 'modal',headerShown: false, gestureEnabled: false}} />
+        <Stack.Screen name="IconConfig" component={IconConfig} options={{ title: 'Icône', presentation: 'modal', headerShown: false, gestureEnabled: true  }} />
+        <Stack.Screen name="AverageConfig" component={AverageConfig} options={{ title: 'Configuration', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
