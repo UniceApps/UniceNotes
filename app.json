@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "1.3.1",
+    "version": "1.3.2",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -24,11 +24,11 @@
         "CFBundleDevelopmentRegion": "fr"
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "4.1.0"
+      "buildNumber": "4.2.1"
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 12
+      "versionCode": 13
     },
     "extra": {
       "eas": {
@@ -40,7 +40,36 @@
     },
     "owner": "hugofnm",
     "plugins": [
-      "@bugsnag/plugin-expo-eas-sourcemaps"
+      "@bugsnag/plugin-expo-eas-sourcemaps",
+      [
+        "expo-dynamic-app-icon",
+        {
+          "default": { // icon name
+            "image": "./assets/icon.png", // icon path
+            "prerendered": false
+          },
+          "ardente": {
+            "image": "./assets/icons/icon_ardente.png",
+            "prerendered": false
+          },
+          "beach": {
+            "image": "./assets/icons/icon_beach.png",
+            "prerendered": false
+          },
+          "melted": {
+            "image": "./assets/icons/icon_melted.png",
+            "prerendered": false
+          },
+          "text": {
+            "image": "./assets/icons/icon_text.png",
+            "prerendered": false
+          },
+          "zoomed": {
+            "image": "./assets/icons/icon_zoomed.png",
+            "prerendered": false
+          }
+        }
+      ]
     ]
   }
 }
