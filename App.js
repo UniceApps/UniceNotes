@@ -1585,7 +1585,7 @@ function IconConfig( { navigation } ) {
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Choisissez votre icône :</Text>
-        <Chip style={{ height: 48, marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("default") }> Par défaut </Chip>
+        <Chip style={{ height: 48, marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut </Chip>
         <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
         <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_beach.png')}/>} onPress={ () => changeIconHome("beach") }> Beach </Chip>
         <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_melted.png')}/>} onPress={ () => changeIconHome("melted") }> Melted </Chip>

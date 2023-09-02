@@ -24,7 +24,7 @@
         "CFBundleDevelopmentRegion": "fr"
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "4.2.1"
+      "buildNumber": "4.2.2"
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
@@ -44,7 +44,7 @@
       [
         "expo-dynamic-app-icon",
         {
-          "default": { // icon name
+          "unicenotes": { // icon name
             "image": "./assets/icon.png", // icon path
             "prerendered": false
           },
