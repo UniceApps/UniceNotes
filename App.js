@@ -13,7 +13,7 @@ MIT License
 // ---------------------------------------------
 
 // React API
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Alert, View, StyleSheet, 
   StatusBar, ScrollView, RefreshControl,
   Appearance, BackHandler, SafeAreaView,
@@ -26,7 +26,7 @@ import { Avatar, Text, TextInput,
   ActivityIndicator, ProgressBar, Chip,
   DataTable, Card, Provider as PaperProvider,
   IconButton, Appbar, Tooltip,
-  List
+  List, configureFonts
 } from 'react-native-paper';
 
 // Expo API
@@ -37,15 +37,22 @@ import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import * as Network from 'expo-network';
 import * as Linking from 'expo-linking';
+import * as Font from 'expo-font';
 
 // Third-party API
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TimelineCalendar, EventItem } from '@howljs/calendar-kit';
-import 'react-native-gesture-handler';
-import { event, log, set } from 'react-native-reanimated';
+import Animated, { event, log, set, Easing, loop, useSharedValue, useAnimatedStyle, withSpring, withRepeat, withSequence, } from 'react-native-reanimated';
 import Bugsnag from '@bugsnag/expo';
+import LottieView from 'lottie-react-native';
+import BottomSheet, { BottomSheetView, BottomSheetTextInput } from "@gorhom/bottom-sheet";
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as FileSystem from 'expo-file-system';
+
+// Disable this when using Expo Go
 import { setAppIcon } from "expo-dynamic-app-icon";
 
 // ---------------------------------------------
@@ -53,7 +60,7 @@ import { setAppIcon } from "expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.3.2';
+var appVersion = '1.4.0';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -62,6 +69,7 @@ var dataIsLoaded = false; // JSONPDF loaded
 var apiMode = "notes"; // API mode (notes, absences)
 var semesters = []; // User's all semesters
 var semester = ''; // Selected semesters
+var calendar = {}; // User's calendar
 
 if (!__DEV__) {
   Bugsnag.start();
@@ -113,15 +121,6 @@ var hapticsOn = AsyncStorage.getItem("haptics").then((result) => {
     hapticsOn = true;
   }
 }); // Haptics on/off
-
-var calendar = AsyncStorage.getItem("calendar").then((result) => {
-  if (result != null) {
-    //calendar = JSON.parse(result);
-    calendar = null;
-  } else {
-    calendar = null;
-  }
-}); // Emploi du temps sur le calendrier !! REPARER QUAND OFFLINE FONCTIONNEL !!
 
 var configAverage = AsyncStorage.getItem("configAverage").then((result) => {
   if (result != null) {
@@ -197,8 +196,8 @@ async function deleteData(warnings = false, navigation) {
   autoSet = true;
   await AsyncStorage.removeItem("haptics");
   hapticsOn = true;
-  await AsyncStorage.removeItem("calendar");
-  calendar = null;
+  await saveJSONToFile({});
+  calendar = {};
   await AsyncStorage.removeItem("configAverage");
   configAverage = "";
   await AsyncStorage.removeItem("matiereBonus");
@@ -283,6 +282,29 @@ function goToSettings(navigation) {
 // FONCTIONS API EMPLOI DU TEMPS
 // ---------------------------------------------
 
+const saveJSONToFile = async (data) => {
+  const fileUri = FileSystem.documentDirectory + 'calendar.json'; // Specify the file path and name
+
+  try {
+    await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(data));
+  } catch (error) {
+    console.error('Error saving JSON file:', error);
+  }
+};
+
+const readJSONFromFile = async () => {
+  const fileUri = FileSystem.documentDirectory + 'calendar.json'; // Specify the file path and name
+
+  try {
+    const jsonContent = await FileSystem.readAsStringAsync(fileUri);
+    const parsedData = JSON.parse(jsonContent);
+    return parsedData;
+  } catch (error) {
+    console.error('Error reading JSON file:', error);
+    return null;
+  }
+};
+
 // Lighten the color
 const pSBC=(p,c0,c1,l)=>{
     let r,g,b,P,f,t,h,i=parseInt,m=Math.round,a=typeof(c1)=="string";
@@ -323,52 +345,64 @@ var stringToColour = function(str) {
     return pSBC(0.25, colour);
 }
 
+// Récupération du calendrier de l'utilisateur depuis le cache
+async function getCalendarFromCache() {
+  var cal = await readJSONFromFile();
+
+  formattedCal = [];
+
+  cal.map((item) => {
+    formattedCal.push({
+      id : item.id,
+      start: item.start_time,
+      end: item.end_time,
+      title: item.description,
+      subtitle: item.summary,
+      description: item.location,
+      color: stringToColour(item.description)
+    })
+  });
+
+  calendar = formattedCal;
+  return formattedCal;
+}
+
 // Récupération du calendrier de l'utilisateur
 async function getCalendar() {
     haptics("medium");
-    let cal = await fetch(selectedServer + '/edt/' + username.toString(), {
-      method: 'POST',
-      headers: {
-        "Accept": "application/json",
-        "Charset": "utf-8"
-      }
-    })
+    var netInfos = (await Network.getNetworkStateAsync()).isInternetReachable;
 
-    // TODO : Offline mode
-    /*
-    if (cal.status != 200) {
-      cal = AsyncStorage.getItem("calendar").then((result) => {
-        if (result != null) {
-          cal = JSON.parse(result);
-          setLoading(false);
-        } else {
-          setLoading(false);
-          haptics("error");
-          Alert.alert("Erreur", "Impossible de récupérer le calendrier. EC=0xC");
-          return;
+    if (netInfos == true) {
+      var cal = await fetch(selectedServer + '/edt/' + username.toString(), {
+        method: 'POST',
+        headers: {
+          "Accept": "application/json",
+          "Charset": "utf-8"
         }
-      });
-    }
-    */
-
-    cal = await cal.json();
-
-    formattedCal = [];
-
-    cal.map((item) => {
-      formattedCal.push({
-        id : item.id,
-        start: item.start_time,
-        end: item.end_time,
-        title: item.description,
-        subtitle: item.summary,
-        description: item.location,
-        color: stringToColour(item.description)
       })
-    });
 
-    saveUserdata("calendar", formattedCal.toString());
-    calendar = formattedCal;
+      cal = await cal.json();
+      saveJSONToFile(cal);
+
+      formattedCal = [];
+
+      cal.map((item) => {
+        formattedCal.push({
+          id : item.id,
+          start: item.start_time,
+          end: item.end_time,
+          title: item.description,
+          subtitle: item.summary,
+          description: item.location,
+          color: stringToColour(item.description)
+        })
+      });
+
+      return formattedCal;
+    } else {
+      formattedCal = await getCalendarFromCache();
+      return formattedCal;
+    }
 }
 
 // ---------------------------------------------
@@ -380,24 +414,26 @@ function SplashScreen({ navigation }) {
   const [count, setCount] = useState(0);
   const [isDataStored, setIsDataStored] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [internetReach, setInternetReach] = useState(true);
 
   useEffect(() => { 
     if(count == 0) {
       setCount(1);
+      setLoading(true);
       verifyLogin();
     }
   });
 
   async function verifyLogin() {
     // Vérification de la version de l'application en récupérant le json contenant la dernière version
-    var version, isAvailable, maintenance, netInfos, allowConn = true;
+    var version, isAvailable, maintenance, netInfos = true;
 
     netInfos = (await Network.getNetworkStateAsync()).isInternetReachable;
 
     if (netInfos == false) {
-      allowConn = false;
+      setInternetReach(false);
       setLoading(false);
-      Alert.alert("Erreur", "Vous n'êtes pas connecté à internet ! EC=0xT");
+      Alert.alert("Erreur", "Vous n'êtes pas connecté à Internet ! EC=0xT");
       return;
     }
 
@@ -417,7 +453,7 @@ function SplashScreen({ navigation }) {
       maintenance = json.maintenance;
     })
     .catch((error) => {
-      allowConn = false;
+      setInternetReach(false)
       setLoading(false);
       Alert.alert("Erreur", "Le serveur n'est pas accessible ! Essayez de changer de serveur dans les paramètres. EC=0xS");
     });
@@ -441,14 +477,16 @@ function SplashScreen({ navigation }) {
       setUsername(await SecureStore.getItemAsync("username"));
       setPassword(await SecureStore.getItemAsync("passkey"));
 
-      if (username != null && password != null && allowConn == true) {
+      if (username != null && password != null && internetReach == true) {
+        setLoading(false);
         navigation.navigate('LoggedPage');
       } else {
         username = null;
         password = null;
         setIsDataStored(false);
-        if(allowConn == true) {
-          navigation.navigate('Login');
+        if(internetReach == true) {
+          setLoading(false);
+          navigation.navigate('OOBE');
         }
       }
     }
@@ -470,6 +508,21 @@ function SplashScreen({ navigation }) {
     }
   }
 
+  async function getMyCal(navigation) {
+    if (selectedServer.toString() == servers[1].toString()) {
+      haptics("error");
+      Alert.alert("Erreur", "Le serveur backup ne peut pas être utilisé pour récupérer le calendrier. EC=0xF");
+      return;
+    }
+    calendar = await getCalendarFromCache();
+    navigation.navigate('ShowEDT');
+  }
+
+  function refresh() {
+    setInternetReach(true);
+    setCount(0);
+  }
+
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: choosenTheme.colors.background }}>
       <Image source={require('./assets/color.png')} style={{ width: 200, height: 200, marginBottom: 16 }} />
@@ -477,17 +530,63 @@ function SplashScreen({ navigation }) {
 
       {betaText()}
 
-      <IconButton style={{ marginTop: 16 }} icon="cog" mode="contained" onPress={ () => goToSettings(navigation) }/>
+      { !internetReach ? (
+        <Button style={{ marginTop: 16 }} icon="calendar-sync-outline" mode="contained" onPress={ () => getMyCal(navigation) }>Emploi du temps (hors-ligne)</Button>
+      ) : ( null )}
+
+      <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
+        <Tooltip title="Paramètres">
+          <IconButton style={{ marginTop: 16 }} icon="cog" mode="contained" onPress={ () => goToSettings(navigation) }/>
+        </Tooltip>
+        <Tooltip title="Rafraîchir">
+          <IconButton style={{ marginTop: 16 }} icon="refresh" mode="contained" onPress={ () => refresh() }/>
+        </Tooltip>
+      </View>
 
       <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
     </View>
   );
 }
 
-// Page de connexion à l'application (login)
-function LoginPage({ navigation }) {
+// Page OOBE (On-boarding experience aka LoginPage)
+function OOBE({ navigation }) {
+  const [secondCard, setSecondCard] = useState(false);
+  const [thirdCard, setThirdCard] = useState(false);
+  const insets = useSafeAreaInsets();
 
-  const [loading, setLoading] = useState(false);
+  // ----------------
+  // Animation stuff
+  // ----------------
+
+  const rotation = useSharedValue(0);
+
+  // Configure the animation of the logo
+  const rotateConfig = {
+    damping: 2,
+    stiffness: 15,
+  };
+
+  // Define the rotation animation
+  rotation.value = withRepeat(
+    withSequence(
+      withSpring(0, rotateConfig),
+      withSpring(360, rotateConfig)
+    ),
+    -1, // -1 means infinite loop
+    false // use false to indicate non-reversing rotation
+  );
+
+  // Create an animated style for the logo
+  const animatedStyleLogo = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotate: `${rotation.value}deg` }],
+    };
+  });
+
+  // ----------------
+  // Login stuff
+  // ----------------
+
   const [seePassword, setSeePassword] = useState(true);
   const [editable, setEditable] = useState(true);
   const [remember, setRemember] = useState(rememberMe);
@@ -502,8 +601,8 @@ function LoginPage({ navigation }) {
     } else {
       Keyboard.dismiss();
       haptics("medium");
-      setLoading(true);
       setEditable(false);
+      handleButtonPress();
       ssoUnice(username, password);
     }
   }
@@ -527,7 +626,6 @@ function LoginPage({ navigation }) {
       if(!apiResp.ok){
         haptics("error");
         Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
-        setLoading(false);
         setEditable(true);
       }
 
@@ -551,10 +649,8 @@ function LoginPage({ navigation }) {
         save("name", name);
 
         semesters = json.semesters;
-        setLoading(false);
         haptics("success");
       } else {
-        setLoading(false);
         setEditable(true);
         haptics("warning");
         Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
@@ -575,7 +671,6 @@ function LoginPage({ navigation }) {
     }
   }, [ok]);
 
-
   function setUsername(text) {
     username = text;
   }
@@ -589,58 +684,102 @@ function LoginPage({ navigation }) {
     rememberMe = bool;
   }
 
-  return (
-    <View style={style.container}>
-      <Avatar.Image style={{ alignSelf: "center", marginBottom: 8, marginTop: 64 }} size={100} source={require('./assets/white.png')} />
-      <Text style={{ textAlign: 'center' }} variant="displayLarge">Bienvenue.</Text>
-      <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Veuillez entrer vos identifiants Sésame (I.U.T. Nice Côte d'Azur) pour continuer.</Text>
-      <TextInput
-        label="Nom d'utilisateur"
-        defaultValue={username}
-        onChangeText={(text) => setUsername(text)}
-        onPressIn={() => haptics("selection")}
-        returnKeyType="next"
-        autoCapitalize='none' 
-        autoCorrect={false} 
-        onSubmitEditing={() => passwordInput.focus()}
-        editable={editable}
-        style={{ marginBottom: 8 }}
+  const handleButtonPress = () => {
+    if(!secondCard && !thirdCard) {
+      setSecondCard(!secondCard);
+    }
+    if(secondCard && !thirdCard) {
+      setThirdCard(!thirdCard);
+    }
+  };
+
+  function goToSettingsSpecial(navigation) {
+    haptics("medium");
+    navigation.goBack();
+    navigation.navigate('ShowSettings');
+  }
+
+  return (  
+    <SafeAreaView style={style.container}>
+      <LottieView
+        autoPlay
+        loop
+        resizeMode='cover'
+        source={require('./assets/lottie/background_login')}
       />
-      <TextInput
-        ref={(input) => passwordInput = input}
-        label='Mot de passe'
-        defaultValue={password}
-        onChangeText={(text) => setPassword(text)}
-        onPressIn={() => haptics("selection")}
-        secureTextEntry={seePassword}
-        returnKeyType="go"
-        autoCapitalize='none' 
-        autoCorrect={false} 
-        editable={editable}
-        right={<TextInput.Icon icon="eye" onPress={ () => setSeePassword(!seePassword) } />}
-        style={{ marginBottom: 16 }}
-      />
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
-          <Switch onValueChange={ (value) => setRememberMe(value) } disabled={!editable} value={rememberMe}/>
-          <Text style={{ marginLeft:8}}> Se souvenir de moi</Text>
+      <View style={{ flex: 1, alignSelf: 'center', height:'auto', marginTop: insets.top*2 }}>
+        <Animated.View style={[ animatedStyleLogo ]}>
+          <Image source={require('./assets/color.png')} style={{ width: 200, height: 200 }} />
+        </Animated.View>
       </View>
-      <Button style={{ marginBottom: 16 }} disabled={!editable} loading={loading} icon="login" mode="contained-tonal" onPress={ () => handleLogin() }> Se connecter </Button>
-      <Divider style={{ marginBottom: 16 }} />
-      <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vos données sont sécurisées et ne sont sauvegardées que sur votre téléphone.</Text>
-      <Button style={{ marginBottom: 4 }} icon="shield-account" onPress={ () => handleURL("https://sesame.unice.fr/web/app/prod/Compte/Reinitialisation/saisieNumeroEtudiant") }> J'ai oublié mon mot de passe </Button>
-      <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
-          <Tooltip title="Mentions légales">
-            <IconButton style={{ marginBottom: 4 }} icon="license" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }/>
-          </Tooltip>
-          <Tooltip title="Code source">
-            <IconButton style={{ marginBottom: 16 }} icon="source-branch" mode="contained" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }/>
-          </Tooltip>
-          <Tooltip title="Paramèetres">
-          <IconButton style={{ marginBottom: 4 }} icon="cog" mode="contained" onPress={ () => goToSettings(navigation) }/>
-          </Tooltip>
-      </View>
-    </View>
-  );
+      {secondCard ? (
+        thirdCard ? (
+          <BottomSheet enableDynamicSizing contentHeight={32} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
+            <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
+              <Text style={{ textAlign: 'left', marginBottom: 16, marginTop: 8 }} variant="displayMedium">Connexion ...</Text>
+              <ActivityIndicator style={{ marginBottom: 32 }} animating={true} size="large" />
+            </BottomSheetView>
+          </BottomSheet>
+        ) : (
+          <BottomSheet enableDynamicSizing keyboardBehavior={'interactive'} keyboardBlurBehavior={"restore"} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
+            <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
+              <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">Se connecter</Text>
+              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Utilisez votre compte Sésame (np123456) afin de vous connecter.</Text>
+              <BottomSheetTextInput 
+                  placeholder="Nom d'utilisateur"
+                  defaultValue={username}
+                  onChangeText={(text) => setUsername(text)}
+                  onPressIn={() => haptics("selection")}
+                  returnKeyType="next"
+                  autoCapitalize='none' 
+                  autoComplete='username'
+                  autoCorrect={false} 
+                  onSubmitEditing={() => passwordInput.focus()}
+                  editable={editable}
+                  style={{ marginBottom: 8, borderRadius: 10, fontSize: 16, lineHeight: 20, padding: 8, backgroundColor: 'rgba(151, 151, 151, 0.25)', color: choosenTheme.colors.onBackground }}
+                />
+                <BottomSheetTextInput 
+                  ref={(input) => passwordInput = input}
+                  placeholder='Mot de passe'
+                  defaultValue={password}
+                  onChangeText={(text) => setPassword(text)}
+                  onPressIn={() => haptics("selection")}
+                  secureTextEntry={seePassword}
+                  returnKeyType="go"
+                  autoCapitalize='none'
+                  autoComplete='password' 
+                  autoCorrect={false} 
+                  editable={editable}
+                  style={{ marginBottom: 16, borderRadius: 10, fontSize: 16, lineHeight: 20, padding: 8, backgroundColor: 'rgba(151, 151, 151, 0.25)', color: choosenTheme.colors.onBackground }}
+                />
+                <Button style={{ marginBottom: 8 }} disabled={!editable} icon="login" mode="contained" onPress={ () => handleLogin() }> Se connecter </Button>
+                <Button style={{ marginBottom: insets.bottom }} icon="shield-account" onPress={() => handleURL("https://sesame.unice.fr/web/app/prod/Compte/Reinitialisation/saisieNumeroEtudiant")} > J'ai oublié mon mot de passe </Button>
+            </BottomSheetView>
+          </BottomSheet>
+        )
+      ) : (
+        <BottomSheet enableDynamicSizing contentHeight={128} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
+            <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25}}>
+              <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">UniceNotes</Text>
+              <Text style={{ textAlign: 'left', marginBottom: 8 }} variant='titleLarge'>Application réservée à l'I.U.T. de Nice Côte d'Azur.</Text>
+              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Bienvenu·e·s sur l'application qui remplace des sites datant de la préhistoire, par une interface moderne, rapide et facile d'utilisation.</Text>
+              <Button style={{ marginBottom: 16 }} icon="skip-next" mode="contained" onPress={ () => handleButtonPress() }> Suivant </Button>
+              <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
+                <Tooltip title="Mentions légales">
+                  <IconButton style={{ marginBottom: 4 }} icon="license" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }/>
+                </Tooltip>
+                <Tooltip title="Code source">
+                  <IconButton style={{ marginBottom: 16 }} icon="source-branch" mode="contained" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }/>
+                </Tooltip>
+                <Tooltip title="Paramètres">
+                  <IconButton style={{ marginBottom: insets.bottom }} icon="cog" mode="contained" onPress={ () => goToSettingsSpecial(navigation) }/>
+                </Tooltip>
+              </View>
+            </BottomSheetView>
+        </BottomSheet>
+      )}
+    </SafeAreaView>
+  )
 }
 
 // Page de connexion à l'application si les identifiants sont sauvegardés
@@ -649,6 +788,9 @@ function LoggedPage({ navigation }) {
   const [selectable, setSelectable] = useState(true);
   const [mode, setMode] = useState("notes");
   const [jourNuit, setJourNuit] = useState("Bonjour");
+  const [nextEvent, setNextEvent] = useState({summary: "Chargement...", location: "Chargement..."});
+  const [nextEventLoaded, setNextEventLoaded] = useState(false);
+  const insets = useSafeAreaInsets();
 
   function handleLogin(mode = "notes") {
     haptics("medium");
@@ -711,6 +853,28 @@ function LoggedPage({ navigation }) {
     }
   };
 
+  async function getNextEvent(mode = "normal") {
+    if(mode == "force") {
+      setNextEvent({summary: "Chargement...", location: "Chargement..."});
+    }
+
+    if(mode == "force" || ( mode == "normal" && nextEventLoaded == false )) {
+      fetch(selectedServer + "/edt/" + username.toString() + "/nextevent", {
+        method: 'GET',
+        headers: {
+          "Accept": "application/json",
+          "Charset": "utf-8"
+        }
+      }).then(async (response) => {
+        if (response.status == 200) {
+          let json = await response.json();
+          setNextEvent(json);
+          setNextEventLoaded(true);
+        }
+      });
+    }
+  }
+
   useEffect(() => {
     let date = new Date();
     let hours = date.getHours();
@@ -759,7 +923,7 @@ function LoggedPage({ navigation }) {
       Alert.alert("Erreur", "Le serveur backup ne peut pas être utilisé pour récupérer le calendrier. EC=0xF");
       return;
     }
-    await getCalendar();
+    calendar = await getCalendar();
     setSelectable(true);
     setLoading(false);
     navigation.navigate('ShowEDT');
@@ -777,18 +941,35 @@ function LoggedPage({ navigation }) {
     }
   }
 
+  getNextEvent("normal");
+
   return (
     <View style={style.container}>
       <SafeAreaView style={style.container}>
-        <Avatar.Image style={{ alignSelf: "center", marginBottom: 16, marginTop: 32 }} size={100} source={require('./assets/white.png')} />
-        <Text style={{ textAlign: 'center' }} variant="displayLarge">{jourNuit}.</Text>
-        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleMedium'>Vous êtes connecté·e·s sous le compte de : {username} - {name}</Text>
-        <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes</Chip>
-        <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => getMyAbs() } icon="account-question" >Absences</Chip>
-        <Chip style={{ height: 48, marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
-        <Button style={{ marginBottom: 8 }} icon="account" mode="contained-tonal" onPress={ () => deleteData(false, navigation) }> Changer d'utilisateur </Button>
-        <Button style={{ marginBottom: 16 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
-        <Divider style={{ marginBottom: 16 }} />
+        <Avatar.Image style={{ alignSelf: "left", marginBottom: 16, marginTop: insets.top*2 }} size={100} source={require('./assets/white.png')} />
+        <Text style={{ textAlign: 'left' }} variant="displayLarge">{jourNuit} 👋</Text>
+        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Vous êtes connecté·e·s sous le compte de : {username} - {name}</Text>
+        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes</Chip>
+        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => getMyAbs() } icon="account-question" >Absences</Chip>
+
+        <Card style={{ marginBottom: 16 }} >
+          <Card.Title title="Prochain Cours" />
+          <Card.Content>
+            <Text variant="titleLarge">{nextEvent.summary}</Text>
+            <Text variant="bodyMedium">{nextEvent.location}</Text>
+          </Card.Content>
+          <Card.Actions>
+            <Chip disabled={!selectable} onPress={ () => getNextEvent("force") } icon="refresh" >Rafraîchir</Chip>
+            <Chip disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
+          </Card.Actions>
+        </Card>
+
+        <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center', marginBottom: 16 }}>
+          <Button style={{ marginRight: 4 }} icon="account" mode="contained-tonal" onPress={ () => deleteData(false, navigation) }> Changer d'user </Button>
+          <Button style={{ marginLeft: 4 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
+        </View>
+
+        <Divider style={{ marginBottom: 8 }} />
         <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
         <Tooltip title="Mentions légales">
             <IconButton style={{ marginBottom: 4 }} icon="license" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }/>
@@ -797,8 +978,8 @@ function LoggedPage({ navigation }) {
             <IconButton style={{ marginBottom: 16 }} icon="source-branch" mode="contained" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }/>
           </Tooltip>
         </View>
-        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleSmall'>Version {appVersion}</Text>
-        <ActivityIndicator style={{ marginTop: 8 }} animating={loading} size="large" />
+        <Text style={{ textAlign: 'center' }} variant='titleSmall'>Version {appVersion}</Text>
+        <ActivityIndicator style={{ marginTop: 8, marginBottom: insets.bottom }} animating={loading} size="large" />
       </SafeAreaView>
     </View>
   );
@@ -836,7 +1017,7 @@ function Semesters ({ navigation }) {
       return <Text style={{ textAlign: 'center' }} variant="titleMedium">Session expirée... Veuillez vous reconnecter.</Text>
     }
     return semesters.map((semester) => (
-      <Chip style={{ height: 48, marginBottom: 8 }} disabled={!selectable} onPress={ () => loadGrades(semester) } icon="adjust" > {semester} </Chip>
+      <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => loadGrades(semester) } icon="adjust" > {semester} </Chip>
     ))
   }
 
@@ -950,6 +1131,9 @@ function APIConnect ({ navigation }) {
 function ShowGrades( { navigation } ) {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [title, setTitle] = useState("Infos");
+  const [subtitle, setSubtitle] = useState("");
+  const insets = useSafeAreaInsets();
 
   var moyenneGenerale = 0.0;
   var moyenneCache = 0.0;
@@ -1082,12 +1266,14 @@ function ShowGrades( { navigation } ) {
   function showInfos(grade){
     var res;
     if(!grade[1][0].includes("coeff")){
-      res = "Note : " + grade[1][0] + " Coefficient : " + grade[1][1];
+      res = "Note : " + grade[1][0] + '\nCoefficient : ' + grade[1][1];
     }
     else {
-      res = "Note : Non disponible" + " Coefficient : " + (grade[1][0].replace("(coeff ", "")).replace(")","");
+      res = "Note : Non disponible" + '\nCoefficient : ' + (grade[1][0].replace("(coeff ", "")).replace(")","");
     }
-    Alert.alert(grade[0], res);
+    setTitle(grade[0]);
+    setSubtitle(res);
+    bottomSheetInfo.expand()
   }
 
   function isCalculated() {
@@ -1240,6 +1426,15 @@ function ShowGrades( { navigation } ) {
         <Divider style={{ marginBottom: 16, marginTop: 16 }} />
         {showTable()}
       </ScrollView>
+
+      <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.surfaceVariant }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onSurfaceVariant }}>
+            <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
+              <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{title}</Text>
+              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitle}</Text>
+              <Button style={{ marginBottom: 16 }} icon="close" mode="contained" onPress={() => bottomSheetInfo.close()}> Fermer </Button>
+            </BottomSheetView>
+      </BottomSheet>
+
     </View>
   );
 }
@@ -1352,13 +1547,11 @@ function ShowEDT( { navigation } ) {
     if(count == 0) {
       setCount(1);
       if(cal == null) {
-        AsyncStorage.getItem("calendar").then((result) => {
-          if (result != null) {
-            setCalendar(JSON.parse(result));
-          } else {
-            navigation.goBack();
-          }
-        });
+        async function readJSONonAwait() {
+          return await readJSONFromFile();
+        }
+        cal = JSON.parse(readJSONonAwait());
+        setCalendar(cal);
       }
       setTimeout(() => goToToday(), 500);
     }
@@ -1491,11 +1684,22 @@ function ShowSettings( { navigation } ) {
       </Appbar.Header>
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-      <Button style={{ marginBottom: 8 }} icon="calculator" mode="contained-tonal" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
+        <Button style={{ marginBottom: 8 }} icon="calculator" mode="contained-tonal" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
         <Button style={{ marginBottom: 8 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/bug") }> Signaler un bug </Button>
-        <Button style={style.buttonLogout} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer toutes mes données </Button>
+        <Button style={[style.buttonLogout, { height: 48, justifyContent: 'center' }]} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer toutes mes données </Button>
 
         <Divider style={{ marginTop: 16 }} />
+
+        <Card style={{ marginTop:16 }}>
+          <Card.Title
+              title="Sélection de l'icône"
+              subtitle="Changez l'icône de l'application"
+              left={(props) => <Avatar.Icon {...props} icon="shape-square-rounded-plus" />}
+          />
+          <Card.Actions>
+            <Button mode={"contained-tonal"} onPress={ () => navigation.navigate("IconConfig") }>Choisir</Button>
+          </Card.Actions>
+        </Card>
 
         <Card style={{ marginTop:16 }}>
           <Card.Title
@@ -1521,17 +1725,6 @@ function ShowSettings( { navigation } ) {
           </Card.Actions>
         </Card>
 
-        <Card style={{ marginTop:16 }}>
-          <Card.Title
-              title="Sélection de l'icône"
-              subtitle="Changez l'icône de l'application"
-              left={(props) => <Avatar.Icon {...props} icon="shape-square-rounded-plus" />}
-          />
-          <Card.Actions>
-            <Button mode={"contained-tonal"} onPress={ () => navigation.navigate("IconConfig") }>Choisir</Button>
-          </Card.Actions>
-        </Card>
-
         <Divider style={{ marginTop: 16 }} />
 
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
@@ -1541,9 +1734,9 @@ function ShowSettings( { navigation } ) {
           <Text style={style.textLink} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
         </Text>
 
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur.</Text>
-        <Button style={{ marginTop: 32 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
-        <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur.</Text>
+        <Button style={{ marginTop: 16 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
+        <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://notes.metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
         <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
 
         { // Bouton de test de crash
@@ -1575,8 +1768,8 @@ function IconConfig( { navigation } ) {
   }
 
   return (
-    <View style={styleScrollable.container}>
-      <Appbar.Header style={{ paddingTop: 0 }}>
+    <View style={ styleScrollable.container }>
+      <Appbar.Header>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => navigation.goBack()} />
         </Tooltip>
@@ -1585,12 +1778,14 @@ function IconConfig( { navigation } ) {
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Choisissez votre icône :</Text>
-        <Chip style={{ height: 48, marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut </Chip>
-        <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
-        <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_beach.png')}/>} onPress={ () => changeIconHome("beach") }> Beach </Chip>
-        <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_melted.png')}/>} onPress={ () => changeIconHome("melted") }> Melted </Chip>
-        <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_text.png')}/>} onPress={ () => changeIconHome("text") }> Text </Chip>
-        <Chip style={{ height: 48, borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_zoomed.png')}/>} onPress={ () => changeIconHome("zoomed") }> Zoomed </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_magnet.png')}/>} onPress={ () => changeIconHome("magnet") }> Magnet </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_beach.png')}/>} onPress={ () => changeIconHome("beach") }> Beach </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_glitched.png')}/>} onPress={ () => changeIconHome("glitched") }> Glitched (par @f.eli0tt)</Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_melted.png')}/>} onPress={ () => changeIconHome("melted") }> Melted </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_text.png')}/>} onPress={ () => changeIconHome("text") }> Text </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_zoomed.png')}/>} onPress={ () => changeIconHome("zoomed") }> Zoomed </Chip>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Vous trouvez pas "l'icône" qu'il vous faut ? Envoyez-nous vos oeuvres d'art à <Text style={style.textLink} onPress={() => Linking.openURL("mailto://oeuvredartpourlappliunicenotes@metrixmedia.fr")}> oeuvredartpourlappliunicenotes@metrixmedia.fr </Text></Text>
       </ScrollView>
     </View>
@@ -1723,8 +1918,8 @@ function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator>
-        <Stack.Screen name="SplashScreen" component={SplashScreen} options={{ title: 'UniceNotes', headerShown: false }} />
-        <Stack.Screen name="Login" component={LoginPage} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="SplashScreen" component={SplashScreen} options={{ title: 'UniceNotes', headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="OOBE" component={OOBE} options={{ title: 'OOBE', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="LoggedPage" component={LoggedPage} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false, gestureEnabled: false }} />  
         <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
@@ -1742,6 +1937,10 @@ function App() {
 // ---------------------------------------------
 // THEMES
 // ---------------------------------------------
+
+let customFonts = {
+  'Bahnschrift': require('./assets/bahnschrift.ttf')
+}
 
 const lightTheme = {
   "dark": false,
@@ -1848,13 +2047,26 @@ if (colorScheme === 'dark') {
   choosenTheme = lightTheme
 }
 
+Font.loadAsync(customFonts).then(() => {
+  fontConfig = {
+    fontFamily: 'Bahnschrift',
+  };
+
+  choosenTheme = {
+    ...choosenTheme,
+    fonts: configureFonts({config: fontConfig}),
+  }
+});
+
 const style = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: choosenTheme.colors.background,
+    surfaceVariant: choosenTheme.colors.surfaceVariant,
+    onSurfaceVariant: choosenTheme.colors.onSurfaceVariant,
     justifyContent: 'center',
     paddingLeft: 25, 
-    paddingRight: 25 
+    paddingRight: 25
   },
   buttonLogout: {
     backgroundColor: choosenTheme.colors.errorContainer
@@ -1889,8 +2101,10 @@ const styleCalendar = StyleSheet.create({
 
 export default function Main() {
   return (
-    <PaperProvider theme={choosenTheme}>
-      <App/>
-    </PaperProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <PaperProvider theme={choosenTheme}>
+        <App/>
+      </PaperProvider>
+    </GestureHandlerRootView>
   );
 }
