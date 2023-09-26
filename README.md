@@ -1,5 +1,5 @@
 <p align="center">
-      <img alt="UniceNotes" height="200" src="https://github.com/UniceApps/UniceNotes/raw/main/assets/icon.png">
+      <img alt="UniceNotes" height="200" src="https://raw.githubusercontent.com/UniceApps/UniceNotes/main/.docs/assets/logo.png">
   <h2 align="center">UniceNotes</h2>
 
 <p align="center">
@@ -71,4 +71,4 @@ Toute ressemblance avec le nom de l'application, le logo et l'interface ne saura
 
 L'application UniceNotes utilise Expo, un framework basé sur React Native.
 \
-<img src='https://repository-images.githubusercontent.com/65750241/79017180-d4ce-11e9-9955-3f0a7be00c7a'/>
+<img src='https://raw.githubusercontent.com/UniceApps/UniceNotes/main/.docs/assets/expo-bottomlogo.png'/>
