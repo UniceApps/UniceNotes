@@ -21,6 +21,7 @@
 - Données : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/DATA.md)
 - Erreurs : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/ERRORS.md)
 - Haptics : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/HAPTICS.md)
+- Utilisation : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/USAGE.md)
 
 ## ⚙️ Contribution
 
@@ -51,7 +52,7 @@ L'application UniceNotes utilise :
 avec votre consentement (en vous connectant sur l'application) afin de vous fournir une expérience utilisateur optimale.
 Ces données sont récupérées depuis le site web Intracursus ou GPU de l'Université Côte d'Azur et ne quittent pas votre appareil.
 \
-Les données sont **stockées sur votre appareil** et ne sont pas envoyées sur un serveur (Seuls vos identifiants sont utilisés sur ```login.unice.fr``` afin de vous identifier et créer un token). 
+Les données sont **stockées sur votre appareil** et ne sont pas envoyées sur un serveur (Seuls vos identifiants sont utilisés sur ```login.univ-cotedazur.fr``` afin de vous identifier et créer un token). 
 \
 Les données de connexion (critiques) sont stockées dans un format **crypté** dans la Keychain d'Apple / Keystore d'Android et ne peuvent être déchiffrées que par l'utilisateur lorsqu'il s'identifie grâce à un moyen biométrique / code. [Voir l'API SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
 \

@@ -38,6 +38,12 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity-alias>
+    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitymagnet" android:enabled="false" android:exported="true" android:icon="@mipmap/magnet" android:targetActivity=".MainActivity">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityardente" android:enabled="false" android:exported="true" android:icon="@mipmap/ardente" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
@@ -45,6 +51,12 @@
       </intent-filter>
     </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitybeach" android:enabled="false" android:exported="true" android:icon="@mipmap/beach" android:targetActivity=".MainActivity">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityglitched" android:enabled="false" android:exported="true" android:icon="@mipmap/glitched" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>

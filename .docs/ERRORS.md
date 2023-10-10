@@ -14,3 +14,4 @@
 - ```EC=0xB``` -> Authentification via SecureStore annulée (FaceID ou TouchID)
 - ```EC=0xF``` -> Connexion à des services indisponibles via le serveur de backup
 - ```EC=0xT``` -> Vous n'êtes pas connecté à Internet
+- ```EC=0xR``` -> Erreur à la récupération des ressources locales
