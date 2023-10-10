@@ -9,6 +9,7 @@ This data is stored in the secure enclave (Keychain from Apple / Keystore from A
 
 - ```username```: Username of the user
 - ```password```: Password of the user
+- ```edtPassword```: Password of the user to access the timetable
 - ```name```: Full name of the user
 
 ## Data stored in AsyncStorage

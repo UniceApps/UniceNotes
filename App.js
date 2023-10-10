@@ -12,15 +12,15 @@ MIT License
 // IMPORTS
 // ---------------------------------------------
 
-// React API
+// React components
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Alert, View, StyleSheet, 
-  StatusBar, ScrollView, RefreshControl,
+  AppState, ScrollView, RefreshControl,
   Appearance, BackHandler, SafeAreaView,
-  SafeAreaProvider, Keyboard, AppState
+  SafeAreaProvider, Keyboard
 } from 'react-native';
 
-// Material Design 3 API (React Native Paper)
+// Material Design 3 components (React Native Paper)
 import { Avatar, Text, TextInput, 
   Button, Switch, Divider, 
   ActivityIndicator, ProgressBar, Chip,
@@ -29,7 +29,8 @@ import { Avatar, Text, TextInput,
   List, configureFonts
 } from 'react-native-paper';
 
-// Expo API
+// Expo components
+import { StatusBar } from 'expo-status-bar';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
@@ -38,19 +39,23 @@ import * as Haptics from 'expo-haptics';
 import * as Network from 'expo-network';
 import * as Linking from 'expo-linking';
 import * as Font from 'expo-font';
+import * as FileSystem from 'expo-file-system';
 
-// Third-party API
+// Third-party components
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TimelineCalendar, EventItem } from '@howljs/calendar-kit';
-import Animated, { event, log, set, Easing, loop, useSharedValue, useAnimatedStyle, withSpring, withRepeat, withSequence, } from 'react-native-reanimated';
+import Animated, { event, log, set, 
+  Easing, loop, useSharedValue, 
+  useAnimatedStyle, withSpring, withRepeat, 
+  withSequence
+} from 'react-native-reanimated';
 import Bugsnag from '@bugsnag/expo';
 import LottieView from 'lottie-react-native';
 import BottomSheet, { BottomSheetView, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as FileSystem from 'expo-file-system';
 
 // Disable this when using Expo Go
 import { setAppIcon } from "expo-dynamic-app-icon";
@@ -60,7 +65,7 @@ import { setAppIcon } from "expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.4.0';
+var appVersion = '1.4.1';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -300,7 +305,8 @@ const readJSONFromFile = async () => {
     const parsedData = JSON.parse(jsonContent);
     return parsedData;
   } catch (error) {
-    console.error('Error reading JSON file:', error);
+    Alert.alert("Erreur", "Veuillez télécharger le calendrier avant de l'utiliser en mode hors-ligne ! EC=0xR");
+    haptics("error");
     return null;
   }
 };
@@ -414,13 +420,17 @@ function SplashScreen({ navigation }) {
   const [count, setCount] = useState(0);
   const [isDataStored, setIsDataStored] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [internetReach, setInternetReach] = useState(true);
+  const [ok, setOk] = useState(true);
+  const [title, setTitle] = useState("Infos");
+  const [subtitle, setSubtitle] = useState("");
+  const [action, setAction] = useState("");
+  const insets = useSafeAreaInsets();
 
   useEffect(() => { 
     if(count == 0) {
       setCount(1);
       setLoading(true);
-      verifyLogin();
+      access();
     }
   });
 
@@ -431,10 +441,9 @@ function SplashScreen({ navigation }) {
     netInfos = (await Network.getNetworkStateAsync()).isInternetReachable;
 
     if (netInfos == false) {
-      setInternetReach(false);
       setLoading(false);
       Alert.alert("Erreur", "Vous n'êtes pas connecté à Internet ! EC=0xT");
-      return;
+      return false;
     }
 
     if (selectedServer == servers[1]) {
@@ -449,42 +458,52 @@ function SplashScreen({ navigation }) {
     .then((response) => response.json())
     .then((json) => {
       version = json.version;
+      if(version != null) {
+        version = version.toString().replace("v", "");
+      } else {
+        setLoading(false);
+        Alert.alert("Erreur", "Le serveur n'est pas accessible ! Essayez de changer de serveur dans les paramètres. EC=0xS");
+        return false;
+      }
       isAvailable = json.isAvailable;
       maintenance = json.maintenance;
     })
     .catch((error) => {
-      setInternetReach(false)
       setLoading(false);
       Alert.alert("Erreur", "Le serveur n'est pas accessible ! Essayez de changer de serveur dans les paramètres. EC=0xS");
+      return false;
     });
 
     if (maintenance != "") {
-      Alert.alert("Maintenance", maintenance);
+      setLoading(false);
+      showInfos("maintenance", maintenance);
+      return false;
     }
 
-    version = version.toString().replace("v", "")
-    if(!isBeta) {
-      if(isAvailable == true) {
-        if(version != appVersion) {
-          Alert.alert("Mise à jour disponible", "Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.", 
-          [ { text: "Mettre à jour", onPress: () => handleURL("https://notes.metrixmedia.fr/get") } ]);
-        }
-      }
+    if(!isBeta && isAvailable == true && version != appVersion) {
+      setLoading(false);
+      showInfos("update");
+      return false;
     }
 
+    return true;
+  }
+
+  async function access() {
+    var accessOK = await verifyLogin();
+    accessOK ? setOk(true) : setOk(false);
     // Vérification de la disponibilité des usernames et mots de passe enregistrés
     if(!isDataStored) {
       setUsername(await SecureStore.getItemAsync("username"));
       setPassword(await SecureStore.getItemAsync("passkey"));
-
-      if (username != null && password != null && internetReach == true) {
+      if (username != null && password != null && accessOK) {
         setLoading(false);
         navigation.navigate('LoggedPage');
       } else {
         username = null;
         password = null;
         setIsDataStored(false);
-        if(internetReach == true) {
+        if(accessOK) {
           setLoading(false);
           navigation.navigate('OOBE');
         }
@@ -500,12 +519,31 @@ function SplashScreen({ navigation }) {
     password = text;
   }
 
-  function betaText() {
+  function specialMode() {
     if(isBeta) {
       return (
         <Text style={{ textAlign: 'center' }} variant="displaySmall">BETA</Text>
       );
     }
+
+    if(!ok) {
+      return (
+        <Button style={{ marginTop: 16 }} icon="calendar-sync-outline" mode="contained" onPress={ () => getMyCal(navigation) }>Emploi du temps (hors-ligne)</Button>
+      );
+    }
+  }
+
+  function showInfos(action, overrideSubtitle = null){
+    if(action == "update") {
+      setTitle("Mise à jour disponible");
+      setSubtitle("Une nouvelle version de l'application est disponible. Veuillez la mettre à jour pour continuer à utiliser UniceNotes.");
+      setAction("update");
+    } else if(action == "maintenance") {
+      setTitle("Maintenance");
+      setSubtitle(overrideSubtitle);
+      setAction("maintenance");
+    }
+    bottomSheetInfo.expand()
   }
 
   async function getMyCal(navigation) {
@@ -514,12 +552,13 @@ function SplashScreen({ navigation }) {
       Alert.alert("Erreur", "Le serveur backup ne peut pas être utilisé pour récupérer le calendrier. EC=0xF");
       return;
     }
+    bottomSheetInfo.close();
     calendar = await getCalendarFromCache();
     navigation.navigate('ShowEDT');
   }
 
   function refresh() {
-    setInternetReach(true);
+    bottomSheetInfo.close();
     setCount(0);
   }
 
@@ -528,11 +567,7 @@ function SplashScreen({ navigation }) {
       <Image source={require('./assets/color.png')} style={{ width: 200, height: 200, marginBottom: 16 }} />
       <Text style={{ textAlign: 'center' }} variant="displayLarge">UniceNotes</Text>
 
-      {betaText()}
-
-      { !internetReach ? (
-        <Button style={{ marginTop: 16 }} icon="calendar-sync-outline" mode="contained" onPress={ () => getMyCal(navigation) }>Emploi du temps (hors-ligne)</Button>
-      ) : ( null )}
+      {specialMode()}
 
       <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
         <Tooltip title="Paramètres">
@@ -542,6 +577,23 @@ function SplashScreen({ navigation }) {
           <IconButton style={{ marginTop: 16 }} icon="refresh" mode="contained" onPress={ () => refresh() }/>
         </Tooltip>
       </View>
+
+      <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.surfaceVariant }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onSurfaceVariant }}>
+        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
+          <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{title}</Text>
+          <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitle}</Text>
+          {
+            action == "update" ? (
+              <Button style={{ marginBottom: 16 }} icon="download" mode="contained" onPress={() => handleURL("https://notes.metrixmedia.fr/get")}>Mettre à jour</Button>
+            ) : ( null )
+          }
+          {
+            action == "maintenance" ? (
+              <Button style={{ marginBottom: 16 }} icon="chef-hat" mode="contained" onPress={() => navigation.navigate("LoggedPage")}>Ok chef !</Button>
+            ) : ( null )
+          }
+        </BottomSheetView>
+      </BottomSheet>
 
       <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
     </View>
@@ -752,6 +804,10 @@ function OOBE({ navigation }) {
                   editable={editable}
                   style={{ marginBottom: 16, borderRadius: 10, fontSize: 16, lineHeight: 20, padding: 8, backgroundColor: 'rgba(151, 151, 151, 0.25)', color: choosenTheme.colors.onBackground }}
                 />
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
+                  <Switch onValueChange={ (value) => setRememberMe(value) } disabled={!editable} value={rememberMe}/>
+                  <Text style={{ marginLeft:8}}> Se souvenir de moi</Text>
+                </View>
                 <Button style={{ marginBottom: 8 }} disabled={!editable} icon="login" mode="contained" onPress={ () => handleLogin() }> Se connecter </Button>
                 <Button style={{ marginBottom: insets.bottom }} icon="shield-account" onPress={() => handleURL("https://sesame.unice.fr/web/app/prod/Compte/Reinitialisation/saisieNumeroEtudiant")} > J'ai oublié mon mot de passe </Button>
             </BottomSheetView>
@@ -952,7 +1008,7 @@ function LoggedPage({ navigation }) {
         <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes</Chip>
         <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => getMyAbs() } icon="account-question" >Absences</Chip>
 
-        <Card style={{ marginBottom: 16 }} >
+        <Card style={{ marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) }>
           <Card.Title title="Prochain Cours" />
           <Card.Content>
             <Text variant="titleLarge">{nextEvent.summary}</Text>
@@ -1428,11 +1484,11 @@ function ShowGrades( { navigation } ) {
       </ScrollView>
 
       <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.surfaceVariant }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onSurfaceVariant }}>
-            <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
-              <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{title}</Text>
-              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitle}</Text>
-              <Button style={{ marginBottom: 16 }} icon="close" mode="contained" onPress={() => bottomSheetInfo.close()}> Fermer </Button>
-            </BottomSheetView>
+        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
+          <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{title}</Text>
+          <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitle}</Text>
+          <Button style={{ marginBottom: 16 }} icon="close" mode="contained" onPress={() => bottomSheetInfo.close()}> Fermer </Button>
+        </BottomSheetView>
       </BottomSheet>
 
     </View>
@@ -1541,6 +1597,9 @@ function ShowEDT( { navigation } ) {
   const [count, setCount] = useState(0);
   const [view, setView] = useState("threeDays");
   const [viewIcon, setViewIcon] = useState("magnify-plus");
+  const [title, setTitle] = useState("Infos");
+  const [subtitle, setSubtitle] = useState("");
+  const insets = useSafeAreaInsets();
   const calendarRef = useRef(null);
   
   useEffect(() => { 
@@ -1575,6 +1634,14 @@ function ShowEDT( { navigation } ) {
     setTimeout(() => goToToday(), 500);
   }
 
+  function showInfos(eventItem){
+    var res;
+    res = eventItem.subtitle + "\nSalle : " + eventItem.description
+    setTitle(eventItem.title);
+    setSubtitle(res);
+    bottomSheetInfo.expand()
+  }
+
   return (
     <View style={styleScrollable.container}>
       <Appbar.Header style={{ paddingTop: 0 }}>
@@ -1593,15 +1660,22 @@ function ShowEDT( { navigation } ) {
         </Tooltip>
       </Appbar.Header>
 
-      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => Alert.alert(eventItem.title, eventItem.subtitle + "\n Salle : " + eventItem.description)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={5} end={22} renderEventContent={(event) => {
+      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => showInfos(eventItem)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={5} end={22} renderEventContent={(event) => {
           return (
             <SafeAreaView style={{ margin: 10 }}>
-              <Text style={{ fontWeight: 'bold', color:'black' }}>{event.title}</Text>
+              <Text style={{ fontFamily:'', fontWeight:'bold', color:'black' }}>{event.title}</Text>
               <Text style={{ color:'black' }}>{event.subtitle}</Text>
               <Text style={{ color:'black' }}>{event.description}</Text>
             </SafeAreaView>
           );
       }}/>
+      <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.surfaceVariant }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onSurfaceVariant }}>
+        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
+          <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{title}</Text>
+          <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitle}</Text>
+          <Button style={{ marginBottom: 16 }} icon="close" mode="contained" onPress={() => bottomSheetInfo.close()}> Fermer </Button>
+        </BottomSheetView>
+      </BottomSheet>
 
     </View>
   );
@@ -1938,10 +2012,6 @@ function App() {
 // THEMES
 // ---------------------------------------------
 
-let customFonts = {
-  'Bahnschrift': require('./assets/bahnschrift.ttf')
-}
-
 const lightTheme = {
   "dark": false,
   "version": 3,
@@ -2047,16 +2117,24 @@ if (colorScheme === 'dark') {
   choosenTheme = lightTheme
 }
 
-Font.loadAsync(customFonts).then(() => {
-  fontConfig = {
-    fontFamily: 'Bahnschrift',
-  };
+const useFonts = async () =>
+  await Font.loadAsync({
+    'Bahnschrift': require('./assets/bahnschrift.ttf')
+  }).then(() => {
+    fontConfig = {
+      fontFamily: 'Bahnschrift',
+    };
+  
+    choosenTheme = {
+      ...choosenTheme,
+      fonts: configureFonts({config: fontConfig}),
+    }
+  });
 
-  choosenTheme = {
-    ...choosenTheme,
-    fonts: configureFonts({config: fontConfig}),
-  }
-});
+if (Platform.OS === "android") {
+  StatusBar.backgroundColor("rgba(0,0,0,0)");
+  StatusBar.translucent(true);
+}
 
 const style = StyleSheet.create({
   container: {
@@ -2100,10 +2178,23 @@ const styleCalendar = StyleSheet.create({
 // ---------------------------------------------
 
 export default function Main() {
+  const [isReady, setIsReady] = useState(false);
+  
+  useEffect(() => {
+    // Load fonts
+    const loadApp = async () => {
+      await useFonts().then(() => {
+        setIsReady(true);
+      });
+    };
+
+    loadApp();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <PaperProvider theme={choosenTheme}>
-        <App/>
+        { isReady ? <App/> : null}
       </PaperProvider>
     </GestureHandlerRootView>
   );

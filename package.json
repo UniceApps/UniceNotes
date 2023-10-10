@@ -26,7 +26,7 @@
     "expo-file-system": "~15.4.4",
     "expo-font": "~11.4.0",
     "expo-haptics": "~12.4.0",
-    "expo-image": "~1.3.2",
+    "expo-image": "~1.3.4",
     "expo-insights": "~0.2.0",
     "expo-linking": "~5.0.2",
     "expo-local-authentication": "~13.4.1",
