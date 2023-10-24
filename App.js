@@ -13,7 +13,9 @@ MIT License
 // ---------------------------------------------
 
 // React components
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, 
+  useMemo, createRef, forwardRef 
+} from 'react';
 import { Alert, View, StyleSheet, 
   AppState, ScrollView, RefreshControl,
   Appearance, BackHandler, SafeAreaView,
@@ -40,6 +42,7 @@ import * as Network from 'expo-network';
 import * as Linking from 'expo-linking';
 import * as Font from 'expo-font';
 import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 // Third-party components
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -56,6 +59,7 @@ import LottieView from 'lottie-react-native';
 import BottomSheet, { BottomSheetView, BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { captureRef } from 'react-native-view-shot';
 
 // Disable this when using Expo Go
 import { setAppIcon } from "expo-dynamic-app-icon";
@@ -65,7 +69,7 @@ import { setAppIcon } from "expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.4.1';
+var appVersion = '1.4.2';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -75,10 +79,6 @@ var apiMode = "notes"; // API mode (notes, absences)
 var semesters = []; // User's all semesters
 var semester = ''; // Selected semesters
 var calendar = {}; // User's calendar
-
-if (!__DEV__) {
-  Bugsnag.start();
-}
 
 const servers = [
   "https://api.unice.hugofnm.fr",
@@ -175,6 +175,17 @@ var subjects = []; // User's subjects
 // ---------------------------------------------
 // FONCTIONS GLOBALES
 // ---------------------------------------------
+
+if (!__DEV__) {
+  Bugsnag.start({
+    onError: function (event) {
+      event.addMetadata('utilisateur', {
+        name: name,
+        username: username
+      })
+    }
+  })
+}
 
 // SecureStore API
 async function save(key, value) {
@@ -489,16 +500,20 @@ function SplashScreen({ navigation }) {
     return true;
   }
 
-  async function access() {
+  async function access(force = false) {
     var accessOK = await verifyLogin();
     accessOK ? setOk(true) : setOk(false);
+    if(force == true) {
+      accessOK = true;
+      setOk(true);
+    }
     // Vérification de la disponibilité des usernames et mots de passe enregistrés
     if(!isDataStored) {
       setUsername(await SecureStore.getItemAsync("username"));
       setPassword(await SecureStore.getItemAsync("passkey"));
       if (username != null && password != null && accessOK) {
         setLoading(false);
-        navigation.navigate('LoggedPage');
+        navigation.navigate('HomeScreen');
       } else {
         username = null;
         password = null;
@@ -589,7 +604,7 @@ function SplashScreen({ navigation }) {
           }
           {
             action == "maintenance" ? (
-              <Button style={{ marginBottom: 16 }} icon="chef-hat" mode="contained" onPress={() => navigation.navigate("LoggedPage")}>Ok chef !</Button>
+              <Button style={{ marginBottom: 16 }} icon="chef-hat" mode="contained" onPress={() => access(true)}>Ok chef !</Button>
             ) : ( null )
           }
         </BottomSheetView>
@@ -716,7 +731,7 @@ function OOBE({ navigation }) {
         CommonActions.reset({
           index: 0,
           routes: [
-            { name: 'LoggedPage' }
+            { name: 'HomeScreen' }
           ],
         })
       );
@@ -838,8 +853,8 @@ function OOBE({ navigation }) {
   )
 }
 
-// Page de connexion à l'application si les identifiants sont sauvegardés
-function LoggedPage({ navigation }) {
+// Page d'accueil
+function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [selectable, setSelectable] = useState(true);
   const [mode, setMode] = useState("notes");
@@ -1021,7 +1036,7 @@ function LoggedPage({ navigation }) {
         </Card>
 
         <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center', marginBottom: 16 }}>
-          <Button style={{ marginRight: 4 }} icon="account" mode="contained-tonal" onPress={ () => deleteData(false, navigation) }> Changer d'user </Button>
+          <Button style={{ marginRight: 4 }} icon="account" mode="contained-tonal" onPress={ () => deleteData(false, navigation) }> Se déconnecter </Button>
           <Button style={{ marginLeft: 4 }} icon="cog" mode="contained-tonal" onPress={ () => goToSettings(navigation) }> Paramètres </Button>
         </View>
 
@@ -1070,7 +1085,8 @@ function Semesters ({ navigation }) {
 
   function getMySemesters() {
     if (semesters.length == 0 || semesters == null) {
-      return <Text style={{ textAlign: 'center' }} variant="titleMedium">Session expirée... Veuillez vous reconnecter.</Text>
+      return <Text style={{ textAlign: 'center' }} variant="titleMedium">Aucun semestre disponible. Veuillez vous reconnecter ultérieurement.</Text>
+
     }
     return semesters.map((semester) => (
       <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => loadGrades(semester) } icon="adjust" > {semester} </Chip>
@@ -1099,7 +1115,10 @@ function Semesters ({ navigation }) {
           placeholder={require('./assets/profile.png')}
         />
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant="titleMedium">{name}</Text>
-        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleLarge'>Veuillez sélectionner un semestre.</Text>
+        <Text style={{ textAlign: 'center', marginBottom: 8 }} variant='titleLarge'>Veuillez sélectionner un semestre.</Text>
+        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleSmall'>Les semestres disponibles au visionnage sont déterminés par l'I.U.T. Le semestre en cours peut donc, ne pas étre visible en ce moment.</Text>
+
+        <Divider style={{ marginBottom: 16 }} />
 
         {getMySemesters()}
 
@@ -1189,6 +1208,7 @@ function ShowGrades( { navigation } ) {
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("Infos");
   const [subtitle, setSubtitle] = useState("");
+  const [gradeRefs, setGradeRefs] = useState([]);
   const insets = useSafeAreaInsets();
 
   var moyenneGenerale = 0.0;
@@ -1340,11 +1360,27 @@ function ShowGrades( { navigation } ) {
     }
   }
 
+  async function shareWith(ref) {
+    haptics("medium");
+    const onSaveImageAsync = async () => {
+      try {
+        const localUri = await captureRef(ref, {
+          fileName: 'UniceNotes',
+          quality: 1,
+        });
+        const result = await Sharing.shareAsync(localUri);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    await onSaveImageAsync();
+  }
+
   function showTable() {
     return (grades.map((item) => (
-      <View>
+      <View ref={(view) => gradeRefs.push(view)}>
         <Card style={{ marginBottom: 16 }} >
-          <Card.Title title={item.name} subtitle={"Professeur : " + item.teacher} />
+          <Card.Title title={item.name} subtitle={"Professeur : " + item.teacher} right={(props) => <IconButton {...props} icon="dots-vertical" onPress={() => { shareWith(gradeRefs[grades.indexOf(item)]) }} />} />
           <Card.Content>
             <Text>Moyenne : {item.average}</Text>
             <DataTable>
@@ -1497,6 +1533,88 @@ function ShowGrades( { navigation } ) {
 
 // Page d'affichage des absences
 function ShowAbsences({ navigation }) {
+  const [totalHours, setTotalHours] = useState(0); // Total des heures d'absences
+  const [totalHoursNonJustified, setTotalHoursNonJustified] = useState(0);
+  const [totalHoursJustified, setTotalHoursJustified] = useState(0);
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if(count == 0) {
+      setCount(1);
+      makeStats();
+    }
+  });
+
+  function calculateDuration(timeRange, string = true) {
+    // Split the string into start and end time components
+    const [startTimeStr, endTimeStr] = timeRange.split('-');
+  
+    // Extract the hour and minute components
+    var startHour = parseInt(startTimeStr.slice(0, 2), 10);
+    var startMinute = parseInt(startTimeStr.slice(3, 5), 10);
+    var endHour = parseInt(endTimeStr.slice(0, 2), 10);
+    var endMinute = parseInt(endTimeStr.slice(3, 5), 10);
+  
+    // Create Date objects for the start and end times
+    var startDate = new Date();
+    startDate.setHours(startHour, startMinute, 0, 0);
+  
+    var endDate = new Date();
+    endDate.setHours(endHour, endMinute, 0, 0);
+  
+    // Calculate the time difference in milliseconds
+    var durationMs = endDate - startDate;
+  
+    // Convert milliseconds to hours and minutes
+    var hours = Math.floor(durationMs / 3600000); // 1 hour = 3600000 ms
+    var minutes = Math.round((durationMs % 3600000) / 60000); // 1 minute = 60000 ms
+  
+    // Format the duration as a string
+    var durationString = `${hours}h${minutes}`;
+
+    if(string) {
+      return durationString;
+    } else {
+      return hours + (minutes / 60);
+    }
+  }
+
+  function makeStats() {
+    var totalHours = 0;
+    var totalHoursNonJustified = 0;
+    var totalHoursJustified = 0;
+    absences.map((item) => {
+      justified = item.justified ? true : false;
+      if(justified == true) {
+        totalHoursJustified += calculateDuration(item.hour, false);
+      } else {
+        totalHoursNonJustified += calculateDuration(item.hour, false);
+      }
+      totalHours += calculateDuration(item.hour, false);
+    })
+    retards.map((item) => {
+      justified = item.justified ? true : false;
+      if(justified == true) {
+        totalHoursJustified += calculateDuration(item.hour, false);
+      } else {
+        totalHoursNonJustified += calculateDuration(item.hour, false);
+      }
+      totalHours += calculateDuration(item.hour, false);
+    })
+    exclusions.map((item) => {
+      justified = item.justified ? true : false;
+      if(justified == true) {
+        totalHoursJustified += calculateDuration(item.hour, false);
+      } else {
+        totalHoursNonJustified += calculateDuration(item.hour, false);
+      }
+      totalHours += calculateDuration(item.hour, false);
+    })
+
+    setTotalHours(totalHours);
+    setTotalHoursNonJustified(totalHoursNonJustified);
+    setTotalHoursJustified(totalHoursJustified);
+  }
 
   function showAbsences() {
     if (absences.length > 0) {
@@ -1507,6 +1625,7 @@ function ShowAbsences({ navigation }) {
             <Card.Content>
               <Text>Date : {item.date}</Text>
               <Text>Heure : {item.hour}</Text>
+              <Text>Durée : {calculateDuration(item.hour)}</Text>
               <Text>Type de cours : {item.type}</Text>
               <Text>Raison : {item.reason}</Text>
               <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
@@ -1527,6 +1646,7 @@ function ShowAbsences({ navigation }) {
             <Card.Content>
               <Text>Date : {item.date}</Text>
               <Text>Heure : {item.hour}</Text>
+              <Text>Durée : {calculateDuration(item.hour)}</Text>
               <Text>Type de cours : {item.type}</Text>
               <Text>Raison : {item.reason}</Text>
               <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
@@ -1547,6 +1667,7 @@ function ShowAbsences({ navigation }) {
             <Card.Content>
               <Text>Date : {item.date}</Text>
               <Text>Heure : {item.hour}</Text>
+              <Text>Durée : {calculateDuration(item.hour)}</Text>
               <Text>Type de cours : {item.type}</Text>
               <Text>Raison : {item.reason}</Text>
               <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
@@ -1567,7 +1688,11 @@ function ShowAbsences({ navigation }) {
       </Appbar.Header>
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Button style={ style.buttonActionChange } icon="plus" mode="contained-tonal" onPress={() => handleURL("https://absences.unice.cf")}> Justifier mon absence </Button>
+        <Button style={ style.buttonActionChange } icon="plus" mode="contained-tonal" onPress={() => handleURL("https://absences.metrixmedia.fr")}> Justifier mon absence </Button>
+
+        <Text style={{ textAlign: 'left', marginTop: 16 }} variant="titleMedium">Total des heures d'absences : {totalHours}h</Text>
+        <Text style={{ textAlign: 'left' }} variant="titleMedium">Non justifiées : {totalHoursNonJustified}h</Text>
+        <Text style={{ textAlign: 'left' }} variant="titleMedium">Justifiées : {totalHoursJustified}h</Text>
 
         <List.Accordion style={{ marginTop: 16 }}
           title={absences.length + " absence(s)"}
@@ -1790,12 +1915,12 @@ function ShowSettings( { navigation } ) {
         <Card style={{ marginTop:16 }}>
           <Card.Title
               title="Sélection du serveur"
-              subtitle="En cas de problème seulement !"
+              subtitle="Ne fonctionnera plus sous v1.5"
               left={(props) => <Avatar.Icon {...props} icon="server-network" />}
           />
           <Card.Actions>
-            <Button mode={ whatSelectedServer("B") } onPress={ () => setSelectedServer("B") }>Backup</Button>
-            <Button mode={ whatSelectedServer("P") } onPress={ () => setSelectedServer("P") }>Principal</Button>
+            <Button mode={ whatSelectedServer("B") } onPress={ () => setSelectedServer("B") }>Allemagne</Button>
+            <Button mode={ whatSelectedServer("P") } onPress={ () => setSelectedServer("P") }>France</Button>
           </Card.Actions>
         </Card>
 
@@ -1803,6 +1928,7 @@ function ShowSettings( { navigation } ) {
 
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">Visualisez vos notes. Sans PDF.</Text>
+        <Text style={{ textAlign: 'left' }} variant="titleSmall">© 2023 - MetrixMedia / hugofnm</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">⚡ Version : {appVersion}</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">❤️ Fièrement développé par un GEII : 
           <Text style={style.textLink} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
@@ -1922,8 +2048,12 @@ function AverageConfig( { navigation } ) {
   }
 
   return (
-    <View style={style.container}>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Moyenne</Text>
+    <View style={ styleScrollable.container }>
+      <Appbar.Header>
+        <Appbar.Content title="Moyenne" />
+      </Appbar.Header>
+
+      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
       <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleLarge'>Afin de pouvoir afficher votre moyenne générale correctement, vous devez configurer les bonus et malus appliqués.</Text>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
@@ -1976,6 +2106,7 @@ function AverageConfig( { navigation } ) {
       }
 
       <Button style={{ marginTop: 8 }} icon="check" mode="contained" onPress={() => validate()}> Valider </Button>
+      </ScrollView>
     </View>
   );
 }
@@ -1994,7 +2125,7 @@ function App() {
       <Stack.Navigator>
         <Stack.Screen name="SplashScreen" component={SplashScreen} options={{ title: 'UniceNotes', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="OOBE" component={OOBE} options={{ title: 'OOBE', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="LoggedPage" component={LoggedPage} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="Semesters" component={Semesters} options={{ title: 'Semestres', headerShown: false, gestureEnabled: false }} />  
         <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false, gestureEnabled: false}} />
@@ -2130,11 +2261,6 @@ const useFonts = async () =>
       fonts: configureFonts({config: fontConfig}),
     }
   });
-
-if (Platform.OS === "android") {
-  StatusBar.backgroundColor("rgba(0,0,0,0)");
-  StatusBar.translucent(true);
-}
 
 const style = StyleSheet.create({
   container: {
