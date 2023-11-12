@@ -43,10 +43,6 @@ import * as Linking from 'expo-linking';
 import * as Font from 'expo-font';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import * as Notifications from 'expo-notifications';
-import { Audio } from 'expo-av';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
 
 // Third-party components
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -66,7 +62,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 
 // Disable this when using Expo Go
+/*
 import { setAppIcon } from "expo-dynamic-app-icon";
+*/
 
 // ---------------------------------------------
 // VARIABLES GLOBALES
@@ -74,7 +72,7 @@ import { setAppIcon } from "expo-dynamic-app-icon";
 
 // IMPORTANT !!!
 var appVersion = '1.4.3';
-var isBeta = false;
+var isBeta = true;
 // IMPORTANT !!!
 
 var isConnected = false; // UniceAPI login
@@ -96,10 +94,6 @@ var username = SecureStore.getItemAsync("username").then((result) => {
   } else {
     username = null;
   }
-}).catch((error) => {
-  haptics("error");
-  Alert.alert("Erreur", "Impossible de récupérer les données de connexion. EC=0xR");
-  deleteData(false, navigation);
 }); // User's username
 
 var password = SecureStore.getItemAsync("passkey").then((result) => {
@@ -108,10 +102,6 @@ var password = SecureStore.getItemAsync("passkey").then((result) => {
   } else {
     password = null;
   }
-}).catch((error) => {
-  haptics("error");
-  Alert.alert("Erreur", "Impossible de récupérer les données de connexion. EC=0xR");
-  deleteData(false, navigation);
 }); // User's password
 
 var name = SecureStore.getItemAsync("name").then((result) => {
@@ -172,6 +162,14 @@ var selectedServer = AsyncStorage.getItem("server").then((result) => {
   }
 }); // Serveur sélectionné
 
+var displayMode = AsyncStorage.getItem("displayMode").then((result) => {
+  if (result != null) {
+    displayMode = result.toString();
+  } else {
+    displayMode = "auto";
+  }
+}); // Mode d'affichage (sombre/clair/auto)
+
 var rememberMe = true; // Remember me
 
 var grades = []; // User's grades
@@ -188,10 +186,6 @@ var subjects = []; // User's subjects
 // ---------------------------------------------
 // FONCTIONS GLOBALES
 // ---------------------------------------------
-
-if(username == process.env.ADMIN_USERNAME) {
-  isBeta = true;
-}
 
 if (!__DEV__) {
   Bugsnag.start({
@@ -239,6 +233,8 @@ async function deleteData(warnings = false, navigation) {
   matiereMalus = [];
   await AsyncStorage.removeItem("server"); // Suppression du serveur sélectionné
   selectedServer = servers[0].toString();
+  await AsyncStorage.removeItem("displayMode"); // Suppression du mode d'affichage
+  displayMode = "auto";
 
   Image.clearDiskCache();
   Image.clearMemoryCache();
@@ -438,18 +434,6 @@ async function getCalendar() {
       return formattedCal;
     }
 }
-
-// ---------------------------------------------
-// FONCTIONS NOTIFICATION PUSH (préparation)
-// ---------------------------------------------
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
 
 // ---------------------------------------------
 // FONCTIONS VIEW (ECRANS DE L'APPLICATION)
@@ -894,7 +878,6 @@ function HomeScreen({ navigation }) {
 
   const [eventMode, setEventMode] = useState(true) // mode spécial noel
   const [eventModeToolTipVisible, setEventModeToolTipVisible] = useState(false)
-  const [sound, setSound] = useState(new Audio.Sound()); // Objet son pour noël
 
   function handleLogin(mode = "notes") {
     haptics("medium");
@@ -992,7 +975,6 @@ function HomeScreen({ navigation }) {
     calendar = await getCalendar();
     setSelectable(true);
     setLoading(false);
-    christmas("stop")
     navigation.navigate('ShowEDT');
   }
 
@@ -1008,38 +990,15 @@ function HomeScreen({ navigation }) {
     }
   }
 
-  async function christmas(mode) {
+  function christmas(mode) {
     switch (mode) {
       case "toggle":
         setEventMode(!eventMode)
-        setEventModeToolTipVisible(true)
-        if(eventMode == true) {
-          christmas("stop")
-        } else {
-          christmas("play")
-        }
-        break;
-
-      case "play":
-        await sound.loadAsync(require('./assets/christmas/AllIWantForChristmas.mp3'));
-        await sound.playAsync();
-        break;
-
-      case "stop":
-        await sound.stopAsync();
-        await sound.unloadAsync();
+        setEventModeToolTipVisible(false)
         break;
     
       default:
         break;
-    }
-  }
-
-  function isChristmas() {
-    if(eventMode) {
-      return "contained"
-    } else {
-      return "outlined"
     }
   }
 
@@ -1052,12 +1011,7 @@ function HomeScreen({ navigation }) {
       setJourNuit("Bonsoir");
     }
 
-    if(eventMode && !sound.isPlaying) {
-      christmas("play")
-    }
-
     if(isConnected) {
-      christmas("stop")
       switch(mode) {
         case "notes":
           apiMode = "notes";
@@ -1091,15 +1045,14 @@ function HomeScreen({ navigation }) {
   return (
     <View style={style.container}>
       <LottieView
-        opacity={eventMode ? 1 : 0}
         autoPlay
         loop
         resizeMode='cover'
-        source={require('./assets/christmas/christmas')}
+        source={require('./assets/lottie/christmas')}
       />
       <SafeAreaView>
         <Avatar.Image style={{ alignSelf: "left", marginBottom: 16, marginTop: insets.top*2 }} size={100} source={require('./assets/white.png')} />
-        <Text style={{ textAlign: 'left' }} variant="displayLarge">{jourNuit} 🎄</Text>
+        <Text style={{ textAlign: 'left' }} variant="displayLarge">{jourNuit} 👋</Text>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Vous êtes connecté·e·s sous le compte de : {"\n"}{username} - {name}</Text>
         <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes</Chip>
         <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => getMyAbs() } icon="account-question" >Absences</Chip>
@@ -1129,24 +1082,13 @@ function HomeScreen({ navigation }) {
           <Tooltip title="Code source">
             <IconButton style={{ marginBottom: 16 }} icon="source-branch" mode="contained" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }/>
           </Tooltip>
-          <Tooltip title="Activer/Désactiver le mode festif">
-            <IconButton style={{ marginBottom: 16 }} icon="party-popper" mode={isChristmas()} onPress={ () => christmas("toggle") }/>
+          <Tooltip title="Activer/Désactiver le son">
+            <IconButton style={{ marginBottom: 16 }} icon="party-popper" mode="contained" onPress={ () => christmas("toggle") }/>
           </Tooltip>
         </View>
         <Text style={{ textAlign: 'center' }} variant='titleSmall'>Version {appVersion}</Text>
         <ActivityIndicator style={{ marginTop: 8, marginBottom: insets.bottom }} animating={loading} size="large" />
-        <Snackbar
-          style={{ backgroundColor: choosenTheme.colors.background, marginBottom: insets.bottom }}
-          visible={eventModeToolTipVisible}
-          onDismiss={() => setEventModeToolTipVisible(false)}
-          action={{
-            label: 'OK',
-            onPress: () => {
-              setEventModeToolTipVisible(false)
-            },
-          }}>
-          <Text>Mode Noël {eventMode ? "activé" : "désactivé temporairement"}  ! 🎄</Text>
-        </Snackbar>
+
       </SafeAreaView>
     </View>
   );
@@ -1212,7 +1154,7 @@ function Semesters ({ navigation }) {
         />
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant="titleMedium">{name}</Text>
         <Text style={{ textAlign: 'center', marginBottom: 8 }} variant='titleLarge'>Veuillez sélectionner un semestre.</Text>
-        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleSmall'>Les semestres disponibles au visionnage sont déterminés par l'I.U.T. Le semestre en cours peut donc, ne pas être visible en ce moment.</Text>
+        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleSmall'>Les semestres disponibles au visionnage sont déterminés par l'I.U.T. Le semestre en cours peut donc, ne pas étre visible en ce moment.</Text>
 
         <Divider style={{ marginBottom: 16 }} />
 
@@ -1880,7 +1822,7 @@ function ShowEDT( { navigation } ) {
         </Tooltip>
       </Appbar.Header>
 
-      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => showInfos(eventItem)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={7} end={20} renderEventContent={(event) => {
+      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => showInfos(eventItem)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={5} end={22} renderEventContent={(event) => {
           return (
             <SafeAreaView style={{ margin: 10 }}>
               <Text style={{ fontFamily:'', fontWeight:'bold', color:'black' }}>{event.title}</Text>
@@ -1963,14 +1905,52 @@ function ShowSettings( { navigation } ) {
     logout(navigation);
   }
 
-  function betaToolbox(mode) {
-    if(mode == "crash") {
-      throw new Error('This is a crash');
-    } else if(mode == "notification") {
-      console.log("Notification TODO")
-    } else if(mode == "plus") {
-      navigation.navigate("UniceNotesPlus");
+  function whatSelectedDisplayMode(value) {
+    var res = "contained-tonal";
+    if (displayMode == "dark" && value == "D") {
+      res = "contained";
+    } else if (displayMode == "light" && value == "L") {
+      res = "contained";
+    } else if (displayMode == "auto" && value == "A") {
+      res = "contained";
     }
+    return res;
+  }
+
+  function setSelectedDisplayMode(value) {
+    if (value == "D") {
+      choosenTheme = darkTheme
+      displayMode = "dark"
+      saveUserdata("displayMode", "dark");
+    }
+    if (value == "L") {
+      choosenTheme = lightTheme
+      displayMode = "light"
+      saveUserdata("displayMode", "light");
+    }
+    if (value == "A") {
+      choosenTheme = Appearance.getColorScheme().toString();
+      if (choosenTheme == "dark") {
+        choosenTheme = darkTheme
+      } else if (choosenTheme == "light") {
+        choosenTheme = lightTheme
+      }
+      displayMode = "auto"
+      saveUserdata("displayMode", "auto");
+    }
+    setTheme();
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          { name: 'SplashScreen' }
+        ],
+      })
+    );
+  }
+
+  function crashIt() {
+    throw new Error('This is a crash');
   }
 
   return (
@@ -1998,6 +1978,19 @@ function ShowSettings( { navigation } ) {
           />
           <Card.Actions>
             <Button mode={"contained-tonal"} onPress={ () => navigation.navigate("IconConfig") }>Choisir</Button>
+          </Card.Actions>
+        </Card>
+
+        <Card style={{ marginTop:16 }}>
+          <Card.Title
+              title="Affichage"
+              subtitle="Mode sombre/clair"
+              left={(props) => <Avatar.Icon {...props} icon="theme-light-dark" />}
+          />
+          <Card.Actions>
+            <Button mode={ whatSelectedDisplayMode("D") } onPress={ () => setSelectedDisplayMode("D") }>Sombre</Button>
+            <Button mode={ whatSelectedDisplayMode("L") } onPress={ () => setSelectedDisplayMode("L") }>Clair</Button>
+            <Button mode={ whatSelectedDisplayMode("A") } onPress={ () => setSelectedDisplayMode("A") }>Auto</Button>
           </Card.Actions>
         </Card>
 
@@ -2043,9 +2036,7 @@ function ShowSettings( { navigation } ) {
         { // Bouton de test de crash
           isBeta ? ( 
             <>
-              <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => betaToolbox("crash") }> Forcer un crash de l'app </Button> 
-              <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => betaToolbox("notification") }> Tester les notifs. </Button>
-              <Button style={{ marginTop: 4 }} icon="plus" onPress={ () => betaToolbox("plus") }> UniceNotes+ </Button>
+              <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => crashIt() }> Forcer un crash de l'app </Button> 
             </>
             ) : null
         }
@@ -2214,107 +2205,6 @@ function AverageConfig( { navigation } ) {
   );
 }
 
-// Page de configuration de UniceNotes+ (non fonctionnel)
-function UniceNotesPlus( { navigation } ) {
-  async function registerForPushNotificationsAsync() {
-    let token;
-  
-    if (Platform.OS === 'android') {
-      Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
-    }
-  
-    if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus !== 'granted') {
-        alert('Failed to get push token for push notification!');
-        return;
-      }
-      token = await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig.extra.eas.projectId,
-      });
-    } else {
-      alert('Must use physical device for Push Notifications');
-    }
-  
-    return token.data;
-  }
-
-  async function registerToken(value) {
-    if(value == "no") {
-      navigation.goBack();
-    } else if (value == "yes") {
-      Alert.alert("UniceNotes+", "En cliquant sur 'J'accepte', vous acceptez que vos identifiants soient sauvegardés sur un serveur externe sécurisé afin de pouvoir récupérer les notes automatiquement. \n\nVos identifiants sont chiffrés et ne sont pas accessibles par le développeur de l'application. \n\nVous pouvez à tout moment supprimer vos identifiants conformément au RGPD sur notre formulaire Signaler un bug.", [
-        {
-          text: "Annuler",
-          style: "cancel"
-        },
-        { 
-          text: "J'accepte", 
-          onPress: (async () => {
-            var token = await registerForPushNotificationsAsync()
-            LocalAuthentication.authenticateAsync({ promptMessage: "Veuillez vous authentifier pour continuer" }).then((res) => {
-              if(res.success) {
-
-                fetch("https://endpoint.hugofnm.fr/webhook/unicenotesapi", {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                    mode: "register",
-                    username: username,
-                    password: password,
-                    token: token
-                  })
-                }).then((res) => {
-                  if(res.status == 200) {
-                    saveUserdata("uniceNotesPlus", "true");
-                    Alert.alert("Succès", "Vous êtes maintenant inscrit à UniceNotes+ !");
-                    navigation.goBack();
-                  } else {
-                    Alert.alert("Erreur", "Une erreur est survenue lors de l'authentification biométrique. Veuillez réessayer.");
-                  }
-                })
-              } else {
-                Alert.alert("Erreur", "Une erreur est survenue lors de l'authentification biométrique. Veuillez réessayer.");
-              }
-            })
-          })
-        }]);
-    }
-  }
-
-  return (
-    <View style={ styleScrollable.container }>
-      <Appbar.Header>
-        <Tooltip title="Accueil">
-          <Appbar.BackAction onPress={() => navigation.goBack()} />
-        </Tooltip>
-        <Appbar.Content title="UniceNotes+" />
-      </Appbar.Header>
-
-      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Image style={{ width: 150, height: 100, alignSelf: 'center', marginTop: 16 }} source={require('./assets/unicenotesplus.png')}/>
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleLarge">Découvrez UniceNotes+, un service permettant de reçevoir des notifications lorsqu'une nouvelle note est disponible (ou autres informations) !</Text>
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Souhaitez-vous utiliser UniceNotes+ ?</Text>
-        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} icon={"check"} onPress={ async () => await registerToken("yes") }> Oui, j'accepte les conditions d'utilisation </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} icon={"cancel"} onPress={ async () => await registerToken("no") }> Non </Chip>
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">En cliquant l'option Oui, votre nom d'utilisateur et votre mot de passe seront sauvegardés sur un serveur externe sécurisé afin de pouvoir récupérer les notes automatiquement.</Text>
-      </ScrollView>
-    </View>
-  );
-}
-
 // ---------------------------------------------
 // FONCTIONS ANNEXES
 // ---------------------------------------------
@@ -2338,7 +2228,6 @@ function App() {
         <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres', headerShown: false }} />
         <Stack.Screen name="IconConfig" component={IconConfig} options={{ title: 'Icône', presentation: 'modal', headerShown: false, gestureEnabled: true  }} />
         <Stack.Screen name="AverageConfig" component={AverageConfig} options={{ title: 'Configuration', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="UniceNotesPlus" component={UniceNotesPlus} options={{ title: 'UniceNotes+', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -2445,15 +2334,25 @@ const darkTheme = {
   }
 };
 
-var choosenTheme = darkTheme;
-var colorScheme = Appearance.getColorScheme();
-if (colorScheme === 'dark') {
-  choosenTheme = darkTheme
-} else {
-  choosenTheme = lightTheme
-}
+AsyncStorage.getItem("displayMode").then((result) => {
+  displayMode = result
+})
+var choosenTheme = displayMode === "dark" ? darkTheme : lightTheme;
 
-const useFonts = async () =>
+const setTheme = async () => {
+  var displayMode = await AsyncStorage.getItem("displayMode")
+  console.log(displayMode)
+
+  if (displayMode == "auto") {
+    displayMode = Appearance.getColorScheme()
+  }
+
+  if (displayMode == "dark") {
+    choosenTheme = darkTheme
+  } else if (displayMode == "light") {
+    choosenTheme = lightTheme
+  }
+
   await Font.loadAsync({
     'Bahnschrift': require('./assets/bahnschrift.ttf')
   }).then(() => {
@@ -2466,6 +2365,7 @@ const useFonts = async () =>
       fonts: configureFonts({config: fontConfig}),
     }
   });
+}
 
 const style = StyleSheet.create({
   container: {
@@ -2514,7 +2414,7 @@ export default function Main() {
   useEffect(() => {
     // Load fonts
     const loadApp = async () => {
-      await useFonts().then(() => {
+      await setTheme().then(() => {
         setIsReady(true);
       });
     };
@@ -2524,9 +2424,11 @@ export default function Main() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <PaperProvider theme={choosenTheme}>
-        { isReady ? <App/> : null}
-      </PaperProvider>
+      { isReady ?
+        <PaperProvider theme={choosenTheme}>
+          <App/>
+        </PaperProvider>
+      : null}
     </GestureHandlerRootView>
   );
 }
