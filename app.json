@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "1.4.3",
+    "version": "1.5.0",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -24,11 +24,11 @@
         "CFBundleDevelopmentRegion": "fr"
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "5.3.2"
+      "buildNumber": "6.0.0"
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 18
+      "versionCode": 19
     },
     "extra": {
       "eas": {
@@ -60,16 +60,20 @@
             "image": "./assets/icons/icon_beach.png",
             "prerendered": false
           },
+          "christmas2023": {
+            "image": "./assets/icons/icon_christmas2023.png",
+            "prerendered": false
+          },
           "glitched": {
             "image": "./assets/icons/icon_glitched.png",
             "prerendered": false
           },
-          "melted": {
-            "image": "./assets/icons/icon_melted.png",
+          "vaporwave": {
+            "image": "./assets/icons/icon_vaporwave.png",
             "prerendered": false
           },
-          "text": {
-            "image": "./assets/icons/icon_text.png",
+          "melted": {
+            "image": "./assets/icons/icon_melted.png",
             "prerendered": false
           },
           "zoomed": {
