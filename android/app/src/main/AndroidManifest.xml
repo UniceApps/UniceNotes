@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
@@ -58,19 +58,25 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity-alias>
+    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitychristmas2023" android:enabled="false" android:exported="true" android:icon="@mipmap/christmas2023" android:targetActivity=".MainActivity">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityglitched" android:enabled="false" android:exported="true" android:icon="@mipmap/glitched" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity-alias>
-    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitymelted" android:enabled="false" android:exported="true" android:icon="@mipmap/melted" android:targetActivity=".MainActivity">
+    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityvaporwave" android:enabled="false" android:exported="true" android:icon="@mipmap/vaporwave" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity-alias>
-    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitytext" android:enabled="false" android:exported="true" android:icon="@mipmap/text" android:targetActivity=".MainActivity">
+    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitymelted" android:enabled="false" android:exported="true" android:icon="@mipmap/melted" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>

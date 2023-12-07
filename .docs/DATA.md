@@ -20,9 +20,11 @@ This data is stored in the secure enclave (Keychain from Apple / Keystore from A
 This data is stored in the AsyncStorage of the device, which is a storage system that is used to store data. The data is not encrypted and can be accessed by the user.
 
 - ```autoSet```: Boolean value to check if the user has chosen to automatically calculate the overall average
+- ```haptics```: Boolean value to check if the user has chosen to enable haptics
 - ```configAverage```: String value that contains or the letter B for bonus or the letter M for malus
 - ```matiereBonus```: String value that contains the name of the subject that will be used for the bonus
 - ```matiereMalus```: String value that contains the name of the subject that will be used for the malus
-- ```hapticsOn```: Boolean value to check if the user has chosen to enable haptics
 - ```calendar```: Array of objects containing the calendar events	
-- ```selectedServer```: String value that contains the name of the server that the user has chosen
+- ```server```: String value that contains the name of the server that the user has chosen
+- ```uniceNotesPlus```: Boolean value to check if the user is registered in the UniceNotesPlus update
+- ```photoLink```: String value that contains the link to the user's photo
