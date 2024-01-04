@@ -3,7 +3,7 @@
   <h2 align="center">UniceNotes</h2>
 
 <p align="center">
-  <b>UniceNotes</b> est un client mobile non-officiel donnant accès à de multiples ressources provenant de l'Espace Numérique de Travail de l'I.U.T de Nice Côte d'Azur (Notes via Intracursus / Emploi du temps et Absences via GPU). Utilisant React Native, il est compatible avec la grande majorité des dispositifs mobiles (<b>iOS et Android</b>). <b>Visualisez vos notes. Sans PDF.</b>
+  <b>UniceNotes</b> est un client mobile non-officiel donnant accès à de multiples ressources provenant de l'Espace Numérique de Travail de l'I.U.T de Nice Côte d'Azur (Notes via Intracursus / Emploi du temps et Absences via GPU). Utilisant React Native, il est compatible avec la grande majorité des dispositifs mobiles (<b>iOS et Android</b>). <b>Votre ENT. Dans votre poche.</b>
 </p>
 
 ## ⚡️ Téléchargement
@@ -34,7 +34,7 @@ L'application UniceNotes et son site web sont sous licence [MIT License](https:/
 Le logo UniceNotes est sous licence [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](
 https://creativecommons.org/licenses/by-nc-nd/4.0/).
 \
-Certains composants intégrés peuvent être sous des licences différentes, consultez le [site web](https://notes.unice.cf/credits) pour plus d'informations.
+Certains composants intégrés peuvent être sous des licences différentes, consultez le [site web](https://notes.metrixmedia.fr/credits) pour plus d'informations.
 
 ## 🔒 Confidentialité
 
