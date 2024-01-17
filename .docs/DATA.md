@@ -9,7 +9,6 @@ This data is stored in the secure enclave (Keychain from Apple / Keystore from A
 
 - ```username```: Username of the user
 - ```password```: Password of the user
-- ```edtPassword```: Password of the user to access the timetable
 - ```name```: Full name of the user
 
 ## Data stored in AsyncStorage
@@ -26,5 +25,3 @@ This data is stored in the AsyncStorage of the device, which is a storage system
 - ```matiereMalus```: String value that contains the name of the subject that will be used for the malus
 - ```calendar```: Array of objects containing the calendar events	
 - ```server```: String value that contains the name of the server that the user has chosen
-- ```uniceNotesPlus```: Boolean value to check if the user is registered in the UniceNotesPlus update
-- ```photoLink```: String value that contains the link to the user's photo

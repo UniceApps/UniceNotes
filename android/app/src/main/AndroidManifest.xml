@@ -58,6 +58,18 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity-alias>
+    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitymelted" android:enabled="false" android:exported="true" android:icon="@mipmap/melted" android:targetActivity=".MainActivity">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityzoomed" android:enabled="false" android:exported="true" android:icon="@mipmap/zoomed" android:targetActivity=".MainActivity">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitychristmas2023" android:enabled="false" android:exported="true" android:icon="@mipmap/christmas2023" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
@@ -76,13 +88,7 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity-alias>
-    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitymelted" android:enabled="false" android:exported="true" android:icon="@mipmap/melted" android:targetActivity=".MainActivity">
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN"/>
-        <category android:name="android.intent.category.LAUNCHER"/>
-      </intent-filter>
-    </activity-alias>
-    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityzoomed" android:enabled="false" android:exported="true" android:icon="@mipmap/zoomed" android:targetActivity=".MainActivity">
+    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityios6" android:enabled="false" android:exported="true" android:icon="@mipmap/ios6" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
