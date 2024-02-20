@@ -24,7 +24,7 @@
         "CFBundleDevelopmentRegion": "fr"
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "6.2.1",
+      "buildNumber": "6.2.4",
       "config": {
         "usesNonExemptEncryption": false
       }
@@ -39,7 +39,8 @@
       },
       "bugsnag": {
         "apiKey": "$(BUGSNAG_API_KEY)"
-      }
+      }, 
+      "github_hash": "$(EAS_BUILD_GIT_COMMIT_HASH)"
     },
     "owner": "hugofnm",
     "plugins": [

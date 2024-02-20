@@ -45,8 +45,7 @@ import * as Font from 'expo-font';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
+import Constants from "expo-constants";
 import * as ImagePicker from 'expo-image-picker';
 import * as StoreReview from 'expo-store-review';
 
@@ -63,7 +62,7 @@ import Animated, { event, log, set,
 import Bugsnag from '@bugsnag/expo';
 import LottieView from 'lottie-react-native';
 import BottomSheet, { BottomSheetView, BottomSheetTextInput, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot'; 
 
@@ -87,8 +86,7 @@ var semester = ''; // Selected semesters
 var calendar = {}; // User's calendar
 
 const servers = [
-  "https://api.unice.hugofnm.fr",
-  "https://backup.api.unice.hugofnm.fr"
+  "https://api.unice.hugofnm.fr"
 ]; // UniceAPI servers
 
 // Temporary variables - SecureStore
@@ -166,9 +164,13 @@ var matiereMalus = AsyncStorage.getItem("matiereMalus").then((result) => {
 }); // Matières malus
 
 var selectedServer = AsyncStorage.getItem("server").then((result) => {
-  if (result != null && servers.includes(result.toString())) {
-    saveUserdata("server", servers[0].toString());
-    selectedServer = servers[0].toString();
+  if (result != null) {
+    if (result.toString() == servers[0].toString()) {
+      selectedServer = servers[0].toString();
+    } else {
+      selectedServer = result.toString()
+      servers.push(selectedServer);
+    }
   } else {
     selectedServer = servers[0].toString();
   }
@@ -255,7 +257,7 @@ const handleURL = async (url) => {
   await WebBrowser.openBrowserAsync(url);
 };
 
-// Fonction de déconnexion (API UniceNotes + app si "Se souvenir de moi" est désactivé)
+// Fonction de déconnexion (UniceAPI + app si "Se souvenir de moi" est désactivé)
 function logout(navigation) {
   haptics("heavy");
   isConnected = false;
@@ -521,9 +523,17 @@ function SplashScreen({ navigation }) {
       res = false;
     }
 
-    if (selectedServer == servers[1]) {
-      Alert.alert("Serveur Backup", "Toutes les fonctionnalités ne sont pas disponibles en mode Backup.");
-    }
+    if (selectedServer != servers[0].toString() && res) {
+      // check 200 ok
+      await fetch("https://toolbox.hugofnm.fr/redirect?redirectUrl=" + selectedServer)
+      .then((response) => {
+        if(response.status != 200) {
+          setLoading(false);
+          showError("customservercheck");
+          res = false;
+        }
+      })
+    };
 
     if (!servers.includes(selectedServer)) {
       selectedServer = servers[0];
@@ -647,6 +657,9 @@ function SplashScreen({ navigation }) {
     } else if(action == "noserver") {
       setTitleError("Serveur indisponible");
       setSubtitleError("Le serveur n'est pas accessible ! Essayez de changer de serveur dans les paramètres. EC=0xS");
+    } else if(action == "customservercheck") {
+      setTitleError("Serveur custom indisponible");
+      setSubtitleError("Il est possible que sa configuration soit mauvaise ou bien qu'il soit banni. Essayez de changer de serveur dans les paramètres. EC=0xS");
     }
     if(bottomSheetError != null) {
       setTimeout(() => {
@@ -656,11 +669,6 @@ function SplashScreen({ navigation }) {
   }
 
   async function getMyCal(navigation) {
-    if (selectedServer.toString() == servers[1].toString()) {
-      haptics("error");
-      Alert.alert("Erreur", "Le serveur backup ne peut pas être utilisé pour récupérer le calendrier. EC=0xF");
-      return;
-    }
     if(bottomSheetInfo != null) {
       bottomSheetInfo.close()
     }
@@ -893,6 +901,7 @@ function OOBE({ navigation }) {
           loop
           resizeMode='cover'
           source={require('./assets/lottie/background_login_dark')}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
       ) : (
         <LottieView
@@ -900,6 +909,7 @@ function OOBE({ navigation }) {
           loop
           resizeMode='cover'
           source={require('./assets/lottie/background_login_light')}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
       )}
       <View style={{ flex: 1, alignSelf: 'center', height:'auto', marginTop: insets.top*2 }}>
@@ -1083,12 +1093,6 @@ function HomeScreen({ navigation }) {
       return;
     }
 
-    if(selectedServer.toString() == servers[1].toString()) {
-      setNextEvent({summary: "Serveur Backup", location: "Impossible de récupérer le prochain cours."});
-      setNextEventLoaded(true);
-      return;
-    }
-
     if(mode == "force") {
       setNextEvent({summary: "Chargement...", location: "Chargement..."});
     }
@@ -1113,29 +1117,10 @@ function HomeScreen({ navigation }) {
   async function getMyCal(navigation) {
     setSelectable(false);
     setLoading(true);
-    if (selectedServer.toString() == servers[1].toString()) {
-      setSelectable(true);
-      setLoading(false);
-      haptics("error");
-      showError("backup");
-      return;
-    }
     calendar = await getCalendar();
     setSelectable(true);
     setLoading(false);
     navigation.navigate('ShowEDT');
-  }
-
-  function getMyAbs() {
-    if (selectedServer.toString() == servers[1].toString()) {
-      setSelectable(true);
-      setLoading(false);
-      haptics("error");
-      showError("backup");
-      return;
-    } else {
-      handleLogin("absences");
-    }
   }
 
   function goToUser(navigation) {
@@ -1189,9 +1174,6 @@ function HomeScreen({ navigation }) {
     } else if(action == "wronglogin") {
       setTitleError("Erreur");
       setSubtitleError("Vos identifiants sont incorrects. EC=0xI");
-    } else if(action == "backup") {
-      setTitleError("Erreur");
-      setSubtitleError("Le serveur backup ne peut pas être utilisé pour récupérer le calendrier ou les absences. EC=0xF");
     } else if(action == "alreadyrated") {
       setTitleError("Erreur");
       setSubtitleError("Vous avez déjà soumis une note à UniceNotes.");      
@@ -1199,14 +1181,6 @@ function HomeScreen({ navigation }) {
     if(bottomSheetError != null) {
       bottomSheetError.expand()
     }
-  }
-
-  function confetti() {
-    haptics("error")
-    if(confettiRef != null) {
-      confettiRef.play();
-    }
-    haptics("warning")
   }
 
   useEffect(() => {
@@ -1251,18 +1225,9 @@ function HomeScreen({ navigation }) {
 
   return (
     <View style={style.container}>
-      <LottieView
-        ref={(animation) => confettiRef = animation}
-        loop={false}
-        autoPlay
-        resizeMode='cover'
-        source={require('./assets/lottie/confettis')}
-      />
       <SafeAreaView>
         <View style={{ display: "flex", flexDirection: 'row', justifyContent:'left' }}>
-          <TouchableRipple onPress={() => confetti()} style={{ marginTop: insets.top*2, marginBottom: 16 }} >
-            <Avatar.Image size={96} source={require('./assets/white.png')} />
-          </TouchableRipple>
+          <Avatar.Image style={{ marginTop: insets.top*2, marginBottom: 16 }} size={96} source={require('./assets/white.png')} />
           <TouchableRipple onPress={() => goToUser(navigation)} rippleColor="rgba(0, 0, 0, 0)" style={{ marginLeft: "auto", marginTop: insets.top*2, marginBottom: 50 }} >
             <Avatar.Image size={48} source={{ uri: tempPhoto }} />
           </TouchableRipple>
@@ -1273,7 +1238,7 @@ function HomeScreen({ navigation }) {
         <Text style={{ textAlign: 'left' }} variant="displayLarge">Salut ! 👋</Text>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Tu es connecté·e·s sous le compte de : {"\n"}{username} - {name}</Text>
         <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes</Chip>
-        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => getMyAbs() } icon="account-question" >Absences</Chip>
+        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => handleLogin("absences") } icon="account-question" >Absences</Chip>
 
         <Card style={{ marginBottom: 8 }} disabled={!selectable} onPress={ () => getMyCal(navigation) }>
           <Card.Title title="Prochain Cours" />
@@ -1301,7 +1266,7 @@ function HomeScreen({ navigation }) {
             <IconButton style={{ marginBottom: 16 }} icon="star" mode="contained" onPress={ () => rateApp() }/>
           </Tooltip>
         </View>
-        <Text style={{ textAlign: 'center' }} variant='titleSmall'>Version {appVersion} | UniceNotes fête 1 an !</Text>
+        <Text style={{ textAlign: 'center' }} variant='titleSmall'>Version {appVersion}</Text>
         <ActivityIndicator style={{ marginTop: 8, marginBottom: insets.bottom }} animating={loading} size="large" />
       </SafeAreaView>
       <BottomSheet ref={(sheet) => bottomSheetError = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.errorContainer }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onErrorContainer }} backdropComponent={renderBackdrop}>
@@ -1474,8 +1439,7 @@ function APIConnect ({ navigation }) {
           dataIsLoaded = true;
           navigation.goBack();
           navigation.navigate('ShowGrades');
-        }
-        else {
+        } else {
           haptics("error");
           showError("nologin");
         }
@@ -1516,7 +1480,7 @@ function APIConnect ({ navigation }) {
 }
 
 // Page d'affichage des notes
-function ShowGrades( { navigation } ) {
+function ShowGrades({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("Infos");
@@ -1826,18 +1790,30 @@ function ShowGrades( { navigation } ) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }>
         <Button style={style.buttonActionChange} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
-        <Text style={{ textAlign: 'left', marginTop: 16 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
+        <View style={{ display: "flex", flexDirection: 'row', justifyContent:'left' }}>
+          <Text style={{ textAlign: 'left', marginTop: 16 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
+          <IconButton style={{ marginLeft: 8, marginTop: 8 }} mode='contained-tonal' icon="information" onPress={() => { 
+            setTitle("Attention !"); 
+            setSubtitle('Lorsqu\'elle est accompagnée de la mention "Calculée", la moyenne générale est calculée par UniceNotes et ne tient pas compte des UE et de certains coefficients. Elle est donc à titre indicatif et peut être erronée.'); 
+            if(bottomSheetInfo != null) {
+              bottomSheetInfo.expand() 
+            }
+          }} />
+        </View>
 
         { // Affiche position si disponible
           position != "" ? ( 
-            <Text style={{ textAlign: 'left', marginTop: 8 }} variant="titleMedium">Position : {position}</Text>
+            <Text style={{ textAlign: 'left' }} variant="titleMedium">Position : {position}</Text>
           ) : null
         }
 
-        <Divider style={{ marginBottom: 16, marginTop: 16 }} />
+        <Divider style={{ marginBottom: 16, marginTop: 8 }} />
+        <Text style={{ textAlign: 'left', marginBottom: 16  }} variant="titleSmall">Les notes et moyennes sont affichées à but purement indicatif (elles peuvent être modifiées à tout instant) et ne représentent en aucun cas un justificatif de notes officiel.</Text>
+        
         {showTable()}
-        <Text style={{ textAlign: 'left' }} variant="titleSmall">Les notes et moyennes sont affichées à but purement indicatif et ne représentent en aucun cas un justificatif de notes officiel.</Text>
-        <Text style={{ textAlign: 'left', marginBottom: insets.bottom*2 }} variant="titleSmall">Les coefficients et UE ne sont pas pris en compte dans le calcul de moyenne.</Text>
+
+        <Text style={{ textAlign: 'left' }} variant="titleSmall">La mention "Calculée" représente une moyenne calculée par UniceNotes et ne tient pas compte des UE et de certains coefficients.</Text>
+        <Text style={{ textAlign: 'left', marginBottom: insets.bottom*2 }} variant="titleSmall">En aucun cas UniceNotes ne pourrait se tenir responsable d'un mauvais affichage des notes/moyennes.</Text>
       </ScrollView>
 
       <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.surfaceVariant }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onSurfaceVariant }} backdropComponent={renderBackdrop}>
@@ -2046,7 +2022,7 @@ function ShowAbsences({ navigation }) {
 }
 
 // Page d'affichage de l'emploi du temps
-function ShowEDT( { navigation } ) {
+function ShowEDT({ navigation }) {
   const [cal, setCalendar] = useState(calendar);
   const [count, setCount] = useState(0);
   const [view, setView] = useState("workWeek");
@@ -2055,6 +2031,10 @@ function ShowEDT( { navigation } ) {
   const [subtitle, setSubtitle] = useState("");
   const insets = useSafeAreaInsets();
   const calendarRef = useRef(null);
+
+  const month = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+  const [selectedMonth, setSelectedMonth] = useState(month[new Date().getMonth()])
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 
 	const renderBackdrop = useCallback(
 		(props) => (
@@ -2100,6 +2080,14 @@ function ShowEDT( { navigation } ) {
     }
   }
 
+  function changeDate(date) {
+    var resDate = new Date(date.date.toString());
+    resMonth = month[resDate.getMonth()];
+    resYear = resDate.getFullYear();
+    setSelectedMonth(resMonth);
+    setSelectedYear(resYear);
+  }
+
   function showInfos(eventItem){
     haptics("selection");
     var res;
@@ -2122,30 +2110,35 @@ function ShowEDT( { navigation } ) {
 
   return (
     <View style={styleScrollable.container}>
-        <Appbar.Header style={{ paddingTop: 0 }}>
-          <Tooltip title="Accueil">
-            <Appbar.BackAction onPress={() => navigation.goBack()} />
-          </Tooltip>
-          <Appbar.Content title="EDT" />
-          <Tooltip title="Aujourd'hui">
-            <Appbar.Action icon="update" onPress={() => goToToday()}/>
-          </Tooltip>
-          <Tooltip title="Changer la vue">
-            <Appbar.Action icon={viewIcon} onPress={() => changeView()} />
-          </Tooltip>
-          <Tooltip title="Paramètres">
-            <Appbar.Action icon="cog" onPress={() => goToSettings(navigation)} />
-          </Tooltip>
-        </Appbar.Header>
-        <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => showInfos(eventItem)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={7} end={20} renderEventContent={(event) => {
-            return (
-              <SafeAreaView style={{ margin: 10 }}>
-                <Text style={{ fontFamily:'', fontWeight:'bold', color:'black' }}>{event.title}</Text>
-                <Text style={{ color:'black' }}>{event.subtitle}</Text>
-                <Text style={{ color:'black' }}>{event.description}</Text>
-              </SafeAreaView>
-            );
-        }}/>
+      <Appbar.Header style={{ paddingTop: 0 }}>
+        <Tooltip title="Accueil">
+          <Appbar.BackAction onPress={() => navigation.goBack()} />
+        </Tooltip>
+        <Appbar.Content title="EDT" />
+        <Tooltip title="Aujourd'hui">
+          <Appbar.Action icon="update" onPress={() => goToToday()}/>
+        </Tooltip>
+        <Tooltip title="Changer la vue">
+          <Appbar.Action icon={viewIcon} onPress={() => changeView()} />
+        </Tooltip>
+        <Tooltip title="Paramètres">
+          <Appbar.Action icon="cog" onPress={() => goToSettings(navigation)} />
+        </Tooltip>
+      </Appbar.Header>
+
+      <Divider style={{ marginBottom: 8 }} />
+      <Text style={{ textAlign: 'center' }} variant="titleMedium">{selectedMonth} {selectedYear}</Text>
+
+      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => showInfos(eventItem)} onChange={(date) => changeDate(date)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={7} end={20} renderEventContent={(event) => {
+          return (
+            <SafeAreaView style={{ margin: 10 }}>
+              <Text style={{ fontFamily:'', fontWeight:'bold', color:'black' }}>{event.title}</Text>
+              <Text style={{ color:'black' }}>{event.subtitle}</Text>
+              <Text style={{ color:'black' }}>{event.description}</Text>
+            </SafeAreaView>
+          );
+      }}/>
+
       <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.surfaceVariant }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onSurfaceVariant }} backdropComponent={renderBackdrop}>
         <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
           <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{title}</Text>
@@ -2158,7 +2151,7 @@ function ShowEDT( { navigation } ) {
 }
 
 // Page d'affichage des sous-applications de l'ENT
-function ShowENT( { navigation } ) {
+function ShowENT({ navigation }) {
   return (
     <View style={ styleScrollable.container }>
       <Appbar.Header>
@@ -2185,9 +2178,11 @@ function ShowENT( { navigation } ) {
 }
 
 // Page de paramètres
-function ShowSettings( { navigation } ) {
+function ShowSettings({ navigation }) {
   const [vibrations, setVibrations] = useState(hapticsOn);
   const insets = useSafeAreaInsets();
+
+  let hash = Constants.expoConfig.extra.github_hash;
 
   function goBack() {
     haptics("medium");
@@ -2234,8 +2229,7 @@ function ShowSettings( { navigation } ) {
             <Button style={[style.buttonActionChange, { marginBottom: 8, marginTop: 8, height: 48, justifyContent: 'center' }]} icon="account" mode="contained-tonal" onPress={ () => navigation.navigate('ShowUser')}>Mon compte</Button>
           ) : null
         }
-        <Button style={{ marginBottom: 8 }} icon="calculator" mode="contained-tonal" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
-        <Button icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/bug") }> FAQ / Signaler un bug </Button>
+        <Button icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/support") }> FAQ / Signaler un bug </Button>
 
         <Divider style={{ marginTop: 16 }} />
 
@@ -2282,8 +2276,12 @@ function ShowSettings( { navigation } ) {
         <Text style={{ textAlign: 'left' }} variant="titleSmall">❤️ Fièrement développé par un GEII : 
           <Text style={style.textLink} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
         </Text>
+        <Text style={{ textAlign: 'left' }} variant="titleSmall">🛠️ Hash local du commit Git : {hash}</Text>
 
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur.</Text>
+
+        <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">🤝 Remerciements : Corentin B., Nathan J., Marius D., Eliott F., Bobi, Matthieu H., Lorik H., Romain H., Valentin D. et vous, merci pour votre soutien :)</Text>
+
         <Button style={{ marginTop: 16 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
         <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://notes.metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
         <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
@@ -2304,7 +2302,7 @@ function ShowSettings( { navigation } ) {
 }
 
 // Page d'affichage des informations de l'utilisateur
-function ShowUser( { navigation } ) {
+function ShowUser({ navigation }) {
   const [count, setCount] = useState(0);
   const [tempPhoto, setTempPhoto] = useState(null);
   const [tempName, setTempName] = useState(name);
@@ -2377,12 +2375,11 @@ function ShowUser( { navigation } ) {
         <IconButton style={{ alignSelf: 'center', marginTop: -48, marginLeft: 96 }} icon="pencil" mode="contained-tonal" onPress={ () => pickImageAsync() } />
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Nom et prénom :</Text>
         <TextInput style={{ textAlign: 'left', marginTop: 4, height: 48 }} value={tempName} onChangeText={(value) => setTempName(value)} right={<TextInput.Icon icon="content-save" onPress={() => saveName(tempName)}/>} />
-        <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleMedium">Nom d'utilisateur :</Text>
-        <Text style={{ textAlign: 'left' }} variant="titleSmall">{username}</Text>
-        <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleMedium">Adresse mail :</Text>
-        <Text style={{ textAlign: 'left' }} variant="titleSmall">{username}@etu.unice.fr</Text>
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Nom d'utilisateur :</Text>
+        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 48 }} value={username} disabled />
         <Divider style={{ marginTop: 16, marginBottom: 16 }} />
         <Button icon="form-textbox-password" mode="contained-tonal" onPress={ () => handleURL("https://sesame.unice.fr/web/app/prod/Compte/Gestion/mdp") }> Modifier mon mot de passe </Button>
+        <Button style={{ marginTop: 8 }} icon="calculator" mode="contained-tonal" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
         <Button style={[style.buttonLogout, { marginTop: 8, height: 48, justifyContent: 'center' }]} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer toutes mes données </Button>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Pour restaurer votre photo par défaut, veuillez vous connecter grâce à l'onglet "Notes", puis cliquez sur la flèche sous votre photo.</Text>
       </ScrollView>
@@ -2391,7 +2388,7 @@ function ShowUser( { navigation } ) {
 }
 
 // Page de changement d'icône
-function IconConfig( { navigation } ) {
+function IconConfig({ navigation }) {
   function changeIconHome(value) {
     haptics("medium");
     if(!__DEV__){
@@ -2430,7 +2427,7 @@ function IconConfig( { navigation } ) {
 }
 
 // Page de configuration de la moyenne générale
-function AverageConfig( { navigation } ) {
+function AverageConfig({ navigation }) {
   const [automatique, setAutomatique] = useState(autoSet);
 
   const [malus, setMalus] = useState(configAverage.includes("M"));
@@ -2549,23 +2546,47 @@ function AverageConfig( { navigation } ) {
 }
 
 // Page de configuration des serveurs
-function ServerConfig( { navigation } ) {
+function ServerConfig({ navigation }) {
+  const [title, setTitle] = useState("Infos");
+  const [subtitle, setSubtitle] = useState("");
+  const insets = useSafeAreaInsets();
+
   const [loading, setLoading] = useState(false);
   const [isCustom, setIsCustom] = useState(false);
-  const [customServer, setCustomServer] = useState(selectedServer.toString());
-  const [statusUniceNotesMain, setStatusUniceNotesMain] = useState("timer-sand");
-  const [statusUniceNotesBackup, setStatusUniceNotesBackup] = useState("timer-sand");
+  const [statusUniceNotes, setStatusUniceNotes] = useState("timer-sand");
   const [statusIntracursus, setStatusIntracursus] = useState("timer-sand");
   const [statusSatellysGPU, setStatusSatellysGPU] = useState("timer-sand");
   const [statusLoginUniCA, setStatusLoginUniCA] = useState("timer-sand");
 
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if(count == 0) {
+      setCount(1);
+      if(selectedServer != servers[0].toString()) {
+        setIsCustom(true);
+      }
+    }
+  });
+
+  const renderBackdrop = useCallback(
+		(props) => (
+			<BottomSheetBackdrop {...props}
+        opacity={0.9}
+        enableTouchThrough={false}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        style={[{ backgroundColor: 'rgba(0, 0, 0, 1)' }, StyleSheet.absoluteFillObject]} 
+      />
+		),
+		[]
+	);
+
   function whatSelectedServer(value) {
     var res = "contained-tonal";
-    if (selectedServer == servers[1].toString() && value == "B") {
+    if (selectedServer == servers[0].toString() && value == "P") {
       res = "contained";
-    } else if (selectedServer == servers[0].toString() && value == "P") {
-      res = "contained";
-    } else if (isCustom && value == "C") {
+    } else if (selectedServer != servers[0].toString() && value == "C") {
       res = "contained";
     }
     return res;
@@ -2573,17 +2594,14 @@ function ServerConfig( { navigation } ) {
 
   function setSelectedServer(value) {
     haptics("heavy");
-    if (value == "B") {
-      selectedServer = servers[1];
-      saveUserdata("server", servers[1].toString());
-      isConnected = false;
-      dataIsLoaded = false;
-      navigation.reset({
-        index: 0,
-        routes: [
-          { name: 'SplashScreen' }
-        ],
-      });
+    if (value == "C") {
+      haptics("error");
+
+      setTitle("Attention !!!")
+      setSubtitle("Vous vous apprêtez à changer de serveur UniceNotes. \n\nPasser d'un serveur officiel à un serveur non officiel expose vos données à des risques de sécurité majeurs, incluant le vol d'informations sensibles et les attaques de logiciels malveillants. \n\nUniceNotes ne saurait être tenu responsable des conséquences de ce changement. \n\nVoulez-vous vraiment continuer ?");
+      if(bottomSheetInfo != null) {
+        bottomSheetInfo.expand();
+      }
     }
     if (value == "P") {
       selectedServer = servers[0];
@@ -2597,15 +2615,38 @@ function ServerConfig( { navigation } ) {
         ],
       });
     }
-    if (value == "C") {
-      setIsCustom(true);
+  }
+
+  async function setCustomServer(value) {
+    haptics("heavy");
+    if(value.includes("https://")) {
+      res = await fetch(value.toString())
+      if(res.status == 200) {
+        selectedServer = value.toString();
+        saveUserdata("server", selectedServer);
+        isConnected = false;
+        dataIsLoaded = false;
+        Alert.alert("Succès", "Veuillez redémarrer l'application pour appliquer les changements.");
+      } else {
+        haptics("error");
+        Alert.alert("Erreur", "Le serveur personnalisé n'a pas répondu correctement. \nVeuillez vérifier l'URL et réessayer.");
+        return;
+      }
+    } else {
+      haptics("error");
+      Alert.alert("Erreur", "L'URL n'est pas valide ou n'utilise pas le protocole HTTPS. \nExemple : https://api.example.com");
+      return;
     }
   }
 
-  function setDevServer(value) {
-    setCustomServer(value);
-    selectedServer = value.toString();
-    saveUserdata("server", value.toString());
+  function actionBottomSheet(value) {
+    if(value == false && bottomSheetInfo != null) {
+      bottomSheetInfo.close();
+    } else if(value == true && bottomSheetInfo != null) {
+      selectedServer = "";
+      setIsCustom(true);
+      bottomSheetInfo.close();
+    }
   }
 
   async function startTest() {
@@ -2613,22 +2654,12 @@ function ServerConfig( { navigation } ) {
 
     await fetch(servers[0].toString()).then((res) => {
       if(res.status == 200) {
-        setStatusUniceNotesMain("check");
+        setStatusUniceNotes("check");
       } else {
-        setStatusUniceNotesMain("close");
+        setStatusUniceNotes("close");
       }
     }).catch((err) => {
-      setStatusUniceNotesMain("close");
-    });
-
-    await fetch(servers[1].toString()).then((res) => {
-      if(res.status == 200) {
-        setStatusUniceNotesBackup("check");
-      } else {
-        setStatusUniceNotesBackup("close");
-      }
-    }).catch((err) => {
-      setStatusUniceNotesBackup("close");
+      setStatusUniceNotes("close");
     });
 
     await fetch("https://intracursus.unice.fr").then((res) => {
@@ -2676,55 +2707,52 @@ function ServerConfig( { navigation } ) {
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Card style={{ marginBottom:16 }}>
           <Card.Title
-              title="Sélection du serveur"
-              subtitle="UNIQUEMENT en cas de problèmes"
+              title="Changer le serveur UniceNotes"
+              subtitle="⚠️ Zone sensible ⚠️"
               left={(props) => <Avatar.Icon {...props} icon="server-network" />}
           />
           <Card.Actions>
-            {
-              isBeta ? (
-                <Button mode={ whatSelectedServer("C") } onPress={ () => setSelectedServer("C") }>Dev</Button>
-              ) : null
-            }
-            <Button mode={ whatSelectedServer("B") } onPress={ () => setSelectedServer("B") }>Berlin</Button>
-            <Button mode={ whatSelectedServer("P") } onPress={ () => setSelectedServer("P") }>Nice (par défaut)</Button>
+            <Button mode={ whatSelectedServer("C") } onPress={ () => setSelectedServer("C") }>Custom</Button>
+            <Button mode={ whatSelectedServer("P") } onPress={ () => setSelectedServer("P") }>Par défaut</Button>
           </Card.Actions>
-        </Card>
-
-        { 
-          isBeta && isCustom ? (
-            <Card style={{ marginBottom:16 }}>
-              <Card.Title
-                  title="Custom server"
-                  subtitle="Development server only"
-                  left={(props) => <Avatar.Icon {...props} icon="server-network" />}
-              />
+          { 
+            isCustom ? (
               <Card.Actions>
                 <TextInput
-                  label="Custom server"
-                  defaultValue={customServer}
+                  label="URL"
+                  defaultValue={selectedServer}
                   onPressIn={() => haptics("selection")}
-                  onSubmitEditing={(text) => setDevServer(text.nativeEvent.text)}
+                  onSubmitEditing={(text) => setCustomServer(text.nativeEvent.text)}
                   style={{ marginBottom: 8, width: '100%' }}
                 />
               </Card.Actions>
-            </Card>
-          ) : null 
-        }
+            ) : null 
+          }
+        </Card>
 
         <Text style={{ marginBottom: 16, textAlign: 'left' }} variant="titleMedium">Status des serveurs :</Text>
 
         <Button mode={"contained-tonal"} onPress={ () => startTest() } loading={loading} >Démarrer test serveurs</Button>
 
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Si l'une des cases ci-dessous est une croix, c'est que j'ai dû casser quelque chose sur les serveurs UniceNotes.</Text>
-        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} icon={statusUniceNotesMain} disabled > Serveur UniceNotes (Nice) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} icon={statusUniceNotesBackup} disabled > Serveur UniceNotes Backup (Berlin) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16 }} icon={statusUniceNotes} disabled > Serveur UniceNotes Officiel </Chip>
 
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">En revanche, si c'est de ce côté-ci, alors c'est les serveurs de l'Université / I.U.T. qui ne fonctionnent pas. (Spoiler je n'y peux rien :/)</Text>
         <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} icon={statusIntracursus} disabled > Serveur Intracursus </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={statusSatellysGPU} disabled > Serveur Satellys GPU </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} icon={statusLoginUniCA} disabled > Serveur Login UniCA </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1, marginBottom: insets.bottom }} icon={statusLoginUniCA} disabled > Serveur Login UniCA </Chip>
       </ScrollView>
+
+      <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.errorContainer }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onErrorContainer }} backdropComponent={renderBackdrop}>
+        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
+        <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{title}</Text>
+          <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitle}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', }}>
+            <Button style={{ marginBottom: 16, marginRight: 8 }} icon="close" mode="contained" onPress={() => actionBottomSheet(false)}> Non </Button>
+            <Button style={{ marginBottom: 16, backgroundColor: style.container.onErrorContainer }} icon="check" mode="contained" onPress={() => actionBottomSheet(true)}> Oui </Button>
+          </View>
+        </BottomSheetView>
+      </BottomSheet>
     </View>
   );
 }

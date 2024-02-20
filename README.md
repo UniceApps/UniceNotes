@@ -22,6 +22,7 @@
 - Erreurs : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/ERRORS.md)
 - Haptics : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/HAPTICS.md)
 - Utilisation : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/USAGE.md)
+- API : [Voir la documentation](https://github.com/UniceApps/UniceAPI)
 
 ## ⚙️ Contribution
 
@@ -52,11 +53,42 @@ L'application UniceNotes utilise :
 avec votre consentement (en vous connectant sur l'application) afin de vous fournir une expérience utilisateur optimale.
 Ces données sont récupérées depuis le site web Intracursus ou GPU de l'Université Côte d'Azur et ne quittent pas votre appareil.
 \
-Les données sont **stockées sur votre appareil** et ne sont pas envoyées sur un serveur (Seuls vos identifiants sont utilisés sur ```login.univ-cotedazur.fr``` afin de vous identifier et créer un token). 
+Les données de connexion sont **stockées sur votre appareil** et ne sont pas stockées sur un serveur (Seuls vos identifiants sont utilisés sur ```login.univ-cotedazur.fr``` afin de vous identifier et créer un token). 
 \
-Les données de connexion (critiques) sont stockées dans un format **crypté** dans la Keychain d'Apple / Keystore d'Android et ne peuvent être déchiffrées que par l'utilisateur lorsqu'il s'identifie grâce à un moyen biométrique / code. [Voir l'API SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
+Les données de connexion (critiques) sont stockées dans un format **crypté** dans la Keychain d'Apple / Keystore d'Android et ne peuvent être déchiffrées que par l'utilisateur lorsqu'il s'identifie grâce à un code ou grâce à une option de connxion biométrique. [Voir l'API SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
 \
 Les données non-critiques sont stockées dans un stockage persistant nommé AsyncStorage de React Native. [Voir l'API AsyncStorage](https://react-native-async-storage.github.io/async-storage/docs/usage/)
+
+## 🛠️ Build
+
+Pour construire l'application, vous aurez besoin de Node.js, npm, Expo CLI, EAS CLI et un compte Expo.
+
+> [!IMPORTANT]
+> Attention, vous devez posséder un compte payant Apple Developer ou Google Play Console pour pouvoir construire l'application pour iOS ou Android.
+
+```bash
+# Installer Expo CLI et EAS CLI
+npm install -g expo-cli eas-cli
+
+# Cloner le dépôt
+git clone https://github.com/UniceApps/UniceNotes.git
+
+# Aller dans le dossier
+cd UniceNotes
+
+# Installer les dépendances
+npm install
+
+# Démarrer l'application en mode développement
+# Vous devez posséder Expo Go sur votre appareil
+npx expo
+
+# Construire l'application
+eas login
+eas build --platform all
+```
+
+Si le code source de l'application est modifié, il se peut que les fonctionnalités de l'application ne fonctionnent plus correctement à cause d'une vérification du hash de l'application par le serveur API.
 
 ## 📄 Légal
 
