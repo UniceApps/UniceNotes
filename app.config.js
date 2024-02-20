@@ -7,7 +7,8 @@ module.exports = ({ config }) => {
             },
             bugsnag: {
               apiKey: process.env.BUGSNAG_API
-            }
+            },
+            github_hash: process.env.EAS_BUILD_GIT_COMMIT_HASH,
         }
     };
 };
