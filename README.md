@@ -100,6 +100,8 @@ The Google Play Store logo® and the Google Play Store® are trademarks of Googl
 
 UniceNotes n'est aucunement affilié à l'Université Côte d'Azur ou à l'I.U.T. Nice Côte d'Azur.
 
+Toute utilisation de l'application UniceNotes est sous la seule responsabilité de l'utilisateur.
+
 Toute ressemblance avec le nom de l'application, le logo et l'interface ne saurait être que fortuite.
 
 L'application UniceNotes utilise Expo, un framework basé sur React Native.

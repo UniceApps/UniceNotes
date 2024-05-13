@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "1.5.2",
+    "version": "1.5.3",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -24,14 +24,14 @@
         "CFBundleDevelopmentRegion": "fr"
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "6.2.4",
+      "buildNumber": "6.3.0",
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 21
+      "versionCode": 22
     },
     "extra": {
       "eas": {
@@ -46,7 +46,7 @@
     "plugins": [
       "@bugsnag/plugin-expo-eas-sourcemaps",
       [
-        "expo-dynamic-app-icon",
+        "@hugofnm/expo-dynamic-app-icon",
         {
           "unicenotes": { // icon name
             "image": "./assets/icon.png", // icon path
@@ -89,7 +89,9 @@
             "prerendered": false
           }
         }
-      ]
+      ],
+      "expo-font",
+      "expo-secure-store"
     ]
   }
 }
