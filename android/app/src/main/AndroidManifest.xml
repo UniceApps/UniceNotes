@@ -17,10 +17,9 @@
   </queries>
   <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:theme="@style/AppTheme">
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
-    <meta-data android:name="expo.modules.updates.EXPO_SDK_VERSION" android:value="50.0.0"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
-    <activity android:name=".MainActivity" android:label="@string/app_name" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">
+    <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
@@ -39,11 +38,25 @@
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
+      </intent-filter>
     </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitymagnet" android:enabled="false" android:exported="true" android:icon="@mipmap/magnet" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
       </intent-filter>
     </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityardente" android:enabled="false" android:exported="true" android:icon="@mipmap/ardente" android:targetActivity=".MainActivity">
@@ -51,11 +64,25 @@
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
+      </intent-filter>
     </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitybeach" android:enabled="false" android:exported="true" android:icon="@mipmap/beach" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
       </intent-filter>
     </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitymelted" android:enabled="false" android:exported="true" android:icon="@mipmap/melted" android:targetActivity=".MainActivity">
@@ -63,11 +90,25 @@
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
+      </intent-filter>
     </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityzoomed" android:enabled="false" android:exported="true" android:icon="@mipmap/zoomed" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
       </intent-filter>
     </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivitychristmas2023" android:enabled="false" android:exported="true" android:icon="@mipmap/christmas2023" android:targetActivity=".MainActivity">
@@ -75,11 +116,25 @@
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
+      </intent-filter>
     </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityglitched" android:enabled="false" android:exported="true" android:icon="@mipmap/glitched" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
       </intent-filter>
     </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityvaporwave" android:enabled="false" android:exported="true" android:icon="@mipmap/vaporwave" android:targetActivity=".MainActivity">
@@ -87,11 +142,25 @@
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
+      </intent-filter>
     </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityios6" android:enabled="false" android:exported="true" android:icon="@mipmap/ios6" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
       </intent-filter>
     </activity-alias>
   </application>

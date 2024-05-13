@@ -67,14 +67,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot'; 
 
 // Disable this when using Expo Go
-import { setAppIcon } from "expo-dynamic-app-icon";
+import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
 
 // ---------------------------------------------
 // VARIABLES GLOBALES
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.5.2';
+var appVersion = '1.5.3';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -955,7 +955,7 @@ function OOBE({ navigation }) {
                   autoComplete='password' 
                   autoCorrect={false} 
                   editable={editable}
-                  style={{ marginBottom: 16, borderRadius: 10, fontSize: 16, lineHeight: 20, padding: 8, backgroundColor: 'rgba(151, 151, 151, 0.25)', color: choosenTheme.colors.onBackground }}
+                  style={{ marginBottom: 8, borderRadius: 10, fontSize: 16, lineHeight: 20, padding: 8, backgroundColor: 'rgba(151, 151, 151, 0.25)', color: choosenTheme.colors.onBackground }}
                 />
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
                   <Switch onValueChange={ (value) => setRememberMe(value) } disabled={!editable} value={rememberMe}/>
@@ -1142,7 +1142,7 @@ function HomeScreen({ navigation }) {
             {
               text: "Oui",
               onPress: () => {
-                handleURL("https://notes.metrixmedia.fr/bug");
+                handleURL("https://notes.metrixmedia.fr/support");
               }
             }
           ]);
@@ -1152,7 +1152,7 @@ function HomeScreen({ navigation }) {
       { text: "Oui", 
         onPress: async () => {
           if (await StoreReview.hasAction()) {
-          StoreReview.requestReview();
+            StoreReview.requestReview();
           } else (
             showError("alreadyrated")
           )
@@ -1316,8 +1316,8 @@ function Semesters ({ navigation }) {
       return <Text style={{ textAlign: 'center', marginTop : 8 }} variant="titleMedium">Aucun autre semestre disponible. Veuillez vous reconnecter ultérieurement.</Text>
 
     }
-    return semesters.map((semester) => (
-      <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => loadGrades(semester) } icon="adjust" > {semester} </Chip>
+    return semesters.map((sem) => (
+      <Chip key={sem.id} style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => loadGrades(sem.semester) } icon="adjust" > {sem.semester} </Chip>
     ))
   }
 
@@ -1486,6 +1486,9 @@ function ShowGrades({ navigation }) {
   const [title, setTitle] = useState("Infos");
   const [subtitle, setSubtitle] = useState("");
   const [gradeRefs, setGradeRefs] = useState([]);
+  const [moyenneString, setMoyenneString] = useState("");
+  const [calculated, setCalculated] = useState(false);
+  const [count, setCount] = useState(0);
   const insets = useSafeAreaInsets();
 
   const renderBackdrop = useCallback(
@@ -1517,6 +1520,13 @@ function ShowGrades({ navigation }) {
       setRefreshing(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (count == 0) {
+      isCalculated();
+      setCount(1);
+    }
+  });
 
   async function forceRefresh() {
     var res;
@@ -1645,9 +1655,11 @@ function ShowGrades({ navigation }) {
 
   function isCalculated() {
     if (average != "") {
-      return (average)
+      setCalculated(false);
+      setMoyenneString(average);
     } else {
-      return (showGlobalAverage() + " (calculée)")
+      setCalculated(true);
+      setMoyenneString(showGlobalAverage() + " (calculée)");
     }
   }
 
@@ -1791,14 +1803,16 @@ function ShowGrades({ navigation }) {
       }>
         <Button style={style.buttonActionChange} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
         <View style={{ display: "flex", flexDirection: 'row', justifyContent:'left' }}>
-          <Text style={{ textAlign: 'left', marginTop: 16 }} variant="titleMedium">Moyenne générale : {isCalculated()}</Text>
-          <IconButton style={{ marginLeft: 8, marginTop: 8 }} mode='contained-tonal' icon="information" onPress={() => { 
-            setTitle("Attention !"); 
-            setSubtitle('Lorsqu\'elle est accompagnée de la mention "Calculée", la moyenne générale est calculée par UniceNotes et ne tient pas compte des UE et de certains coefficients. Elle est donc à titre indicatif et peut être erronée.'); 
-            if(bottomSheetInfo != null) {
-              bottomSheetInfo.expand() 
-            }
-          }} />
+          <Text style={{ textAlign: 'left', marginTop: 16 }} variant="titleMedium">Moyenne générale : {moyenneString}</Text>
+          {calculated ? 
+            <IconButton style={{ marginLeft: 8, marginTop: 8 }} mode='contained-tonal' icon="information" onPress={() => { 
+              setTitle("Attention !"); 
+              setSubtitle('Lorsqu\'elle est accompagnée de la mention "Calculée", la moyenne générale est calculée par UniceNotes et ne tient pas compte des UE et de certains coefficients. Elle est donc à titre indicatif et peut être erronée.'); 
+              if(bottomSheetInfo != null) {
+                bottomSheetInfo.expand() 
+              }
+            }} />
+          : null}
         </View>
 
         { // Affiche position si disponible
@@ -1925,7 +1939,7 @@ function ShowAbsences({ navigation }) {
     if (absences.length > 0) {
       return (absences.map((item) => (
         <View>
-          <Card style={{ marginBottom: 16, backgroundColor: choosenTheme.colors.primaryContainer }} >
+          <Card style={{ marginTop: 16, marginBottom: 16, backgroundColor: choosenTheme.colors.primaryContainer }} >
             <Card.Title title={item.class} subtitle={"Professeur : " + item.prof} />
             <Card.Content>
               <Text>Date : {item.date}</Text>
@@ -1936,7 +1950,7 @@ function ShowAbsences({ navigation }) {
               <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
             </Card.Content>
           </Card>
-          <Divider style={{ marginBottom: 16 }} />
+          <Divider/>
         </View>
       )))
     }
@@ -1946,7 +1960,7 @@ function ShowAbsences({ navigation }) {
     if (retards.length > 0) {
       return (retards.map((item) => (
         <View>
-          <Card style={{ marginBottom: 16, backgroundColor: choosenTheme.colors.retard }} >
+          <Card style={{ marginTop: 16, marginBottom: 16, backgroundColor: choosenTheme.colors.retard }} >
             <Card.Title title={item.class} subtitle={"Professeur : " + item.prof} />
             <Card.Content>
               <Text>Date : {item.date}</Text>
@@ -1957,7 +1971,7 @@ function ShowAbsences({ navigation }) {
               <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
             </Card.Content>
           </Card>
-          <Divider style={{ marginBottom: 16 }} />
+          <Divider/>
         </View>
       )))
     }
@@ -1967,7 +1981,7 @@ function ShowAbsences({ navigation }) {
     if (exclusions.length > 0) {
       return (exclusions.map((item) => (
         <View>
-          <Card style={{ marginBottom: 16, backgroundColor: choosenTheme.colors.errorContainer }} >
+          <Card style={{ marginTop: 16, marginBottom: 16, backgroundColor: choosenTheme.colors.errorContainer }} >
             <Card.Title title={item.class} subtitle={"Professeur : " + item.prof} />
             <Card.Content>
               <Text>Date : {item.date}</Text>
@@ -1978,7 +1992,7 @@ function ShowAbsences({ navigation }) {
               <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
             </Card.Content>
           </Card>
-          <Divider style={{ marginBottom: 16 }} />
+          <Divider/>
         </View>
       )))
     }
@@ -1999,20 +2013,20 @@ function ShowAbsences({ navigation }) {
         <Text style={{ textAlign: 'left' }} variant="titleMedium">Non justifiées : {totalHoursNonJustified}h</Text>
         <Text style={{ textAlign: 'left' }} variant="titleMedium">Justifiées : {totalHoursJustified}h</Text>
 
-        <List.Accordion style={{ marginTop: 16 }}
-          title={absences.length + " absence(s)"}
+        <List.Accordion style={{ marginTop: 16, backgroundColor: choosenTheme.colors.primaryContainer, borderRadius: 16 }}
+          title={absences.length > 1 ? absences.length + " absences" : absences.length + " absence"}
           left={props => <List.Icon {...props} icon="account-question" />}>
           {showAbsences()}
         </List.Accordion>
 
-        <List.Accordion
-          title={retards.length + " retard(s)"}
+        <List.Accordion style={{ marginTop: 8, backgroundColor: choosenTheme.colors.retard, borderRadius: 16 }}
+          title={retards.length > 1 ? retards.length + " retards" : retards.length + " retard"}
           left={props => <List.Icon {...props} icon="camera-timer" />}>
           {showRetards()}
         </List.Accordion>
 
-        <List.Accordion
-          title={exclusions.length + " exclusion(s)"}
+        <List.Accordion style={{ marginTop: 8, backgroundColor: choosenTheme.colors.errorContainer, borderRadius: 16 }}
+          title={exclusions.length > 1 ? exclusions.length + " exclusions" : exclusions.length + " exclusion"}
           left={props => <List.Icon {...props} icon="skull-crossbones" />}>
           {showExclusions()}
         </List.Accordion>
@@ -2171,7 +2185,6 @@ function ShowENT({ navigation }) {
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"account"} onPress={ () => handleURL("https://link.univ-cotedazur.fr/fr/authentication/index/caslogin?1") }> Link UCA </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/ent/izly.png')}/>} onPress={ () => handleURL("https://mon-espace.izly.fr") }> Mon Espace Izly </Chip>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Les applications ne sont pas compatibles avec UniceNotes et seront ouvertes avec un navigateur externe.</Text>
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">La connexion automatique aux services aura lieu dans une prochaine mise à jour.</Text>
       </ScrollView>
     </View>
   );
@@ -2211,6 +2224,11 @@ function ShowSettings({ navigation }) {
       throw new Error('This is a crash');
     } else if(mode == "deletephoto") {
       FileSystem.deleteAsync(FileSystem.documentDirectory + 'profile.png');
+    } else if(mode == "deleteprofile") {
+      deleteData(false);
+      AsyncStorage.clear();
+      haptics("success");
+      throw new Error('Data deletion forced');
     }
   }
 
@@ -2278,9 +2296,9 @@ function ShowSettings({ navigation }) {
         </Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">🛠️ Hash local du commit Git : {hash}</Text>
 
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur.</Text>
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur. Tout usage de cette application implique la seule responsabilité de l'utilisateur.</Text>
 
-        <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">🤝 Remerciements : Corentin B., Nathan J., Marius D., Eliott F., Bobi, Matthieu H., Lorik H., Romain H., Valentin D. et vous, merci pour votre soutien :)</Text>
+        <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">Merci d'avoir téléchargé UniceNotes :)</Text>
 
         <Button style={{ marginTop: 16 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
         <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://notes.metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
@@ -2290,7 +2308,8 @@ function ShowSettings({ navigation }) {
           isBeta ? ( 
             <>
               <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => betaToolbox("crash") }> crash_app </Button> 
-              <Button style={{ marginTop: 4 }} icon="account-remove" onPress={ () => betaToolbox("deletephoto") }> del_pprofile </Button>
+              <Button style={{ marginTop: 4 }} icon="account-box-multiple" onPress={ () => betaToolbox("deletephoto") }> del_photoprofile </Button>
+              <Button style={{ marginTop: 4 }} icon="account-remove" onPress={ () => betaToolbox("deleteprofile") }> forcedel_profile </Button>
             </>
             ) : null
         }
@@ -2662,8 +2681,8 @@ function ServerConfig({ navigation }) {
       setStatusUniceNotes("close");
     });
 
-    await fetch("https://intracursus.unice.fr").then((res) => {
-      if(res.status == 200) {
+    await fetch("https://intracursus.unice.fr/").then((res) => {
+      if(res.status == 200 || res.status == 302 || res.status == 301) {
         setStatusIntracursus("check");
       } else {
         setStatusIntracursus("close");
@@ -2708,11 +2727,11 @@ function ServerConfig({ navigation }) {
         <Card style={{ marginBottom:16 }}>
           <Card.Title
               title="Changer le serveur UniceNotes"
-              subtitle="⚠️ Zone sensible ⚠️"
+              subtitle="⚠️ - Attention, risque de sécurité"
               left={(props) => <Avatar.Icon {...props} icon="server-network" />}
           />
           <Card.Actions>
-            <Button mode={ whatSelectedServer("C") } onPress={ () => setSelectedServer("C") }>Custom</Button>
+            <Button mode={ whatSelectedServer("C") } onPress={ () => setSelectedServer("C") }>Personnalisé</Button>
             <Button mode={ whatSelectedServer("P") } onPress={ () => setSelectedServer("P") }>Par défaut</Button>
           </Card.Actions>
           { 
