@@ -74,7 +74,7 @@ import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.5.3';
+var appVersion = '1.5.4';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -194,7 +194,14 @@ var subjects = []; // User's subjects
 // ---------------------------------------------
 
 if (!__DEV__) {
-  Bugsnag.start()
+  Bugsnag.start({
+    onError: function (event) {
+      event.addMetadata('utilisateur', {
+        name: name,
+        username: username
+      })
+    }
+  })
 }
 
 // SecureStore API
@@ -207,7 +214,7 @@ async function saveUserdata(key, value) {
   await AsyncStorage.setItem(key, value);
 }
 
-// Fonction de suppression des données (GDPR friendly :) )
+// Fonction de suppression des données - GDPR friendly :)
 async function deleteData(warnings = false, navigation) {
   if (warnings) {
     haptics("warning");
@@ -729,7 +736,7 @@ function SplashScreen({ navigation }) {
         <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
           <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{titleError}</Text>
           <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitleError}</Text>
-          <Button style={{ marginBottom: 16, backgroundColor: style.container.onErrorContainer }} icon="refresh" mode="contained" onPress={() => refresh()}>Rafraîchir</Button>
+          <Button style={{ marginBottom: 16, backgroundColor: style.container.error }} icon="refresh" mode="contained" onPress={() => refresh()}>Rafraîchir</Button>
         </BottomSheetView>
       </BottomSheet>
 
@@ -1066,6 +1073,15 @@ function HomeScreen({ navigation }) {
         showError("noserver");
         setSelectable(true);
         setLoading(false);
+        return;
+      }
+
+      if(apiResp.status == 203) {
+        haptics("error");
+        showError("notsubscribed");
+        setSelectable(true);
+        setLoading(false);
+        return;
       }
 
       let json = await apiResp.json();
@@ -1177,6 +1193,9 @@ function HomeScreen({ navigation }) {
     } else if(action == "alreadyrated") {
       setTitleError("Erreur");
       setSubtitleError("Vous avez déjà soumis une note à UniceNotes.");      
+    } else if(action == "notsubscribed") {
+      setTitleError("Non inscrit");
+      setSubtitleError("Vous n'êtes pas inscrit à UniceNotes. Veuillez appuyer sur le bouton ci-dessous pour vous inscrire.");
     }
     if(bottomSheetError != null) {
       bottomSheetError.expand()
@@ -1273,7 +1292,12 @@ function HomeScreen({ navigation }) {
         <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
           <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{titleError}</Text>
           <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitleError}</Text>
-          <Button style={{ marginBottom: 16, backgroundColor: style.container.onErrorContainer }} icon="close" mode="contained" onPress={() => bottomSheetError.close()}> Fermer </Button>
+          { 
+            titleError == "Non inscrit" ? (
+              <Button style={{ marginBottom: 8 }} icon="account-plus" mode="contained" onPress={() => handleURL("https://notes.metrixmedia.fr/access")}> S'inscrire </Button>
+            ) : ( null )
+          }
+          <Button style={{ marginBottom: 16, backgroundColor: style.container.error }} icon="close" mode="contained" onPress={() => bottomSheetError.close()}> Fermer </Button>
         </BottomSheetView>
       </BottomSheet>
     </View>
@@ -1350,6 +1374,7 @@ function Semesters ({ navigation }) {
 
         <Divider style={{ marginBottom: 16 }} />
 
+        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => loadGrades("latest") } icon="calendar-search" > Dernier semestre disponible </Chip>
         {getMySemesters()}
 
         <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
@@ -1472,7 +1497,7 @@ function APIConnect ({ navigation }) {
         <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
           <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{titleError}</Text>
           <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitleError}</Text>
-          <Button style={{ marginBottom: 16, backgroundColor: style.container.onErrorContainer }} icon="close" mode="contained" onPress={() => bottomSheetError.close()}> Fermer </Button>
+          <Button style={{ marginBottom: 16, backgroundColor: style.container.error }} icon="close" mode="contained" onPress={() => bottomSheetError.close()}> Fermer </Button>
         </BottomSheetView>
       </BottomSheet>
     </View>
@@ -1911,15 +1936,6 @@ function ShowAbsences({ navigation }) {
       }
       totalHours += calculateDuration(item.hour, false);
     })
-    retards.map((item) => {
-      justified = item.justified ? true : false;
-      if(justified == true) {
-        totalHoursJustified += calculateDuration(item.hour, false);
-      } else {
-        totalHoursNonJustified += calculateDuration(item.hour, false);
-      }
-      totalHours += calculateDuration(item.hour, false);
-    })
     exclusions.map((item) => {
       justified = item.justified ? true : false;
       if(justified == true) {
@@ -2229,6 +2245,8 @@ function ShowSettings({ navigation }) {
       AsyncStorage.clear();
       haptics("success");
       throw new Error('Data deletion forced');
+    } else if(mode == "downphoto") {
+      getPhotoFromENT();
     }
   }
 
@@ -2296,7 +2314,7 @@ function ShowSettings({ navigation }) {
         </Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">🛠️ Hash local du commit Git : {hash}</Text>
 
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur. Tout usage de cette application implique la seule responsabilité de l'utilisateur.</Text>
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur. Tout usage de cette application implique la seule responsabilité de l'utilisateur prévue dans les conditions d'utilisation.</Text>
 
         <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">Merci d'avoir téléchargé UniceNotes :)</Text>
 
@@ -2308,6 +2326,7 @@ function ShowSettings({ navigation }) {
           isBeta ? ( 
             <>
               <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => betaToolbox("crash") }> crash_app </Button> 
+              <Button style={{ marginTop: 4 }} icon="download" onPress={ () => betaToolbox("downphoto") }> down_photoprofile </Button>
               <Button style={{ marginTop: 4 }} icon="account-box-multiple" onPress={ () => betaToolbox("deletephoto") }> del_photoprofile </Button>
               <Button style={{ marginTop: 4 }} icon="account-remove" onPress={ () => betaToolbox("deleteprofile") }> forcedel_profile </Button>
             </>
@@ -2429,17 +2448,21 @@ function IconConfig({ navigation }) {
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Choisissez votre icône :</Text>
-        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut </Chip>
+        <Chip style={{ height: 36, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} disabled > Icônes </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_magnet.png')}/>} onPress={ () => changeIconHome("magnet") }> Magnet </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_beach.png')}/>} onPress={ () => changeIconHome("beach") }> Beach </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_melted.png')}/>} onPress={ () => changeIconHome("melted") }> Melted </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_zoomed.png')}/>} onPress={ () => changeIconHome("zoomed") }> Zoomed </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_christmas2023.png')}/>} onPress={ () => changeIconHome("christmas2023") }> Christmas 2023 </Chip>
+        <Chip style={{ height: 36, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} disabled > Communautaire </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_glitched.png')}/>} onPress={ () => changeIconHome("glitched") }> Glitched (par @f.eli0tt) </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_vaporwave.png')}/>} onPress={ () => changeIconHome("vaporwave") }> Vaporwave (par @nathan_jaffres) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ios6.png')}/>} onPress={ () => changeIconHome("ios6") }> iOS 6 (par @ds.marius) </Chip>
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Vous trouvez pas "l'icône" qu'il vous faut ? Envoyez-nous vos oeuvres d'art à l'adresse :<Text style={style.textLink} onPress={() => Linking.openURL("mailto://oeuvredartpourlappliunicenotes@metrixmedia.fr")}> oeuvredartpourlappliunicenotes@metrixmedia.fr </Text></Text>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ios6.png')}/>} onPress={ () => changeIconHome("ios6") }> iOS 6 (par @ds.marius) </Chip>
+        <Chip style={{ height: 36, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} disabled > Événement </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_france.png')}/>} onPress={ () => changeIconHome("france") }> France - Euro et JO 2024 </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_christmas2023.png')}/>} onPress={ () => changeIconHome("christmas2023") }> Christmas - Noël 2023 </Chip>
+        <Text style={{ marginTop: 16, marginBottom: 36, textAlign: 'left' }} variant="titleSmall">Vous trouvez pas "l'icône" qu'il vous faut ? Envoyez-nous vos oeuvres d'art à l'adresse :<Text style={style.textLink} onPress={() => Linking.openURL("mailto://oeuvredartpourlappliunicenotes@metrixmedia.fr")}> oeuvredartpourlappliunicenotes@metrixmedia.fr </Text></Text>
       </ScrollView>
     </View>
   );
@@ -2616,8 +2639,8 @@ function ServerConfig({ navigation }) {
     if (value == "C") {
       haptics("error");
 
-      setTitle("Attention !!!")
-      setSubtitle("Vous vous apprêtez à changer de serveur UniceNotes. \n\nPasser d'un serveur officiel à un serveur non officiel expose vos données à des risques de sécurité majeurs, incluant le vol d'informations sensibles et les attaques de logiciels malveillants. \n\nUniceNotes ne saurait être tenu responsable des conséquences de ce changement. \n\nVoulez-vous vraiment continuer ?");
+      setTitle("Attention !")
+      setSubtitle("Vous vous apprêtez à changer de serveur UniceNotes. \n\nPasser à un serveur non-officiel expose vos données à des risques de sécurité majeurs, incluant le vol d'informations sensibles et les attaques de logiciels malveillants. \n\nUniceNotes ainsi que ses développeurs ne sauraient être tenus responsables des conséquences de ce changement. \n\nVoulez-vous vraiment continuer ?");
       if(bottomSheetInfo != null) {
         bottomSheetInfo.expand();
       }
@@ -2768,7 +2791,7 @@ function ServerConfig({ navigation }) {
           <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitle}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'center', }}>
             <Button style={{ marginBottom: 16, marginRight: 8 }} icon="close" mode="contained" onPress={() => actionBottomSheet(false)}> Non </Button>
-            <Button style={{ marginBottom: 16, backgroundColor: style.container.onErrorContainer }} icon="check" mode="contained" onPress={() => actionBottomSheet(true)}> Oui </Button>
+            <Button style={{ marginBottom: 16, backgroundColor: style.container.error }} icon="check" mode="contained" onPress={() => actionBottomSheet(true)}> Oui </Button>
           </View>
         </BottomSheetView>
       </BottomSheet>
@@ -2937,6 +2960,7 @@ const style = StyleSheet.create({
     backgroundColor: choosenTheme.colors.background,
     surfaceVariant: choosenTheme.colors.surfaceVariant,
     onSurfaceVariant: choosenTheme.colors.onSurfaceVariant,
+    error : choosenTheme.colors.error,
     errorContainer: choosenTheme.colors.errorContainer,
     onErrorContainer: choosenTheme.colors.onErrorContainer,
     justifyContent: 'center',
