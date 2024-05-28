@@ -124,6 +124,19 @@
         <data android:scheme="fr.hugofnm.unicenotes"/>
       </intent-filter>
     </activity-alias>
+    <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityfrance" android:enabled="false" android:exported="true" android:icon="@mipmap/france" android:targetActivity=".MainActivity">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="unicenotes"/>
+        <data android:scheme="fr.hugofnm.unicenotes"/>
+      </intent-filter>
+    </activity-alias>
     <activity-alias android:name="fr.hugofnm.unicenotes.MainActivityglitched" android:enabled="false" android:exported="true" android:icon="@mipmap/glitched" android:targetActivity=".MainActivity">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>

@@ -32,6 +32,12 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "hugofnm@icloud.com",
+        "ascAppId": "1668992337",
+        "appleTeamId": "PT6BHRX2Z4"
+      }
+    }
   }
 }
