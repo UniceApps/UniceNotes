@@ -11,6 +11,10 @@ node_modules/
 dist/
 web-build/
 
+# Prebuild
+android/
+ios/
+
 # Native
 *.orig.*
 *.jks

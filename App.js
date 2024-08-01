@@ -19,7 +19,7 @@ import React, { useState, useEffect, useRef,
 import { Alert, View, StyleSheet, 
   AppState, ScrollView, RefreshControl,
   Appearance, BackHandler, SafeAreaView,
-  SafeAreaProvider, Keyboard
+  SafeAreaProvider, Keyboard, Platform
 } from 'react-native';
 
 // Material Design 3 components (React Native Paper)
@@ -48,6 +48,8 @@ import * as Notifications from 'expo-notifications';
 import Constants from "expo-constants";
 import * as ImagePicker from 'expo-image-picker';
 import * as StoreReview from 'expo-store-review';
+import * as QuickActions from "expo-quick-actions";
+import { useQuickActionCallback } from "expo-quick-actions/hooks";
 
 // Third-party components
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -74,10 +76,11 @@ import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.5.4';
+var appVersion = '1.5.5';
 var isBeta = false;
 // IMPORTANT !!!
 
+var initialQuickAction = null; // Quick action
 var isConnected = false; // UniceAPI login
 var dataIsLoaded = false; // JSONPDF loaded
 var apiMode = "notes"; // API mode (notes, absences)
@@ -120,6 +123,10 @@ var name = SecureStore.getItemAsync("name").then((result) => {
   } else {
     name = null;
   }
+}).catch((error) => {
+  haptics("error");
+  Alert.alert("Erreur", "Impossible de récupérer les données de connexion. EC=0xR");
+  deleteData(false, navigation);
 }); // User's name
 
 // Temporary variables - AsyncStorage
@@ -273,12 +280,14 @@ function logout(navigation) {
     password = null;
   }
   fetch(selectedServer + '/logout');
-  navigation.reset({
-    index: 0,
-    routes: [
-      { name: 'SplashScreen' }
-    ],
-  });
+  navigation.dispatch(
+    CommonActions.reset({
+      index: 0,
+      routes: [
+        { name: 'SplashScreen' }
+      ],
+    })
+  );
 }
 
 // Fonction de retour haptique
@@ -749,6 +758,7 @@ function SplashScreen({ navigation }) {
 function OOBE({ navigation }) {
   const [secondCard, setSecondCard] = useState(false);
   const [thirdCard, setThirdCard] = useState(false);
+  const [fourthCard, setFourthCard] = useState(false);
   const insets = useSafeAreaInsets();
 
   // ----------------
@@ -792,7 +802,7 @@ function OOBE({ navigation }) {
 
   
   // Résultat du bouton "Se connecter"
-  function handleLogin() {
+  function handleLogin(eula = false) {
     if (username == null || password == null) {
       haptics("warning");
       Alert.alert("Erreur", "Veuillez entrer un nom d'utilisateur et un mot de passe.");
@@ -801,14 +811,15 @@ function OOBE({ navigation }) {
       haptics("medium");
       setEditable(false);
       handleButtonPress();
-      ssoUnice(username, password);
+      ssoUnice(username, password, eula);
     }
   }
 
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
-  async function ssoUnice(username, password) {
+  async function ssoUnice(username, password, eula) {
+    var endpoint = eula ? "/accepteula" : "/login";
     if(!isConnected || !ok) {
-      let apiResp = await fetch(selectedServer + '/login', {
+      let apiResp = await fetch(selectedServer + endpoint, {
         method: 'POST',
         body: JSON.stringify({
           username: username,
@@ -820,17 +831,24 @@ function OOBE({ navigation }) {
           "Charset": "utf-8"
         }
       })
+
+      if(apiResp.status == 203) {
+        setEditable(true);
+        haptics("medium");
+        setFourthCard(true);
+        return;
+      }
     
       if(!apiResp.ok){
+        setEditable(true);
         haptics("error");
         Alert.alert("Erreur", "Connexion au serveur impossible. EC=0xS");
-        setEditable(true);
+        setThirdCard(false);
       }
 
       let json = await apiResp.json();
     
       if(json.success) {
-
         // Sauvegarde des identifiants si "Se souvenir de moi" est activé
         if(rememberMe) {
           save("username", username);
@@ -838,22 +856,19 @@ function OOBE({ navigation }) {
           await getPhotoFromENT();
         }
 
-        setOk(true);
         name = json.name;
-
         if (name == null) {
           name = "Étudiant";
         }
-  
         save("name", name);
 
         semesters = json.semesters;
         haptics("success");
+        setOk(true);
       } else {
         setEditable(true);
         haptics("warning");
         Alert.alert("Erreur", "Vos identifiants sont incorrects. EC=0xI");
-        setSecondCard(true);
         setThirdCard(false);
       }
     }
@@ -886,11 +901,14 @@ function OOBE({ navigation }) {
   }
 
   const handleButtonPress = () => {
-    if(!secondCard && !thirdCard) {
-      setSecondCard(!secondCard);
+    if(!secondCard && !thirdCard && !fourthCard) { // après bouton suivant sur le premier écran, on permute le deuxième écran
+      setSecondCard(true);
     }
-    if(secondCard && !thirdCard) {
-      setThirdCard(!thirdCard);
+    if(secondCard && !thirdCard && !fourthCard) { // après login, on bascule sur le loading login
+      setThirdCard(true);
+    }
+    if (secondCard && thirdCard && fourthCard) { // après acceptation EULA, on revient sur le loading login
+      setFourthCard(false);
     }
   };
 
@@ -926,12 +944,27 @@ function OOBE({ navigation }) {
       </View>
       {secondCard ? (
         thirdCard ? (
+          fourthCard ? (
+            <BottomSheet enableDynamicSizing contentHeight={128} bottomInset={ insets.bottom } detached={true} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
+              <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
+                <Text style={{ textAlign: 'left', marginBottom: 16, marginTop: 8 }} variant="headlineMedium">Conditions générales d'utilisation</Text>
+                <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Mis à jour le 17/07/2024</Text>
+                <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>En acceptant d'utiliser UniceNotes, MetrixMedia (l'entité représentant le développeur) se dégage de toute responsabilité émanant de l'utilisation d'UniceNotes. Je (l’utilisateur de l’application, le signataire du contrat actuel), suis responsable de mon compte UniCA (Université Côte d’Azur ou Sésame) et j’accepte les risques associés à l’utilisation de l’application UniceNotes.</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
+                  <Button style={{ marginBottom: 8, marginRight: 8 }} icon="check" mode="contained" onPress={ () => handleLogin(true) }> Accepter </Button>
+                  <Button style={{ marginBottom: 8, marginRight: 8, backgroundColor: style.container.error }} icon="close" mode="contained" onPress={ () => deleteData(true, navigation) }> Refuser </Button>
+                  <IconButton style={{ marginBottom: 8 }} icon="information" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/eula") }/>
+                </View>
+              </BottomSheetView>
+            </BottomSheet>
+          ) : (
           <BottomSheet enableDynamicSizing contentHeight={32} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
             <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
               <Text style={{ textAlign: 'left', marginBottom: 16, marginTop: 8 }} variant="displayMedium">Connexion ...</Text>
               <ActivityIndicator style={{ marginBottom: 32 }} animating={true} size="large" />
             </BottomSheetView>
           </BottomSheet>
+          )
         ) : (
           <BottomSheet enableDynamicSizing keyboardBehavior={'interactive'} keyboardBlurBehavior={"restore"} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
             <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
@@ -968,7 +1001,7 @@ function OOBE({ navigation }) {
                   <Switch onValueChange={ (value) => setRememberMe(value) } disabled={!editable} value={rememberMe}/>
                   <Text style={{ marginLeft:8}}> Se souvenir de moi</Text>
                 </View>
-                <Button style={{ marginBottom: 8 }} disabled={!editable} icon="login" mode="contained" onPress={ () => handleLogin() }> Se connecter </Button>
+                <Button style={{ marginBottom: 8 }} disabled={!editable} icon="login" mode="contained" onPress={ () => handleLogin(false) }> Se connecter </Button>
                 <Button style={{ marginBottom: insets.bottom }} icon="shield-account" onPress={() => handleURL("https://sesame.unice.fr/web/app/prod/Compte/Reinitialisation/saisieNumeroEtudiant")} > J'ai oublié mon mot de passe </Button>
             </BottomSheetView>
           </BottomSheet>
@@ -1000,9 +1033,9 @@ function OOBE({ navigation }) {
 
 // Page d'accueil
 function HomeScreen({ navigation }) {
-  const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [selectable, setSelectable] = useState(true);
+  const [quickAction, setQuickAction] = useState(null);
   const [mode, setMode] = useState("notes");
   const [nextEvent, setNextEvent] = useState({summary: "Chargement...", location: "Chargement..."});
   const [nextEventLoaded, setNextEventLoaded] = useState(false);
@@ -1044,6 +1077,7 @@ function HomeScreen({ navigation }) {
           ssoUnice(username, password);
         } else {
           setLoading(false);
+          setSelectable(true);
           haptics("error");
           showError("nobiologin");
         }
@@ -1078,9 +1112,7 @@ function HomeScreen({ navigation }) {
 
       if(apiResp.status == 203) {
         haptics("error");
-        showError("notsubscribed");
-        setSelectable(true);
-        setLoading(false);
+        deleteData(false, navigation);
         return;
       }
 
@@ -1124,6 +1156,9 @@ function HomeScreen({ navigation }) {
         if (response.status == 200) {
           let json = await response.json();
           setNextEvent(json);
+          setNextEventLoaded(true);
+        } else {
+          setNextEvent({summary: "Erreur", location: "Impossible de récupérer le prochain cours"});
           setNextEventLoaded(true);
         }
       });
@@ -1193,14 +1228,22 @@ function HomeScreen({ navigation }) {
     } else if(action == "alreadyrated") {
       setTitleError("Erreur");
       setSubtitleError("Vous avez déjà soumis une note à UniceNotes.");      
-    } else if(action == "notsubscribed") {
-      setTitleError("Non inscrit");
-      setSubtitleError("Vous n'êtes pas inscrit à UniceNotes. Veuillez appuyer sur le bouton ci-dessous pour vous inscrire.");
     }
     if(bottomSheetError != null) {
       bottomSheetError.expand()
     }
   }
+
+  useEffect(() => {
+    getPhotoFromLocal().then((value) => {
+      setTempPhoto(value);
+    });
+    getNextEvent("normal");
+    if(initialQuickAction != null) {
+      setQuickAction(initialQuickAction.params.href);
+      initialQuickAction = null;
+    }
+  }, [])
 
   useEffect(() => {
     if(isConnected) {
@@ -1233,13 +1276,21 @@ function HomeScreen({ navigation }) {
   }, [isConnected]);
 
   useEffect(() => {
-    if(count == 0) {
-      getPhotoFromLocal().then((value) => {
-        setTempPhoto(value);
-      });
-      getNextEvent("normal");
-      setCount(1);
+    var state = navigation.getState();
+    if(selectable && quickAction != null && state.routes[state.index].name == "HomeScreen") {
+      setSelectable(false);
+      if (quickAction == "/notes") {
+        handleLogin("notes");
+      } else if (quickAction == "/absences") {
+        handleLogin("absences");
+      } else if (quickAction == "/edt") {
+        getMyCal(navigation);
+      }
     }
+  }, [quickAction]);
+
+  const subscription = QuickActions.addListener((action) => {
+    setQuickAction(action.params.href);
   });
 
   return (
@@ -1292,11 +1343,6 @@ function HomeScreen({ navigation }) {
         <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
           <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{titleError}</Text>
           <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitleError}</Text>
-          { 
-            titleError == "Non inscrit" ? (
-              <Button style={{ marginBottom: 8 }} icon="account-plus" mode="contained" onPress={() => handleURL("https://notes.metrixmedia.fr/access")}> S'inscrire </Button>
-            ) : ( null )
-          }
           <Button style={{ marginBottom: 16, backgroundColor: style.container.error }} icon="close" mode="contained" onPress={() => bottomSheetError.close()}> Fermer </Button>
         </BottomSheetView>
       </BottomSheet>
@@ -1309,9 +1355,8 @@ function Semesters ({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [selectable, setSelectable] = useState(true);
   const [done, setDone] = useState(false);
-  const [count, setCount] = useState(0);
   const [tempPhoto, setTempPhoto] = useState(null);
-
+  const [latestSemester, setLatestSemester] = useState("?");
 
   // Fonction de chargement des notes
   function loadGrades(sel) {
@@ -1322,7 +1367,6 @@ function Semesters ({ navigation }) {
       navigation.navigate('APIConnect');
   }
   
-  // Changement du texte en fonction de l'heure
   useEffect(() => {
     if(!done) { 
       getPhotoFromLocal().then((value) => {
@@ -1330,6 +1374,8 @@ function Semesters ({ navigation }) {
       }); 
       if (semesters.length == 0 || semesters == null) {
         Alert.alert("Attention", "Il se peut que l'I.U.T. n'ait pas encore publié vos résultats. Dans ce cas là, UniceNotes peut ne pas récupérer correctement vos notes. EC=0xP");
+      } else {
+        setLatestSemester(semesters[0].semester);
       }
       setDone(true);
     }
@@ -1338,8 +1384,8 @@ function Semesters ({ navigation }) {
   function getMySemesters() {
     if (semesters.length == 0 || semesters == null) {
       return <Text style={{ textAlign: 'center', marginTop : 8 }} variant="titleMedium">Aucun autre semestre disponible. Veuillez vous reconnecter ultérieurement.</Text>
-
     }
+
     return semesters.map((sem) => (
       <Chip key={sem.id} style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => loadGrades(sem.semester) } icon="adjust" > {sem.semester} </Chip>
     ))
@@ -1374,7 +1420,7 @@ function Semesters ({ navigation }) {
 
         <Divider style={{ marginBottom: 16 }} />
 
-        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => loadGrades("latest") } icon="calendar-search" > Dernier semestre disponible </Chip>
+        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => loadGrades("latest") } icon="calendar-search" > Dernier semestre disponible ({latestSemester}) </Chip>
         {getMySemesters()}
 
         <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
@@ -1386,7 +1432,6 @@ function Semesters ({ navigation }) {
 // Page de chargement des données (notes, absences, etc.)
 function APIConnect ({ navigation }) {
   const [progress, setProgress] = useState(0.1);
-  const [count, setCount] = useState(0);
   const [titleError, setTitleError] = useState("Erreur");
   const [subtitleError, setSubtitleError] = useState("");
   const internetAvailable = (Network.getNetworkStateAsync()).isInternetReachable;
@@ -1406,13 +1451,11 @@ function APIConnect ({ navigation }) {
 	);
 
   useEffect(() => {
-    if(count == 0) {
-      setCount(1);
-      loginAPI(apiMode);
-    }
-  });
+    loginAPI(apiMode);
+  }, []);
 
   function showError(action) {
+    haptics("error");
     if(action == "noserver") {
       setTitleError("Serveur indisponible");
       setSubtitleError("Le serveur n'est pas accessible ! Essayez de changer de serveur dans les paramètres. EC=0xS");
@@ -1440,10 +1483,16 @@ function APIConnect ({ navigation }) {
     if(mode == "notes") {
       if(dataIsLoaded == false){
         let response = await fetch(selectedServer + '/load_pdf?sem=' + semester)
+        .catch((error) => {
+          showError("nologin");
+        });
         if(response.status == 200) {
           setProgress(0.5);
         
-          let pdfAPI = await fetch(selectedServer + '/scrape_pdf?sem=' + semester);
+          let pdfAPI = await fetch(selectedServer + '/scrape_pdf?sem=' + semester)
+          .catch((error) => {
+            showError("noserver");
+          });
         
           if(pdfAPI.status != 200){
             showError("noserver");
@@ -1455,7 +1504,6 @@ function APIConnect ({ navigation }) {
           if(json.grades) {
             grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
           } else {
-            haptics("error");
             showError("nogrades");
           }
           admission = json.admission; // admission oui/non
@@ -1465,7 +1513,6 @@ function APIConnect ({ navigation }) {
           navigation.goBack();
           navigation.navigate('ShowGrades');
         } else {
-          haptics("error");
           showError("nologin");
         }
       }
@@ -1513,7 +1560,6 @@ function ShowGrades({ navigation }) {
   const [gradeRefs, setGradeRefs] = useState([]);
   const [moyenneString, setMoyenneString] = useState("");
   const [calculated, setCalculated] = useState(false);
-  const [count, setCount] = useState(0);
   const insets = useSafeAreaInsets();
 
   const renderBackdrop = useCallback(
@@ -1547,11 +1593,8 @@ function ShowGrades({ navigation }) {
   }, []);
 
   useEffect(() => {
-    if (count == 0) {
-      isCalculated();
-      setCount(1);
-    }
-  });
+    isCalculated();
+  }, []);
 
   async function forceRefresh() {
     var res;
@@ -1846,6 +1889,12 @@ function ShowGrades({ navigation }) {
           ) : null
         }
 
+        { // Affiche admission si disponible
+          admission != "" ? ( 
+            <Text style={{ textAlign: 'left' }} variant="titleMedium">Admission : {admission}</Text>
+          ) : null
+        }
+
         <Divider style={{ marginBottom: 16, marginTop: 8 }} />
         <Text style={{ textAlign: 'left', marginBottom: 16  }} variant="titleSmall">Les notes et moyennes sont affichées à but purement indicatif (elles peuvent être modifiées à tout instant) et ne représentent en aucun cas un justificatif de notes officiel.</Text>
         
@@ -1872,14 +1921,10 @@ function ShowAbsences({ navigation }) {
   const [totalHours, setTotalHours] = useState(0); // Total des heures d'absences
   const [totalHoursNonJustified, setTotalHoursNonJustified] = useState(0);
   const [totalHoursJustified, setTotalHoursJustified] = useState(0);
-  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if(count == 0) {
-      setCount(1);
-      makeStats();
-    }
-  });
+    makeStats();
+  }, []);
 
   function calculateDuration(timeRange, string = true) {
     // Split the string into start and end time components
@@ -2041,7 +2086,7 @@ function ShowAbsences({ navigation }) {
           {showRetards()}
         </List.Accordion>
 
-        <List.Accordion style={{ marginTop: 8, backgroundColor: choosenTheme.colors.errorContainer, borderRadius: 16 }}
+        <List.Accordion style={{ marginTop: 8, marginBottom: 32, backgroundColor: choosenTheme.colors.errorContainer, borderRadius: 16 }}
           title={exclusions.length > 1 ? exclusions.length + " exclusions" : exclusions.length + " exclusion"}
           left={props => <List.Icon {...props} icon="skull-crossbones" />}>
           {showExclusions()}
@@ -2054,7 +2099,6 @@ function ShowAbsences({ navigation }) {
 // Page d'affichage de l'emploi du temps
 function ShowEDT({ navigation }) {
   const [cal, setCalendar] = useState(calendar);
-  const [count, setCount] = useState(0);
   const [view, setView] = useState("workWeek");
   const [viewIcon, setViewIcon] = useState("magnify-plus");
   const [title, setTitle] = useState("Infos");
@@ -2080,18 +2124,15 @@ function ShowEDT({ navigation }) {
 	);
   
   useEffect(() => { 
-    if(count == 0) {
-      setCount(1);
-      if(cal == null) {
-        async function readJSONonAwait() {
-          return await readJSONFromFile();
-        }
-        cal = JSON.parse(readJSONonAwait());
-        setCalendar(cal);
+    if(cal == null) {
+      async function readJSONonAwait() {
+        return await readJSONFromFile();
       }
-      setTimeout(() => goToToday(), 500);
+      cal = JSON.parse(readJSONonAwait());
+      setCalendar(cal);
     }
-  });
+    setTimeout(() => goToToday(), 500);
+  }, []);
 
   function goToToday() {
     haptics("medium");
@@ -2157,7 +2198,7 @@ function ShowEDT({ navigation }) {
       </Appbar.Header>
 
       <Divider style={{ marginBottom: 8 }} />
-      <Text style={{ textAlign: 'center' }} variant="titleMedium">{selectedMonth} {selectedYear}</Text>
+      <Text style={{ marginBottom: 8, textAlign: 'center' }} variant="titleMedium">{selectedMonth} {selectedYear}</Text>
 
       <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => showInfos(eventItem)} onChange={(date) => changeDate(date)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={7} end={20} renderEventContent={(event) => {
           return (
@@ -2194,7 +2235,7 @@ function ShowENT({ navigation }) {
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Choisissez votre application :</Text>
         <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} avatar={<Image size={24} source={require('./assets/ent/outlook.png')}/>} onPress={ () => handleURL("https://outlook.office.com/owa/?realm=etu.unice.fr&exsvurl=1&ll-cc=1036&modurl=0") }> Outlook (Emails) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/ent/moodle.png')}/>} onPress={ () => handleURL("https://lms.univ-cotedazur.fr/2023/login/index.php?authCAS=CAS") }> Moodle (LMS) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/ent/moodle.png')}/>} onPress={ () => handleURL("https://portail-lms.univ-cotedazur.fr") }> Moodle (LMS) </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"account-search"} onPress={ () => handleURL("https://annuaire.univ-cotedazur.fr") }> Annuaire UniCA </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"book"} onPress={ () => handleURL("https://dsi-extra.unice.fr/BU/Etudiant/index.html") }> Bibliothèques Universitaires</Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"printer"} onPress={ () => handleURL("https://dsi-extra.unice.fr/repro/index.html") }> Imprimer à la BU </Chip>
@@ -2265,7 +2306,7 @@ function ShowSettings({ navigation }) {
             <Button style={[style.buttonActionChange, { marginBottom: 8, marginTop: 8, height: 48, justifyContent: 'center' }]} icon="account" mode="contained-tonal" onPress={ () => navigation.navigate('ShowUser')}>Mon compte</Button>
           ) : null
         }
-        <Button icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/support") }> FAQ / Signaler un bug </Button>
+        <Button icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/support") }> F.A.Q. / Signaler un bug </Button>
 
         <Divider style={{ marginTop: 16 }} />
 
@@ -2314,12 +2355,12 @@ function ShowSettings({ navigation }) {
         </Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">🛠️ Hash local du commit Git : {hash}</Text>
 
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur. Tout usage de cette application implique la seule responsabilité de l'utilisateur prévue dans les conditions d'utilisation.</Text>
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur. Tout usage de cette application implique la seule responsabilité de l'utilisateur comme prévue dans les conditions d'utilisation.</Text>
 
         <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">Merci d'avoir téléchargé UniceNotes :)</Text>
 
         <Button style={{ marginTop: 16 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
-        <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://notes.metrixmedia.fr/privacy") }> Clause de confidentialité </Button>
+        <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://notes.metrixmedia.fr/privacy") }> Politique de confidentialité </Button>
         <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
 
         { // Bouton de test de crash
@@ -2453,6 +2494,7 @@ function IconConfig({ navigation }) {
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_magnet.png')}/>} onPress={ () => changeIconHome("magnet") }> Magnet </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_beach.png')}/>} onPress={ () => changeIconHome("beach") }> Beach </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_monaco.png')}/>} onPress={ () => changeIconHome("monaco") }> Monaco </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_melted.png')}/>} onPress={ () => changeIconHome("melted") }> Melted </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_zoomed.png')}/>} onPress={ () => changeIconHome("zoomed") }> Zoomed </Chip>
         <Chip style={{ height: 36, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} disabled > Communautaire </Chip>
@@ -2600,16 +2642,11 @@ function ServerConfig({ navigation }) {
   const [statusSatellysGPU, setStatusSatellysGPU] = useState("timer-sand");
   const [statusLoginUniCA, setStatusLoginUniCA] = useState("timer-sand");
 
-  const [count, setCount] = useState(0);
-
   useEffect(() => {
-    if(count == 0) {
-      setCount(1);
-      if(selectedServer != servers[0].toString()) {
-        setIsCustom(true);
-      }
+    if(selectedServer != servers[0].toString()) {
+      setIsCustom(true);
     }
-  });
+  }, []);
 
   const renderBackdrop = useCallback(
 		(props) => (
@@ -3000,8 +3037,30 @@ const styleCalendar = StyleSheet.create({
 
 export default function Main() {
   const [isReady, setIsReady] = useState(false);
-  
+  initialQuickAction = QuickActions.initial;
+
   useEffect(() => {
+    QuickActions.setItems([
+      {
+        id: "0",
+        title: "Notes",
+        icon: Platform.OS === "ios" ? "symbol:graduationcap" : undefined,
+        params: { href: "/notes" }
+      },
+      {
+        id: "1",
+        title: "Absences",
+        icon: Platform.OS === "ios" ? "symbol:person.crop.circle.badge.exclam" : undefined,
+        params: { href: "/absences" }
+      },
+      {
+        id: "2",
+        title: "Emploi du temps",
+        icon: Platform.OS === "ios" ? "symbol:calendar" : undefined,
+        params: { href: "/edt" }
+      }
+    ]);
+
     // Load fonts
     const loadApp = async () => {
       await useFonts().then(() => {
