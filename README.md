@@ -50,7 +50,7 @@ L'application UniceNotes utilise :
 - Les absences, retards et exclusions
 
 
-avec votre consentement (en vous connectant sur l'application) afin de vous fournir une expérience utilisateur optimale.
+avec votre consentement (en vous connectant sur l'application et en acceptant les conditions d'utilisation) afin de vous fournir une expérience utilisateur optimale.
 Ces données sont récupérées depuis le site web Intracursus ou GPU de l'Université Côte d'Azur et ne quittent pas votre appareil.
 \
 Les données de connexion sont **stockées sur votre appareil** et ne sont pas stockées sur un serveur (Seuls vos identifiants sont utilisés sur ```login.univ-cotedazur.fr``` afin de vous identifier et créer un token). 
@@ -88,7 +88,7 @@ eas login
 eas build --platform all
 ```
 
-Si le code source de l'application est modifié, il se peut que les fonctionnalités de l'application ne fonctionnent plus correctement à cause d'une vérification du hash de l'application par le serveur API.
+Si le code source de l'application est modifié, la version compilée de celle-ci ne fonctionnera plus sur les serveurs officiels dû à des mécanismes de protection intégrés à l'API pour éviter les abus. Toute tentative de contournement de ces mécanismes est interdite et peut conduire à des bannissements automatiques d'adresses IP.
 
 ## 📄 Légal
 
@@ -99,11 +99,16 @@ The Google Play Store logo® and the Google Play Store® are trademarks of Googl
 ## 📝 Notes
 
 UniceNotes n'est aucunement affilié à l'Université Côte d'Azur ou à l'I.U.T. Nice Côte d'Azur.
+Toute ressemblance avec le nom de l'application, le logo et l'interface ne saurait être que fortuite.
 
 Toute utilisation de l'application UniceNotes est sous la seule responsabilité de l'utilisateur.
 
-Toute ressemblance avec le nom de l'application, le logo et l'interface ne saurait être que fortuite.
+Cette application agit comme un navigateur internet où l'utilisateur effectue des pseudos-requêtes (GET HTTPS) sur l'intranet de l'Université Côte d'Azur. Cette application ne contient aucun code malveillant et ne vise pas à nuire à l'Université Côte d'Azur ou à ses utilisateurs. Les éventuelles suspiscions de "fuites de données" sont infondées dûes à la nature de l'application (les données sont stockées sur l'appareil de l'utilisateur et non sur des serveurs tiers). Plus d'infos : [Voir la documentation](https://github.com/UniceApps/UniceAPIDocumentation).
 
+## 🤝 Conditions d'utilisation :
+En acceptant d'utiliser UniceNotes, **MetrixMedia** (l'entité représentant le développeur) se dégage de toute responsabilité émanant de l'utilisation d'UniceNotes. **Je** (l’utilisateur de l’application, le signataire du contrat actuel), suis responsable de mon compte UniCA (Université Côte d’Azur ou Sésame) et **j’accepte les risques associés à l’utilisation de l’application UniceNotes**.
+
+---
 L'application UniceNotes utilise Expo, un framework basé sur React Native.
 \
-<img src='https://raw.githubusercontent.com/UniceApps/UniceNotes/main/.docs/assets/expo-bottomlogo.png'/>
+<a href="https://expo.dev"> <img src='https://raw.githubusercontent.com/UniceApps/UniceNotes/main/.docs/assets/expo-bottomlogo.png'/></a>

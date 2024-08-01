@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "1.5.4",
+    "version": "1.5.5",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -24,14 +24,14 @@
         "CFBundleDevelopmentRegion": "fr"
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "6.4.0",
+      "buildNumber": "6.5.6",
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 23
+      "versionCode": 25
     },
     "extra": {
       "eas": {
@@ -48,8 +48,8 @@
       [
         "@hugofnm/expo-dynamic-app-icon",
         {
-          "unicenotes": { // icon name
-            "image": "./assets/icon.png", // icon path
+          "unicenotes": {
+            "image": "./assets/icon.png",
             "prerendered": false
           },
           "magnet": {
@@ -72,6 +72,10 @@
             "image": "./assets/icons/icon_zoomed.png",
             "prerendered": false
           },
+          "monaco": {
+            "image": "./assets/icons/icon_monaco.png",
+            "prerendered": false
+          },
           "christmas2023": {
             "image": "./assets/icons/icon_christmas2023.png",
             "prerendered": false
@@ -90,12 +94,13 @@
           },
           "ios6": {
             "image": "./assets/icons/icon_ios6.png",
-            "prerendered": false
+            "prerendered": true
           }
         }
       ],
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-quick-actions"
     ]
   }
 }
