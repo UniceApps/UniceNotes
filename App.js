@@ -4,7 +4,7 @@ UniceNotes
 Votre ENT. Dans votre poche.
 Développé par Hugo Meleiro (@hugofnm) / MetrixMedia
 MIT License
-2022 - 2024
+2022 - 2025
 
 */
 
@@ -76,7 +76,7 @@ import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.5.5';
+var appVersion = '1.5.6';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -94,7 +94,7 @@ const servers = [
 
 // Temporary variables - SecureStore
 var username = SecureStore.getItemAsync("username").then((result) => {
-  if (result != "") {
+  if (result != null) {
     username = result;
   } else {
     username = null;
@@ -102,11 +102,11 @@ var username = SecureStore.getItemAsync("username").then((result) => {
 }).catch((error) => {
   haptics("error");
   Alert.alert("Erreur", "Impossible de récupérer les données de connexion. EC=0xR");
-  deleteData(false, navigation);
+  deleteData(false);
 }); // User's username
 
 var password = SecureStore.getItemAsync("passkey").then((result) => {
-  if (result != "") {
+  if (result != null) {
     password = result;
   } else {
     password = null;
@@ -114,22 +114,34 @@ var password = SecureStore.getItemAsync("passkey").then((result) => {
 }).catch((error) => {
   haptics("error");
   Alert.alert("Erreur", "Impossible de récupérer les données de connexion. EC=0xR");
-  deleteData(false, navigation);
+  deleteData(false);
 }); // User's password
 
-var name = SecureStore.getItemAsync("name").then((result) => {
-  if (result != "") {
-    name = result;
+var adeid = SecureStore.getItemAsync("adeid").then((result) => {
+  if (result != null) {
+    adeid = result;
+  } else {
+    adeid = null;
+  }
+}).catch((error) => {
+  haptics("error");
+  Alert.alert("Erreur", "Impossible de récupérer les données de connexion. EC=0xR");
+  deleteData(false);
+}); // User's ADE Identifier (emploi du temps)
+
+// Temporary variables - AsyncStorage
+var name = AsyncStorage.getItem("name").then((result) => {
+  if (result != null) {
+    name = result.toString();
   } else {
     name = null;
   }
 }).catch((error) => {
   haptics("error");
   Alert.alert("Erreur", "Impossible de récupérer les données de connexion. EC=0xR");
-  deleteData(false, navigation);
+  deleteData(false);
 }); // User's name
 
-// Temporary variables - AsyncStorage
 var autoSet = AsyncStorage.getItem("autoSet").then((result) => {
   if (result != null) {
     autoSet = (result === 'true');
@@ -222,9 +234,13 @@ async function saveUserdata(key, value) {
 }
 
 // Fonction de suppression des données - GDPR friendly :)
-async function deleteData(warnings = false, navigation) {
+async function deleteData(warnings = false, navigation = null) {
   if (warnings) {
     haptics("warning");
+  }
+
+  if(!__DEV__){
+    setAppIcon("unicenotes");
   }
 
   // Suppression des données
@@ -232,7 +248,9 @@ async function deleteData(warnings = false, navigation) {
   username = null;
   await SecureStore.deleteItemAsync("passkey"); // Suppression du mot de passe
   password = null;
-  await SecureStore.deleteItemAsync("name"); // Suppression du nom
+  await SecureStore.deleteItemAsync("adeid"); // Suppression de l'identifiant ADE
+  adeid = null;
+  await AsyncStorage.removeItem("name"); // Suppression du nom
   name = null;
   await AsyncStorage.removeItem("autoSet"); // Suppression de l'autoSet de moyenne générale
   autoSet = true;
@@ -262,7 +280,9 @@ async function deleteData(warnings = false, navigation) {
     Alert.alert("Données supprimées", "Retour à la page de connexion.");
     haptics("success");
   }
-  logout(navigation);
+  if (navigation != null) {
+    logout(navigation);
+  }
 }
 
 // Ouverture de pages web dans le navigateur par défaut
@@ -446,7 +466,7 @@ async function getCalendar() {
     var netInfos = (await Network.getNetworkStateAsync()).isInternetReachable;
 
     if (netInfos == true) {
-      var cal = await fetch(selectedServer + '/edt/' + username.toString(), {
+      var cal = await fetch(selectedServer + '/edt/' + adeid.toString(), {
         method: 'POST',
         headers: {
           "Accept": "application/json",
@@ -464,10 +484,10 @@ async function getCalendar() {
           id : item.id,
           start: item.start_time,
           end: item.end_time,
-          title: item.description,
-          subtitle: item.summary,
+          title: item.summary,
+          subtitle: item.description,
           description: item.location,
-          color: stringToColour(item.description)
+          color: stringToColour(item.summary)
         })
       });
 
@@ -817,13 +837,13 @@ function OOBE({ navigation }) {
 
   // Connexion au SSO de l'Université Nice Côte d'Azur et vérification des identifiants
   async function ssoUnice(username, password, eula) {
-    var endpoint = eula ? "/accepteula" : "/login";
     if(!isConnected || !ok) {
-      let apiResp = await fetch(selectedServer + endpoint, {
+      let apiResp = await fetch(selectedServer + "/signup", {
         method: 'POST',
         body: JSON.stringify({
           username: username,
-          password: password
+          password: password,
+          eula: eula
         }),
         headers: {
           "Accept": "application/json",
@@ -856,11 +876,14 @@ function OOBE({ navigation }) {
           await getPhotoFromENT();
         }
 
+        adeid = json.adeid;
+        save("adeid", adeid);
+
         name = json.name;
         if (name == null) {
           name = "Étudiant";
         }
-        save("name", name);
+        saveUserdata("name", name);
 
         semesters = json.semesters;
         haptics("success");
@@ -953,7 +976,7 @@ function OOBE({ navigation }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
                   <Button style={{ marginBottom: 8, marginRight: 8 }} icon="check" mode="contained" onPress={ () => handleLogin(true) }> Accepter </Button>
                   <Button style={{ marginBottom: 8, marginRight: 8, backgroundColor: style.container.error }} icon="close" mode="contained" onPress={ () => deleteData(true, navigation) }> Refuser </Button>
-                  <IconButton style={{ marginBottom: 8 }} icon="information" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/eula") }/>
+                  <IconButton style={{ marginBottom: 14 }} icon="information" mode="outlined" onPress={ () => handleURL("https://notes.metrixmedia.fr/eula") }/>
                 </View>
               </BottomSheetView>
             </BottomSheet>
@@ -1120,6 +1143,10 @@ function HomeScreen({ navigation }) {
     
       if(json.success) { 
         isConnected = true;
+        if (json.adeid != adeid) {
+          adeid = json.adeid;
+          save("adeid", adeid);
+        }
         semesters = json.semesters;
         setLoading(false);
         setSelectable(true);
@@ -1146,7 +1173,7 @@ function HomeScreen({ navigation }) {
     }
 
     if(mode == "force" || ( mode == "normal" && nextEventLoaded == false )) {
-      fetch(selectedServer + "/edt/" + username.toString() + "/nextevent", {
+      fetch(selectedServer + "/edt/" + adeid.toString() + "/nextevent", {
         method: 'GET',
         headers: {
           "Accept": "application/json",
@@ -1308,7 +1335,7 @@ function HomeScreen({ navigation }) {
         <Text style={{ textAlign: 'left' }} variant="displayLarge">Salut ! 👋</Text>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Tu es connecté·e·s sous le compte de : {"\n"}{username} - {name}</Text>
         <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes</Chip>
-        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => handleLogin("absences") } icon="account-question" >Absences</Chip>
+        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={true} onPress={ () => handleLogin("absences") } icon="account-question" >Absences (indisponible)</Chip>
 
         <Card style={{ marginBottom: 8 }} disabled={!selectable} onPress={ () => getMyCal(navigation) }>
           <Card.Title title="Prochain Cours" />
@@ -2421,7 +2448,7 @@ function ShowUser({ navigation }) {
     }
     haptics("success");
     name = value;
-    save("name", value);
+    saveUserdata("name", value);
     setTempName(value);
     Keyboard.dismiss();
   }
@@ -2489,7 +2516,7 @@ function IconConfig({ navigation }) {
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Choisissez votre icône :</Text>
-        <Chip style={{ height: 36, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} disabled > Icônes </Chip>
+        <Chip style={{ height: 36, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} disabled > Icônes officielles </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_magnet.png')}/>} onPress={ () => changeIconHome("magnet") }> Magnet </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
