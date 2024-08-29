@@ -3,7 +3,7 @@
   <h2 align="center">UniceNotes</h2>
 
 <p align="center">
-  <b>UniceNotes</b> est un client mobile non-officiel donnant accès à de multiples ressources provenant de l'Espace Numérique de Travail de l'I.U.T de Nice Côte d'Azur (Notes via Intracursus / Emploi du temps et Absences via GPU). Utilisant React Native, il est compatible avec la grande majorité des dispositifs mobiles (<b>iOS et Android</b>). <b>Votre ENT. Dans votre poche.</b>
+  <b>UniceNotes</b> est un client mobile non-officiel donnant accès à de multiples ressources provenant de l'Espace Numérique de Travail de l'I.U.T de Nice Côte d'Azur (via Intracursus / ADE). Utilisant React Native, il est compatible avec la grande majorité des dispositifs mobiles (<b>iOS et Android</b>). <b>Votre ENT. Dans votre poche.</b>
 </p>
 
 ## ⚡️ Téléchargement
@@ -51,7 +51,7 @@ L'application UniceNotes utilise :
 
 
 avec votre consentement (en vous connectant sur l'application et en acceptant les conditions d'utilisation) afin de vous fournir une expérience utilisateur optimale.
-Ces données sont récupérées depuis le site web Intracursus ou GPU de l'Université Côte d'Azur et ne quittent pas votre appareil.
+Ces données sont récupérées depuis le site web Intracursus ou ADE de l'Université Côte d'Azur et ne quittent pas votre appareil.
 \
 Les données de connexion sont **stockées sur votre appareil** et ne sont pas stockées sur un serveur (Seuls vos identifiants sont utilisés sur ```login.univ-cotedazur.fr``` afin de vous identifier et créer un token). 
 \
@@ -106,7 +106,7 @@ Toute utilisation de l'application UniceNotes est sous la seule responsabilité 
 Cette application agit comme un navigateur internet où l'utilisateur effectue des pseudos-requêtes (GET HTTPS) sur l'intranet de l'Université Côte d'Azur. Cette application ne contient aucun code malveillant et ne vise pas à nuire à l'Université Côte d'Azur ou à ses utilisateurs. Les éventuelles suspiscions de "fuites de données" sont infondées dûes à la nature de l'application (les données sont stockées sur l'appareil de l'utilisateur et non sur des serveurs tiers). Plus d'infos : [Voir la documentation](https://github.com/UniceApps/UniceAPIDocumentation).
 
 ## 🤝 Conditions d'utilisation :
-En acceptant d'utiliser UniceNotes, **MetrixMedia** (l'entité représentant le développeur) se dégage de toute responsabilité émanant de l'utilisation d'UniceNotes. **Je** (l’utilisateur de l’application, le signataire du contrat actuel), suis responsable de mon compte UniCA (Université Côte d’Azur ou Sésame) et **j’accepte les risques associés à l’utilisation de l’application UniceNotes**.
+[Consulter les conditions d'utilisation](https://notes.metrixmedia.fr/eula)
 
 ---
 L'application UniceNotes utilise Expo, un framework basé sur React Native.
