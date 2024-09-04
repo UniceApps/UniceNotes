@@ -29,7 +29,7 @@ import { Avatar, Text, TextInput,
   DataTable, Card, Provider as PaperProvider,
   IconButton, Appbar, Tooltip,
   List, configureFonts, Snackbar,
-  TouchableRipple
+  TouchableRipple, Menu, Searchbar
 } from 'react-native-paper';
 
 // Expo components
@@ -45,11 +45,11 @@ import * as Font from 'expo-font';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
 import Constants from "expo-constants";
 import * as ImagePicker from 'expo-image-picker';
 import * as StoreReview from 'expo-store-review';
 import * as QuickActions from "expo-quick-actions";
-import { useQuickActionCallback } from "expo-quick-actions/hooks";
 
 // Third-party components
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -76,7 +76,7 @@ import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '1.5.6';
+var appVersion = '2.0.0';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -446,8 +446,8 @@ async function getCalendarFromCache() {
         id : item.id,
         start: item.start_time,
         end: item.end_time,
-        title: item.description,
-        subtitle: item.summary,
+        title: item.summary,
+        subtitle: item.description,
         description: item.location,
         color: stringToColour(item.description)
       })
@@ -465,6 +465,12 @@ async function getCalendar() {
     haptics("medium");
     var netInfos = (await Network.getNetworkStateAsync()).isInternetReachable;
 
+    if (adeid == null) {
+      haptics("error");
+      Alert.alert("Erreur", "Votre identifiant ADE est introuvable. Veuillez fermer de force l'application et réessayez.");
+      deleteData(false);
+    }
+    
     if (netInfos == true) {
       var cal = await fetch(selectedServer + '/edt/' + adeid.toString(), {
         method: 'POST',
@@ -604,15 +610,15 @@ function SplashScreen({ navigation }) {
       res = false;
     }
 
-    if (maintenance != "" && res) {
-      setLoading(false);
-      showInfos("maintenance", maintenance);
-      res = false;
-    }
-
     if(!isBeta && isAvailable == true && version != appVersion && res) {
       setLoading(false);
       showInfos("update");
+      res = false;
+    }
+
+    if (maintenance != "" && res) {
+      setLoading(false);
+      showInfos("maintenance", maintenance);
       res = false;
     }
 
@@ -874,6 +880,16 @@ function OOBE({ navigation }) {
           save("username", username);
           save("passkey", password);
           await getPhotoFromENT();
+          var token = await registerForPushNotificationsAsync();
+          if(token != null) {
+            await fetch(selectedServer + '/push', {
+              method: 'POST',
+              body: JSON.stringify({
+                username: username,
+                token: token
+              }),
+            })
+          }
         }
 
         adeid = json.adeid;
@@ -941,6 +957,47 @@ function OOBE({ navigation }) {
     navigation.navigate('ShowSettings');
   }
 
+  // ----------------
+  // Notifications stuff
+  // ----------------
+
+  async function registerForPushNotificationsAsync() {
+    let token;
+
+    try {
+      if (Platform.OS === 'android') {
+        Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      }
+    
+      if (Device.isDevice) {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        if (finalStatus !== 'granted') {
+          alert('Failed to get push token for push notification!');
+          return;
+        }
+        token = await Notifications.getExpoPushTokenAsync({
+          projectId: Constants.expoConfig.extra.eas.projectId,
+        });
+      } else {
+        alert('Must use physical device for Push Notifications');
+      }
+    
+      return token.data;
+    } catch (error) {
+      return;
+    }  
+  }
+
   return (  
     <SafeAreaView style={style.container}>
       {appearance == "dark" ? (
@@ -972,7 +1029,7 @@ function OOBE({ navigation }) {
               <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
                 <Text style={{ textAlign: 'left', marginBottom: 16, marginTop: 8 }} variant="headlineMedium">Conditions générales d'utilisation</Text>
                 <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Mis à jour le 17/07/2024</Text>
-                <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>En acceptant d'utiliser UniceNotes, MetrixMedia (l'entité représentant le développeur) se dégage de toute responsabilité émanant de l'utilisation d'UniceNotes. Je (l’utilisateur de l’application, le signataire du contrat actuel), suis responsable de mon compte UniCA (Université Côte d’Azur ou Sésame) et j’accepte les risques associés à l’utilisation de l’application UniceNotes.</Text>
+                <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>En acceptant d'utiliser UniceNotes, MetrixMedia (l'entité représentant le développeur) se dégage de toute responsabilité émanant de l'utilisation d'UniceNotes. Je (l’utilisateur de l’application, le signataire du contrat actuel), suis responsable de mon compte UniCA (Université Côte d’Azur ou Sésame) et j’accepte TOUS les risques associés à l’utilisation de l’application UniceNotes.</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
                   <Button style={{ marginBottom: 8, marginRight: 8 }} icon="check" mode="contained" onPress={ () => handleLogin(true) }> Accepter </Button>
                   <Button style={{ marginBottom: 8, marginRight: 8, backgroundColor: style.container.error }} icon="close" mode="contained" onPress={ () => deleteData(true, navigation) }> Refuser </Button>
@@ -992,9 +1049,9 @@ function OOBE({ navigation }) {
           <BottomSheet enableDynamicSizing keyboardBehavior={'interactive'} keyboardBlurBehavior={"restore"} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
             <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
               <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">Se connecter</Text>
-              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Utilisez votre compte Sésame (np123456) afin de vous connecter.</Text>
+              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Utilisez votre compte Sésame afin de vous connecter.</Text>
               <BottomSheetTextInput 
-                  placeholder="Nom d'utilisateur"
+                  placeholder="Nom d'utilisateur (aa000000)"
                   defaultValue={username}
                   onChangeText={(text) => setUsername(text)}
                   onPressIn={() => haptics("selection")}
@@ -1033,8 +1090,8 @@ function OOBE({ navigation }) {
         <BottomSheet enableDynamicSizing contentHeight={128} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
             <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25}}>
               <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">UniceNotes</Text>
-              <Text style={{ textAlign: 'left', marginBottom: 8 }} variant='titleLarge'>Application réservée à l'I.U.T. de Nice Côte d'Azur.</Text>
-              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Bienvenu·e·s sur l'application qui remplace des sites datant de la préhistoire, par une interface moderne, rapide et facile d'utilisation.</Text>
+              <Text style={{ textAlign: 'left', marginBottom: 8 }} variant='titleLarge'>Application réservée à l'Université Côte d'Azur.</Text>
+              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Bienvenu·e·s sur l'application qui remplace des intranets datant de la préhistoire, par une interface moderne, rapide et facile d'utilisation.</Text>
               <Button style={{ marginBottom: 16 }} icon="skip-next" mode="contained" onPress={ () => handleButtonPress() }> Suivant </Button>
               <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
                 <Tooltip title="Mentions légales">
@@ -1255,6 +1312,9 @@ function HomeScreen({ navigation }) {
     } else if(action == "alreadyrated") {
       setTitleError("Erreur");
       setSubtitleError("Vous avez déjà soumis une note à UniceNotes.");      
+    } else if(action == "info") {
+      setTitleError("Informations")
+      setSubtitleError("UniceNotes est une application non-officielle. \n\nCe n'est pas votre emploi du temps ? Vous pouvez changer l'EDT sélectionné dans Mon Compte > Cursus Apogée - ADE.");
     }
     if(bottomSheetError != null) {
       bottomSheetError.expand()
@@ -1334,10 +1394,10 @@ function HomeScreen({ navigation }) {
         </View>
         <Text style={{ textAlign: 'left' }} variant="displayLarge">Salut ! 👋</Text>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Tu es connecté·e·s sous le compte de : {"\n"}{username} - {name}</Text>
-        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes</Chip>
-        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={true} onPress={ () => handleLogin("absences") } icon="account-question" >Absences (indisponible)</Chip>
+        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row'}} textStyle={{ paddingVertical: 8 }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes (Intracursus)</Chip>
+        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row'}} textStyle={{ paddingVertical: 8 }} disabled={!selectable} onPress={ () => navigation.navigate(ShowENT) } icon="briefcase-variant" >Espace Numérique de Travail</Chip>
 
-        <Card style={{ marginBottom: 8 }} disabled={!selectable} onPress={ () => getMyCal(navigation) }>
+        <Card style={{ marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) }>
           <Card.Title title="Prochain Cours" />
           <Card.Content>
             <Text variant="titleLarge">{nextEvent.summary}</Text>
@@ -1349,12 +1409,10 @@ function HomeScreen({ navigation }) {
           </Card.Actions>
         </Card>
 
-        <Chip style={{ height: 48, marginBottom: 16, justifyContent: 'center' }} disabled={!selectable} onPress={ () => navigation.navigate(ShowENT) } icon="briefcase-variant" >Espace Numérique de Travail</Chip>
-
         <Divider style={{ marginBottom: 8 }} />
         <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
-        <Tooltip title="Mentions légales">
-            <IconButton style={{ marginBottom: 4 }} icon="license" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }/>
+        <Tooltip title="Informations">
+            <IconButton style={{ marginBottom: 4 }} icon="information" mode="contained" onPress={ () => showError("info") }/>
           </Tooltip>
           <Tooltip title="Code source">
             <IconButton style={{ marginBottom: 16 }} icon="source-branch" mode="contained" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }/>
@@ -2128,6 +2186,7 @@ function ShowEDT({ navigation }) {
   const [cal, setCalendar] = useState(calendar);
   const [view, setView] = useState("workWeek");
   const [viewIcon, setViewIcon] = useState("magnify-plus");
+  const [menuVisible, setMenuVisible] = useState(false);
   const [title, setTitle] = useState("Infos");
   const [subtitle, setSubtitle] = useState("");
   const insets = useSafeAreaInsets();
@@ -2161,14 +2220,23 @@ function ShowEDT({ navigation }) {
     setTimeout(() => goToToday(), 500);
   }, []);
 
-  function goToToday() {
+  function toggleMenu() {
     haptics("medium");
+    setMenuVisible(!menuVisible);
+  }
+
+  function goToToday(toggle = false) {
+    haptics("medium");
+    if(toggle) {
+      toggleMenu();
+    }
     var today = new Date();
     calendarRef.current?.goToDate({date: today, hourScroll: true, animatedDate: true, animatedHour: true})
   }
 
   function changeView() {
     haptics("medium");
+    toggleMenu();
     if(view == "workWeek") {
       setView("threeDays");
       setViewIcon("magnify-minus");
@@ -2206,22 +2274,34 @@ function ShowEDT({ navigation }) {
     }
   }
 
+  function menuNavigator(navigateTo) {
+    if(navigateTo == "settings") {
+      toggleMenu();
+      goToSettings(navigation);
+    } else if (navigateTo == "edtconfig") {
+      navigation.navigate('EDTConfig');
+    }
+  }
+
   return (
     <View style={styleScrollable.container}>
       <Appbar.Header style={{ paddingTop: 0 }}>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => navigation.goBack()} />
         </Tooltip>
-        <Appbar.Content title="EDT" />
-        <Tooltip title="Aujourd'hui">
-          <Appbar.Action icon="update" onPress={() => goToToday()}/>
-        </Tooltip>
-        <Tooltip title="Changer la vue">
-          <Appbar.Action icon={viewIcon} onPress={() => changeView()} />
-        </Tooltip>
-        <Tooltip title="Paramètres">
-          <Appbar.Action icon="cog" onPress={() => goToSettings(navigation)} />
-        </Tooltip>
+        <Appbar.Content title="Emploi du temps" />
+        <Menu
+          visible={menuVisible}
+          onDismiss={toggleMenu}
+          anchor={<Appbar.Action icon="dots-vertical" onPress={() => toggleMenu()}/>}>
+          <Menu.Item title={adeid} />
+          <Menu.Item leadingIcon="magnify" onPress={() => { toggleMenu(); navigation.navigate('EDTConfig'); }} title="Voir un autre EDT" />
+          <Divider/>
+          <Menu.Item leadingIcon="update" onPress={() => {goToToday(true)}} title="Aujourd'hui" />
+          <Menu.Item leadingIcon={viewIcon} onPress={() => {changeView()}} title="Changer la vue" />
+          <Divider/>
+          <Menu.Item leadingIcon="cog" onPress={() => { toggleMenu(); goToSettings(navigation); }} title="Paramètres" />
+        </Menu>
       </Appbar.Header>
 
       <Divider style={{ marginBottom: 8 }} />
@@ -2263,6 +2343,7 @@ function ShowENT({ navigation }) {
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Choisissez votre application :</Text>
         <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} avatar={<Image size={24} source={require('./assets/ent/outlook.png')}/>} onPress={ () => handleURL("https://outlook.office.com/owa/?realm=etu.unice.fr&exsvurl=1&ll-cc=1036&modurl=0") }> Outlook (Emails) </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/ent/moodle.png')}/>} onPress={ () => handleURL("https://portail-lms.univ-cotedazur.fr") }> Moodle (LMS) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"school"} onPress={ () => handleURL("https://mondossierweb.univ-cotedazur.fr/") }> Mon dossier Web </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"account-search"} onPress={ () => handleURL("https://annuaire.univ-cotedazur.fr") }> Annuaire UniCA </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"book"} onPress={ () => handleURL("https://dsi-extra.unice.fr/BU/Etudiant/index.html") }> Bibliothèques Universitaires</Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"printer"} onPress={ () => handleURL("https://dsi-extra.unice.fr/repro/index.html") }> Imprimer à la BU </Chip>
@@ -2303,7 +2384,7 @@ function ShowSettings({ navigation }) {
     haptics("error");
   }
 
-  function betaToolbox(mode) {
+  function devToolbox(mode) {
     if(mode == "crash") {
       throw new Error('This is a crash');
     } else if(mode == "deletephoto") {
@@ -2389,14 +2470,14 @@ function ShowSettings({ navigation }) {
         <Button style={{ marginTop: 16 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
         <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://notes.metrixmedia.fr/privacy") }> Politique de confidentialité </Button>
         <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
+        <Button style={{ marginTop: 4 }} icon="account-remove" onPress={ () => devToolbox("deleteprofile") }> Forcer la suppression de données </Button>
 
         { // Bouton de test de crash
           isBeta ? ( 
             <>
-              <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => betaToolbox("crash") }> crash_app </Button> 
-              <Button style={{ marginTop: 4 }} icon="download" onPress={ () => betaToolbox("downphoto") }> down_photoprofile </Button>
-              <Button style={{ marginTop: 4 }} icon="account-box-multiple" onPress={ () => betaToolbox("deletephoto") }> del_photoprofile </Button>
-              <Button style={{ marginTop: 4 }} icon="account-remove" onPress={ () => betaToolbox("deleteprofile") }> forcedel_profile </Button>
+              <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => devToolbox("crash") }> crash_app </Button> 
+              <Button style={{ marginTop: 4 }} icon="download" onPress={ () => devToolbox("downphoto") }> down_photoprofile </Button>
+              <Button style={{ marginTop: 4 }} icon="account-box-multiple" onPress={ () => devToolbox("deletephoto") }> del_photoprofile </Button>
             </>
             ) : null
         }
@@ -2436,6 +2517,11 @@ function ShowUser({ navigation }) {
   }
 
   function saveName(value) {
+    if(value == "" || value == null) {
+      haptics("error");
+      Alert.alert("Erreur", "Votre nom et prénom doivent faire au moins 3 caractères.");
+      return;
+    }
     if(value.length > 32) {
       haptics("error");
       Alert.alert("Erreur", "Votre nom et prénom ne peuvent pas dépasser 32 caractères.");
@@ -2480,9 +2566,11 @@ function ShowUser({ navigation }) {
         <Avatar.Image style={{ marginTop: 8, alignSelf: 'center' }} size={96} source={{ uri: tempPhoto }} />
         <IconButton style={{ alignSelf: 'center', marginTop: -48, marginLeft: 96 }} icon="pencil" mode="contained-tonal" onPress={ () => pickImageAsync() } />
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Nom et prénom :</Text>
-        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 48 }} value={tempName} onChangeText={(value) => setTempName(value)} right={<TextInput.Icon icon="content-save" onPress={() => saveName(tempName)}/>} />
+        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 36 }} value={tempName} onChangeText={(value) => setTempName(value)} right={<TextInput.Icon icon="content-save" onPress={() => saveName(tempName)}/>} />
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Nom d'utilisateur :</Text>
-        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 48 }} value={username} disabled />
+        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 36 }} value={username} editable={false} />
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Cursus Apogée - ADE :</Text>
+        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 36 }} value={adeid} editable={false} right={<TextInput.Icon icon="pencil" onPress={() => navigation.navigate("EDTConfig")}/>} />
         <Divider style={{ marginTop: 16, marginBottom: 16 }} />
         <Button icon="form-textbox-password" mode="contained-tonal" onPress={ () => handleURL("https://sesame.unice.fr/web/app/prod/Compte/Gestion/mdp") }> Modifier mon mot de passe </Button>
         <Button style={{ marginTop: 8 }} icon="calculator" mode="contained-tonal" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
@@ -2666,7 +2754,7 @@ function ServerConfig({ navigation }) {
   const [isCustom, setIsCustom] = useState(false);
   const [statusUniceNotes, setStatusUniceNotes] = useState("timer-sand");
   const [statusIntracursus, setStatusIntracursus] = useState("timer-sand");
-  const [statusSatellysGPU, setStatusSatellysGPU] = useState("timer-sand");
+  const [statusADE, setStatusADE] = useState("timer-sand");
   const [statusLoginUniCA, setStatusLoginUniCA] = useState("timer-sand");
 
   useEffect(() => {
@@ -2778,14 +2866,14 @@ function ServerConfig({ navigation }) {
       setStatusIntracursus("close");
     });
 
-    await fetch("https://iut-gpu-personnels.unice.fr").then((res) => {
-      if(res.status == 200) {
-        setStatusSatellysGPU("check");
+    await fetch("https://edtweb.univ-cotedazur.fr/").then((res) => {
+      if(res.status == 200 || res.status == 302 || res.status == 301) {
+        setStatusADE("check");
       } else {
-        setStatusSatellysGPU("close");
+        setStatusADE("close");
       }
     }).catch((err) => {
-      setStatusSatellysGPU("close");
+      setStatusADE("close");
     });
 
     await fetch("https://login.univ-cotedazur.fr").then((res) => {
@@ -2844,9 +2932,9 @@ function ServerConfig({ navigation }) {
         <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16 }} icon={statusUniceNotes} disabled > Serveur UniceNotes Officiel </Chip>
 
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">En revanche, si c'est de ce côté-ci, alors c'est les serveurs de l'Université / I.U.T. qui ne fonctionnent pas. (Spoiler je n'y peux rien :/)</Text>
-        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} icon={statusIntracursus} disabled > Serveur Intracursus </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={statusSatellysGPU} disabled > Serveur Satellys GPU </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1, marginBottom: insets.bottom }} icon={statusLoginUniCA} disabled > Serveur Login UniCA </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} icon={statusIntracursus} disabled > Serveur Intracursus (Notes) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={statusADE} disabled > Serveur ADE (Emploi du temps) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1, marginBottom: insets.bottom }} icon={statusLoginUniCA} disabled > Serveur Login UniCA (Connexion) </Chip>
       </ScrollView>
 
       <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.errorContainer }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onErrorContainer }} backdropComponent={renderBackdrop}>
@@ -2859,6 +2947,69 @@ function ServerConfig({ navigation }) {
           </View>
         </BottomSheetView>
       </BottomSheet>
+    </View>
+  );
+}
+
+// Page de configuration de l'emploi du temps
+function EDTConfig({ navigation }) {
+  const [searchValue, setSearchValue] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {}, [searchResults, loading]);
+
+  async function searchCursus(value) {
+    setLoading(true);
+    setSearchValue(value);
+    if(value.length >= 2) {
+      await fetch("https://ade-consult.univ-cotedazur.fr/?action=search-vet&term=" + value).then((res) => {
+        if(res.status == 200) {
+          res.json().then((data) => {
+            setSearchResults(data.results);
+          });
+        } else {
+          setSearchResults([]);
+        }
+      });
+    }
+    setLoading(false);
+  }
+
+  function selectCursus(value) {
+    adeid = value + "-VET";
+    save("adeid", adeid);
+    logout(navigation);
+  }
+
+  return (
+    <View style={styleScrollable.container}>
+      <Searchbar
+        placeholder="Rechercher un cursus"
+        value={searchValue}
+        style={{ marginLeft: 20, marginRight: 20, marginTop: 16, marginBottom: 16 }}
+        onChangeText={(value) => searchCursus(value)}
+        loading={loading}
+      />
+      <Text style={{ marginLeft: 25, marginRight: 25, marginTop: 16, textAlign: 'left' }} variant="titleMedium">
+        Cursus actuel : {adeid}
+      </Text>
+      <Divider style={{ marginTop: 16, marginBottom: 16 }} />
+      <ScrollView style={{ paddingLeft: 25, paddingRight: 25, marginBottom:16 }}>
+        <Text style={{ marginBottom: 16, textAlign: 'left' }} variant="titleSmall">
+          Sélectionnez un cursus pour changer l'emploi du temps affiché :
+        </Text>
+        {searchResults.map((item, index) => (
+          <View key={index} style={{ marginBottom:8 }}>
+            <Card style={{ marginBottom: 8 }} onPress={() => selectCursus(item.id)}>
+              <Card.Cover style={{ marginBottom:8, height: 10, backgroundColor: stringToColour(item.text) }} />
+              <Card.Content>
+                <Text variant="titleMedium">{item.text}</Text>
+              </Card.Content>
+            </Card>
+          </View>
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -2882,13 +3033,14 @@ function App() {
         <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false, gestureEnabled: false}} />
         <Stack.Screen name="ShowEDT" component={ShowEDT} options={{ title: 'Emploi du temps', headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="ShowAbsences" component={ShowAbsences} options={{ title: 'Absences', headerShown: false, gestureEnabled: false }} />
+        <Stack.Screen name="ShowAbsences" component={ShowAbsences} options={{ title: 'Absences (Disabled)', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowENT" component={ShowENT} options={{ title: 'Espace Numérique de Travail', presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres', headerShown: false }} />
         <Stack.Screen name="ShowUser" component={ShowUser} options={{ title: 'Mon compte', presentation: 'modal', headerShown: false, gestureEnabled: true }} />
         <Stack.Screen name="IconConfig" component={IconConfig} options={{ title: 'Icône', presentation: 'modal', headerShown: false, gestureEnabled: true  }} />
         <Stack.Screen name="AverageConfig" component={AverageConfig} options={{ title: 'Configuration', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ServerConfig" component={ServerConfig} options={{ title: 'Serveurs', presentation: 'modal', headerShown: false, gestureEnabled: true }} />
+        <Stack.Screen name="EDTConfig" component={EDTConfig} options={{ title: 'Emploi du temps', presentation: 'modal', headerShown: false, gestureEnabled: true }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -3074,12 +3226,12 @@ export default function Main() {
         icon: Platform.OS === "ios" ? "symbol:graduationcap" : undefined,
         params: { href: "/notes" }
       },
-      {
-        id: "1",
-        title: "Absences",
-        icon: Platform.OS === "ios" ? "symbol:person.crop.circle.badge.exclam" : undefined,
-        params: { href: "/absences" }
-      },
+      // {
+      //   id: "1",
+      //   title: "Absences",
+      //   icon: Platform.OS === "ios" ? "symbol:person.crop.circle.badge.exclam" : undefined,
+      //   params: { href: "/absences" }
+      // },
       {
         id: "2",
         title: "Emploi du temps",

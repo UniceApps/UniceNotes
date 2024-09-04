@@ -3,7 +3,7 @@
   <h2 align="center">UniceNotes</h2>
 
 <p align="center">
-  <b>UniceNotes</b> est un client mobile non-officiel donnant accès à de multiples ressources provenant de l'Espace Numérique de Travail de l'I.U.T de Nice Côte d'Azur (via Intracursus / ADE). Utilisant React Native, il est compatible avec la grande majorité des dispositifs mobiles (<b>iOS et Android</b>). <b>Votre ENT. Dans votre poche.</b>
+  <b>UniceNotes</b> est un client mobile non-officiel donnant accès à de multiples ressources provenant de l'Espace Numérique de Travail de l'Université Côte d'Azur (via Intracursus / ADE). Utilisant React Native, il est compatible avec la grande majorité des dispositifs mobiles (<b>iOS et Android</b>). <b>Votre ENT. Dans votre poche.</b>
 </p>
 
 ## ⚡️ Téléchargement
