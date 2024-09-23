@@ -28,7 +28,7 @@ import { Avatar, Text, TextInput,
   ActivityIndicator, ProgressBar, Chip,
   DataTable, Card, Provider as PaperProvider,
   IconButton, Appbar, Tooltip,
-  List, configureFonts, Snackbar,
+  List, configureFonts, SegmentedButtons,
   TouchableRipple, Menu, Searchbar
 } from 'react-native-paper';
 
@@ -66,7 +66,7 @@ import LottieView from 'lottie-react-native';
 import BottomSheet, { BottomSheetView, BottomSheetTextInput, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { captureRef } from 'react-native-view-shot'; 
+import { captureRef } from 'react-native-view-shot';
 
 // Disable this when using Expo Go
 import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
@@ -76,14 +76,13 @@ import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '2.0.0';
+var appVersion = '2.1.0';
 var isBeta = false;
 // IMPORTANT !!!
 
 var initialQuickAction = null; // Quick action
 var isConnected = false; // UniceAPI login
 var dataIsLoaded = false; // JSONPDF loaded
-var apiMode = "notes"; // API mode (notes, absences)
 var semesters = []; // User's all semesters
 var semester = ''; // Selected semesters
 var calendar = {}; // User's calendar
@@ -134,21 +133,19 @@ var name = AsyncStorage.getItem("name").then((result) => {
   if (result != null) {
     name = result.toString();
   } else {
-    name = null;
+    if (username != null) {
+      haptics("error");
+      Alert.alert("Erreur", "Données manquantes pour la bonne exécution de l'application. Veuillez vous connecter à nouveau. EC=0xR");
+      deleteData(false);
+    } else {
+      name = "Étudiant";
+    }
   }
 }).catch((error) => {
   haptics("error");
   Alert.alert("Erreur", "Impossible de récupérer les données de connexion. EC=0xR");
   deleteData(false);
 }); // User's name
-
-var autoSet = AsyncStorage.getItem("autoSet").then((result) => {
-  if (result != null) {
-    autoSet = (result === 'true');
-  } else {
-    autoSet = true;
-  }
-}); // autoSet pour la moyenne générale
 
 var hapticsOn = AsyncStorage.getItem("haptics").then((result) => {
   if (result != null) {
@@ -157,30 +154,6 @@ var hapticsOn = AsyncStorage.getItem("haptics").then((result) => {
     hapticsOn = true;
   }
 }); // Haptics on/off
-
-var configAverage = AsyncStorage.getItem("configAverage").then((result) => {
-  if (result != null) {
-    configAverage = result.toString();
-  } else {
-    configAverage = "";
-  }
-}); // Configuration de la moyenne générale
-
-var matiereBonus = AsyncStorage.getItem("matiereBonus").then((result) => {
-  if (result != null) {
-    matiereBonus = result.split(";");
-  } else {
-    matiereBonus = [];
-  }
-}); // Matières bonus
-
-var matiereMalus = AsyncStorage.getItem("matiereMalus").then((result) => {
-  if (result != null) {
-    matiereMalus = result.split(";");
-  } else {
-    matiereMalus = [];
-  }
-}); // Matières malus
 
 var selectedServer = AsyncStorage.getItem("server").then((result) => {
   if (result != null) {
@@ -195,16 +168,23 @@ var selectedServer = AsyncStorage.getItem("server").then((result) => {
   }
 }); // Serveur sélectionné
 
+var userADEData = AsyncStorage.getItem("userADEData").then((result) => {
+  if (result != null) {
+    userADEData = JSON.parse(result);
+  } else {
+    userADEData = {
+      "cursus": "demo",
+      "uid": "demo"
+    };
+  }
+}); // User's ADE data
+
 var rememberMe = true; // Remember me
 
 var grades = []; // User's grades
 var average = ""; // User's average
 var admission = ""; // User's admission
 var position = ""; // User's position
-
-var absences = []; // User's absences
-var retards = []; // User's retards
-var exclusions = []; // User's exclusions
 
 var subjects = []; // User's subjects
 
@@ -224,12 +204,12 @@ if (!__DEV__) {
 }
 
 // SecureStore API
-async function save(key, value) {
+async function saveSecure(key, value) {
   await SecureStore.setItemAsync(key, value);
 }
 
 // AsyncStorage API
-async function saveUserdata(key, value) {
+async function saveAsyncStore(key, value) {
   await AsyncStorage.setItem(key, value);
 }
 
@@ -239,7 +219,7 @@ async function deleteData(warnings = false, navigation = null) {
     haptics("warning");
   }
 
-  if(!__DEV__){
+  if(!__DEV__ && Platform.OS == "ios" && parseInt(Platform.Version, 10) >= 18){
     setAppIcon("unicenotes");
   }
 
@@ -249,29 +229,22 @@ async function deleteData(warnings = false, navigation = null) {
   await SecureStore.deleteItemAsync("passkey"); // Suppression du mot de passe
   password = null;
   await SecureStore.deleteItemAsync("adeid"); // Suppression de l'identifiant ADE
-  adeid = null;
+  adeid = "";
   await AsyncStorage.removeItem("name"); // Suppression du nom
-  name = null;
-  await AsyncStorage.removeItem("autoSet"); // Suppression de l'autoSet de moyenne générale
-  autoSet = true;
+  name = "";
   await AsyncStorage.removeItem("haptics"); // Suppression des paramètres retours haptiques
   hapticsOn = true;
   await saveJSONToFile({}); // Suppression du calendrier hors-ligne
   calendar = {};
-  await AsyncStorage.removeItem("configAverage"); // Suppression de la configuration de la moyenne générale
-  configAverage = "";
-  await AsyncStorage.removeItem("matiereBonus"); // Suppression des matières bonus
-  matiereBonus = [];
-  await AsyncStorage.removeItem("matiereMalus"); // Suppression des matières malus
-  matiereMalus = [];
   await AsyncStorage.removeItem("server"); // Suppression du serveur sélectionné
   selectedServer = servers[0].toString();
-  await FileSystem.deleteAsync(FileSystem.documentDirectory + 'calendar.json').catch((error) => {
-    console.log("Cal not found" + error);
-  }); // Suppression du calendrier hors-ligne
-  await FileSystem.deleteAsync(FileSystem.documentDirectory + 'profile.png').catch((error) => {
-    console.log("Profile pic not found" + error);
-  }); // Suppression de la photo de profil
+  await AsyncStorage.removeItem("userADEData"); // Suppression des données ADE utilisateur
+  userADEData = {
+    "cursus": "demo",
+    "uid": "demo"
+  };
+  await FileSystem.deleteAsync(FileSystem.documentDirectory + 'calendar.json'); // Suppression du calendrier hors-ligne
+  await FileSystem.deleteAsync(FileSystem.documentDirectory + 'profile.png'); // Suppression de la photo de profil
 
   await Image.clearDiskCache();
   await Image.clearMemoryCache();
@@ -469,16 +442,23 @@ async function getCalendar() {
       haptics("error");
       Alert.alert("Erreur", "Votre identifiant ADE est introuvable. Veuillez fermer de force l'application et réessayez.");
       deleteData(false);
+      return;
     }
     
     if (netInfos == true) {
-      var cal = await fetch(selectedServer + '/edt/' + adeid.toString(), {
-        method: 'POST',
-        headers: {
-          "Accept": "application/json",
-          "Charset": "utf-8"
-        }
-      })
+      try{
+        var cal = await fetch(selectedServer + '/edt/' + adeid.toString(), {
+          method: 'POST',
+          headers: {
+            "Accept": "application/json",
+            "Charset": "utf-8"
+          }
+        })
+      } catch(e) {
+        haptics("error");
+        Alert.alert("Erreur", "Impossible de récupérer l'emploi du temps. EC=0xS");
+        return;
+      }
 
       cal = await cal.json();
       saveJSONToFile(cal);
@@ -858,6 +838,17 @@ function OOBE({ navigation }) {
         }
       })
 
+      if(apiResp.status == 429) {
+        deleteData(false);
+        AsyncStorage.clear();
+        haptics("error");
+        Alert.alert(
+          "Erreur", 
+          "Vous effectuez trop de requêtes. L'application contient peut-être des données trop anciennes pour les traîter. \n\nL'application va redémarrer pour tenter de les supprimer.", 
+          [{ text: "OK", onPress: () => { throw new Error('Data deletion forced') } }]
+        );
+      }
+
       if(apiResp.status == 203) {
         setEditable(true);
         haptics("medium");
@@ -877,8 +868,8 @@ function OOBE({ navigation }) {
       if(json.success) {
         // Sauvegarde des identifiants si "Se souvenir de moi" est activé
         if(rememberMe) {
-          save("username", username);
-          save("passkey", password);
+          saveSecure("username", username);
+          saveSecure("passkey", password);
           await getPhotoFromENT();
           var token = await registerForPushNotificationsAsync();
           if(token != null) {
@@ -888,18 +879,26 @@ function OOBE({ navigation }) {
                 username: username,
                 token: token
               }),
+              headers: {
+                "Accept": "application/json",
+                "Content-type": "application/json",
+                "Charset": "utf-8"
+              }
             })
           }
         }
 
-        adeid = json.adeid;
-        save("adeid", adeid);
+        userADEData = json.userADEData;
+        saveAsyncStore("userADEData", JSON.stringify(userADEData));
+
+        adeid = userADEData.uid;
+        saveSecure("adeid", adeid);
 
         name = json.name;
         if (name == null) {
           name = "Étudiant";
         }
-        saveUserdata("name", name);
+        saveAsyncStore("name", name);
 
         semesters = json.semesters;
         haptics("success");
@@ -982,7 +981,6 @@ function OOBE({ navigation }) {
           finalStatus = status;
         }
         if (finalStatus !== 'granted') {
-          alert('Failed to get push token for push notification!');
           return;
         }
         token = await Notifications.getExpoPushTokenAsync({
@@ -1116,7 +1114,6 @@ function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [selectable, setSelectable] = useState(true);
   const [quickAction, setQuickAction] = useState(null);
-  const [mode, setMode] = useState("notes");
   const [nextEvent, setNextEvent] = useState({summary: "Chargement...", location: "Chargement..."});
   const [nextEventLoaded, setNextEventLoaded] = useState(false);
   const [tempPhoto, setTempPhoto] = useState(null);
@@ -1139,9 +1136,8 @@ function HomeScreen({ navigation }) {
 	);
 
   // Connexion biométrique
-  function handleLogin(mode = "notes") {
+  function handleLogin() {
     haptics("medium");
-    setMode(mode);
     setLoading(true);
     if (internetAvailable == false) {
       setLoading(false);
@@ -1200,10 +1196,8 @@ function HomeScreen({ navigation }) {
     
       if(json.success) { 
         isConnected = true;
-        if (json.adeid != adeid) {
-          adeid = json.adeid;
-          save("adeid", adeid);
-        }
+        userADEData = json.userADEData;
+        saveAsyncStore("userADEData", JSON.stringify(userADEData));
         semesters = json.semesters;
         setLoading(false);
         setSelectable(true);
@@ -1230,22 +1224,30 @@ function HomeScreen({ navigation }) {
     }
 
     if(mode == "force" || ( mode == "normal" && nextEventLoaded == false )) {
-      fetch(selectedServer + "/edt/" + adeid.toString() + "/nextevent", {
-        method: 'GET',
-        headers: {
-          "Accept": "application/json",
-          "Charset": "utf-8"
-        }
-      }).then(async (response) => {
-        if (response.status == 200) {
-          let json = await response.json();
-          setNextEvent(json);
-          setNextEventLoaded(true);
-        } else {
-          setNextEvent({summary: "Erreur", location: "Impossible de récupérer le prochain cours"});
-          setNextEventLoaded(true);
-        }
-      });
+      try {
+        fetch(selectedServer + "/edt/" + adeid.toString() + "/nextevent", {
+          method: 'GET',
+          headers: {
+            "Accept": "application/json",
+            "Charset": "utf-8"
+          }
+        }).then(async (response) => {
+          if (response.status == 200) {
+            let json = await response.json();
+            setNextEvent(json);
+            setNextEventLoaded(true);
+          } else if (response.status == 429) {
+            setNextEvent({summary: "Erreur", location: "Trop de requêtes. Réessayez plus tard."});
+            setNextEventLoaded(true);
+          } else {
+            setNextEvent({summary: "Erreur", location: "Impossible de récupérer le prochain cours"});
+            setNextEventLoaded(true);
+          }
+        });
+      } catch (e) {
+        setNextEvent({summary: "Erreur", location: "Impossible de récupérer le prochain cours"});
+        setNextEventLoaded(true);
+      }
     }
   }
 
@@ -1314,7 +1316,7 @@ function HomeScreen({ navigation }) {
       setSubtitleError("Vous avez déjà soumis une note à UniceNotes.");      
     } else if(action == "info") {
       setTitleError("Informations")
-      setSubtitleError("UniceNotes est une application non-officielle. \n\nCe n'est pas votre emploi du temps ? Vous pouvez changer l'EDT sélectionné dans Mon Compte > Cursus Apogée - ADE.");
+      setSubtitleError("Ce n'est pas votre emploi du temps ? Vous pouvez changer l'EDT sélectionné dans Mon Compte > Code Apogée - ADE.");
     }
     if(bottomSheetError != null) {
       bottomSheetError.expand()
@@ -1334,31 +1336,14 @@ function HomeScreen({ navigation }) {
 
   useEffect(() => {
     if(isConnected) {
-      switch(mode) {
-        case "notes":
-          apiMode = "notes";
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [
-                { name: 'Semesters' }
-              ],
-            })
-          );
-          break;
-
-        case "absences":
-          apiMode = "absences";
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [
-                { name: 'APIConnect'}
-              ],
-            })
-          );
-          break;
-      }
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            { name: 'Semesters' }
+          ],
+        })
+      );
     }
   }, [isConnected]);
 
@@ -1368,8 +1353,6 @@ function HomeScreen({ navigation }) {
       setSelectable(false);
       if (quickAction == "/notes") {
         handleLogin("notes");
-      } else if (quickAction == "/absences") {
-        handleLogin("absences");
       } else if (quickAction == "/edt") {
         getMyCal(navigation);
       }
@@ -1400,8 +1383,8 @@ function HomeScreen({ navigation }) {
         <Card style={{ marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) }>
           <Card.Title title="Prochain Cours" />
           <Card.Content>
-            <Text variant="titleLarge">{nextEvent.summary}</Text>
-            <Text variant="bodyMedium">{nextEvent.location}</Text>
+            <Text variant="titleLarge" numberOfLines={1}>{nextEvent.summary}</Text>
+            <Text variant="bodyMedium" numberOfLines={1}>{nextEvent.location}</Text>
           </Card.Content>
           <Card.Actions>
             <Chip disabled={!selectable} onPress={ () => getNextEvent("force") } icon="refresh" >Rafraîchir</Chip>
@@ -1468,11 +1451,12 @@ function Semesters ({ navigation }) {
 
   function getMySemesters() {
     if (semesters.length == 0 || semesters == null) {
+      setSelectable(false);
       return <Text style={{ textAlign: 'center', marginTop : 8 }} variant="titleMedium">Aucun autre semestre disponible. Veuillez vous reconnecter ultérieurement.</Text>
     }
 
     return semesters.map((sem) => (
-      <Chip key={sem.id} style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => loadGrades(sem.semester) } icon="adjust" > {sem.semester} </Chip>
+      <Chip key={sem.id} style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} textStyle={{ paddingVertical: 8 }} disabled={!selectable} onPress={ () => loadGrades(sem.semester) } icon="adjust" > {sem.semester} </Chip>
     ))
   }
 
@@ -1485,8 +1469,7 @@ function Semesters ({ navigation }) {
 
   return (
     <View style={styleScrollable.container}>
-
-      <Appbar.Header style={{ paddingTop: 0 }}>
+      <Appbar.Header elevated>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => logout(navigation)} />
         </Tooltip>
@@ -1501,11 +1484,17 @@ function Semesters ({ navigation }) {
         <IconButton style={{ alignSelf: 'center', marginTop: -48, marginLeft: 96 }} icon="refresh" mode="contained-tonal" onPress={ () => resetPhoto() } />
         <Text style={{ textAlign: 'center', marginBottom: 16 }} variant="titleMedium">{name}</Text>
         <Text style={{ textAlign: 'center', marginBottom: 8 }} variant='titleLarge'>Veuillez sélectionner un semestre.</Text>
-        <Text style={{ textAlign: 'center', marginBottom: 16 }} variant='titleSmall'>Les semestres disponibles au visionnage sont déterminés par l'I.U.T. Le semestre en cours peut donc, ne pas être visible en ce moment.</Text>
+
+        <Card style={{ marginBottom: 16 }}>
+          <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} />
+          <Card.Content>
+            <Text style={{ textAlign: 'left' }} variant="bodyMedium">Les semestres disponibles au visionnage sont déterminés par l'I.U.T. Le semestre en cours peut donc, ne pas être visible en ce moment.</Text>
+          </Card.Content>
+        </Card>
 
         <Divider style={{ marginBottom: 16 }} />
 
-        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} disabled={!selectable} onPress={ () => loadGrades("latest") } icon="calendar-search" > Dernier semestre disponible ({latestSemester}) </Chip>
+        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center' }} textStyle={{ paddingVertical: 8 }} disabled={!selectable} onPress={ () => loadGrades("latest") } icon="calendar-search" > Dernier semestre disponible ({latestSemester}) </Chip>
         {getMySemesters()}
 
         <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
@@ -1514,7 +1503,7 @@ function Semesters ({ navigation }) {
   );
 }
 
-// Page de chargement des données (notes, absences, etc.)
+// Page de chargement des données des notes
 function APIConnect ({ navigation }) {
   const [progress, setProgress] = useState(0.1);
   const [titleError, setTitleError] = useState("Erreur");
@@ -1536,7 +1525,7 @@ function APIConnect ({ navigation }) {
 	);
 
   useEffect(() => {
-    loginAPI(apiMode);
+    loginAPI();
   }, []);
 
   function showError(action) {
@@ -1553,70 +1542,59 @@ function APIConnect ({ navigation }) {
     } else if(action == "nologin") {
       setTitleError("Erreur");
       setSubtitleError("Une erreur est survenue. Consultez la F.A.Q. pour plus d'infos. EC=0xL");
+    } else if(action == "emptypdf") {
+      setTitleError("Erreur");
+      setSubtitleError("Aucun PDF n'a été trouvé. Si vous êtes en Licence/Master hors IUT, alors vous ne pouvez pas utiliser le module Notes de l'application. EC=0xP");
     }
     if(bottomSheetError != null) {
       bottomSheetError.expand()
     }
   }
 
-  async function loginAPI(mode) {
+  async function loginAPI() {
     if (internetAvailable == false) {
       showError("nointernet");
       return;
     }
 
-    if(mode == "notes") {
-      if(dataIsLoaded == false){
-        let response = await fetch(selectedServer + '/load_pdf?sem=' + semester)
+    if(dataIsLoaded == false){
+      let response = await fetch(selectedServer + '/load_pdf?sem=' + semester)
+      .catch((error) => {
+        showError("nologin");
+      });
+      if(response.status == 200) {
+        setProgress(0.5);
+      
+        let pdfAPI = await fetch(selectedServer + '/scrape_pdf?sem=' + semester)
         .catch((error) => {
-          showError("nologin");
+          showError("noserver");
         });
-        if(response.status == 200) {
-          setProgress(0.5);
-        
-          let pdfAPI = await fetch(selectedServer + '/scrape_pdf?sem=' + semester)
-          .catch((error) => {
-            showError("noserver");
-          });
-        
-          if(pdfAPI.status != 200){
-            showError("noserver");
-          }
-        
-          let json = await pdfAPI.json();
-        
-          setProgress(1);
-          if(json.grades) {
-            grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
-          } else {
-            showError("nogrades");
-          }
-          admission = json.admission; // admission oui/non
-          average = json.average; // moyenne générale
-          position = json.position; // position dans le classement
-          dataIsLoaded = true;
-          navigation.goBack();
-          navigation.navigate('ShowGrades');
-        } else {
-          showError("nologin");
+      
+        if(pdfAPI.status != 200){
+          showError("noserver");
         }
+      
+        let json = await pdfAPI.json();
+      
+        setProgress(1);
+        if(json.grades) {
+          grades = json.grades; // toutes les notes, moyennes, noms des profs, etc.
+        } else {
+          showError("nogrades");
+        }
+        admission = json.admission; // admission oui/non
+        average = json.average; // moyenne générale
+        position = json.position; // position dans le classement
+        dataIsLoaded = true;
+        navigation.goBack();
+        navigation.navigate('ShowGrades');
+      } else if (response.status == 404) {
+        showError("emptypdf");
+      }else {
+        showError("nologin");
       }
-      dataIsLoaded = true;
-    } else if(mode == "absences") {
-      let absAPI = await fetch(selectedServer + '/absences');
-        
-      if(absAPI.status != 200){
-        showError("noserver");
-      }
-    
-      let json = await absAPI.json();
-    
-      setProgress(1);
-      absences = json.absences; // toutes les absences
-      retards = json.retards; // tous les retards
-      exclusions = json.exclusions; // toutes les exclusions
-      navigation.navigate('ShowAbsences');
     }
+    dataIsLoaded = true;
   }
 
   return (
@@ -1812,7 +1790,12 @@ function ShowGrades({ navigation }) {
       setMoyenneString(average);
     } else {
       setCalculated(true);
-      setMoyenneString(showGlobalAverage() + " (calculée)");
+      globalAvg = showGlobalAverage();
+      if (globalAvg != "Non disponible") {
+        setMoyenneString(globalAvg + " (calculée)");
+      } else {
+        setMoyenneString(globalAvg);
+      }
     }
   }
 
@@ -1882,28 +1865,17 @@ function ShowGrades({ navigation }) {
       if(element.average.toString() != "Pas de moyenne disponible") { // Si la moyenne est disponible
 
         // Vérification automatique/manuelle des absences et bonus
-        if((condition.includes("absences") || condition.includes("absence") || condition.includes("bonus")) && autoSet) { // Vérification automatique
+        if((condition.includes("absences") || condition.includes("absence") || condition.includes("bonus"))) { // Vérification automatique
           if(condition.includes("bonus")) { // Si c'est un bonus on l'ajoute à la moyenne
             bonus += parseFloat(element.average.toString());
           }
           if(condition.includes("absences") || condition.includes("absence")) { // Si c'est un malus on le soustrait à la moyenne
             bonus -= parseFloat(element.average.toString());
           }
-        } else if (!autoSet) { // Sinon vérification manuelle
-          if (configAverage.includes("B")) { // User a choisi de mettre le bonus manuel
-            if (matiereBonus.find((matiere) => matiere == element.name.toString())) {
-              bonus += parseFloat(element.average.toString());
-            }
-          }
-          if (configAverage.includes("M")) { // User a choisi de mettre le malus manuel
-            if (matiereMalus.find((matiere) => matiere == element.name.toString())) {
-              bonus -= parseFloat(element.average.toString());
-            }
-          }
-        } 
+        }
 
         // Calcul
-        if ((!matiereBonus.find((matiere) => matiere == element.name.toString()) && !matiereMalus.find((matiere) => matiere == element.name.toString())) && !(condition.includes("absences") || condition.includes("absence") || condition.includes("bonus")) ) { 
+        if (!(condition.includes("absences") || condition.includes("absence") || condition.includes("bonus"))) { 
           // Sinon on compte comme une matière normale
           moyenneCache = parseFloat(element.average.replace(" (calculée)", "").toString()); // On récupère la moyenne en chiffre lisible
 
@@ -1939,8 +1911,7 @@ function ShowGrades({ navigation }) {
 
   return (
     <View style={styleScrollable.container}>
-
-      <Appbar.Header style={{ paddingTop: 0 }}>
+      <Appbar.Header elevated>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => logout(navigation)} />
         </Tooltip>
@@ -1954,7 +1925,7 @@ function ShowGrades({ navigation }) {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }>
-        <Button style={style.buttonActionChange} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
+        <Button style={[style.buttonActionChange, { marginTop: 16 }]} loading={loading} icon="sync" mode="contained-tonal" onPress={ () => changeSemester() }> Changer de semestre </Button>
         <View style={{ display: "flex", flexDirection: 'row', justifyContent:'left' }}>
           <Text style={{ textAlign: 'left', marginTop: 16 }} variant="titleMedium">Moyenne générale : {moyenneString}</Text>
           {calculated ? 
@@ -1981,12 +1952,23 @@ function ShowGrades({ navigation }) {
         }
 
         <Divider style={{ marginBottom: 16, marginTop: 8 }} />
-        <Text style={{ textAlign: 'left', marginBottom: 16  }} variant="titleSmall">Les notes et moyennes sont affichées à but purement indicatif (elles peuvent être modifiées à tout instant) et ne représentent en aucun cas un justificatif de notes officiel.</Text>
+
+        <Card style={{ marginBottom: 16 }}>
+          <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} />
+          <Card.Content>
+            <Text style={{ textAlign: 'left' }} variant="bodyMedium">Les notes et moyennes sont affichées à but purement indicatif (elles peuvent être modifiées à tout instant) et ne représentent en aucun cas un justificatif de notes officiel.</Text>
+          </Card.Content>
+        </Card>
         
         {showTable()}
-
-        <Text style={{ textAlign: 'left' }} variant="titleSmall">La mention "Calculée" représente une moyenne calculée par UniceNotes et ne tient pas compte des UE et de certains coefficients.</Text>
-        <Text style={{ textAlign: 'left', marginBottom: insets.bottom*2 }} variant="titleSmall">En aucun cas UniceNotes ne pourrait se tenir responsable d'un mauvais affichage des notes/moyennes.</Text>
+        
+        <Card style={{ marginBottom: insets.bottom*2 }}>
+          <Card.Title left={(props) => <Avatar.Icon {...props} icon="alert" />} />
+          <Card.Content>
+            <Text style={{ textAlign: 'left' }} variant="bodyMedium">La mention "Calculée" représente une moyenne calculée par UniceNotes et ne tient pas compte des UE et de certains coefficients.</Text>
+            <Text style={{ textAlign: 'left' }} variant="titleSmall">En aucun cas UniceNotes ne pourrait se tenir responsable d'un mauvais affichage des notes/moyennes.</Text>
+          </Card.Content>
+        </Card>
       </ScrollView>
 
       <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.surfaceVariant }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onSurfaceVariant }} backdropComponent={renderBackdrop}>
@@ -1997,186 +1979,6 @@ function ShowGrades({ navigation }) {
         </BottomSheetView>
       </BottomSheet>
 
-    </View>
-  );
-}
-
-// Page d'affichage des absences
-function ShowAbsences({ navigation }) {
-  const [totalHours, setTotalHours] = useState(0); // Total des heures d'absences
-  const [totalHoursNonJustified, setTotalHoursNonJustified] = useState(0);
-  const [totalHoursJustified, setTotalHoursJustified] = useState(0);
-
-  useEffect(() => {
-    makeStats();
-  }, []);
-
-  function calculateDuration(timeRange, string = true) {
-    // Split the string into start and end time components
-    var [startTimeStr, endTimeStr] = timeRange.split('-');
-
-    if(startTimeStr.length < 5){
-      startTimeStr = "0" + startTimeStr;
-    }
-
-    if(endTimeStr.length < 5){
-      endTimeStr = "0" + endTimeStr;
-    }
-  
-    // Extract the hour and minute components
-    var startHour = parseInt(startTimeStr.slice(0, 2), 10);
-    var startMinute = parseInt(startTimeStr.slice(3, 5), 10);
-    var endHour = parseInt(endTimeStr.slice(0, 2), 10);
-    var endMinute = parseInt(endTimeStr.slice(3, 5), 10);
-  
-    // Create Date objects for the start and end times
-    var startDate = new Date();
-    startDate.setHours(startHour, startMinute, 0, 0);
-  
-    var endDate = new Date();
-    endDate.setHours(endHour, endMinute, 0, 0);
-  
-    // Calculate the time difference in milliseconds
-    var durationMs = endDate - startDate;
-  
-    // Convert milliseconds to hours and minutes
-    var hours = Math.floor(durationMs / 3600000); // 1 hour = 3600000 ms
-    var minutes = Math.round((durationMs % 3600000) / 60000); // 1 minute = 60000 ms
-  
-    // Format the duration as a string
-    var durationString = `${hours}h${minutes}`;
-
-    if(string) {
-      return durationString;
-    } else {
-      return hours + (minutes / 60);
-    }
-  }
-
-  function makeStats() {
-    var totalHours = 0;
-    var totalHoursNonJustified = 0;
-    var totalHoursJustified = 0;
-    absences.map((item) => {
-      justified = item.justified ? true : false;
-      if(justified == true) {
-        totalHoursJustified += calculateDuration(item.hour, false);
-      } else {
-        totalHoursNonJustified += calculateDuration(item.hour, false);
-      }
-      totalHours += calculateDuration(item.hour, false);
-    })
-    exclusions.map((item) => {
-      justified = item.justified ? true : false;
-      if(justified == true) {
-        totalHoursJustified += calculateDuration(item.hour, false);
-      } else {
-        totalHoursNonJustified += calculateDuration(item.hour, false);
-      }
-      totalHours += calculateDuration(item.hour, false);
-    })
-
-    setTotalHours(totalHours);
-    setTotalHoursNonJustified(totalHoursNonJustified);
-    setTotalHoursJustified(totalHoursJustified);
-  }
-
-  function showAbsences() {
-    if (absences.length > 0) {
-      return (absences.map((item) => (
-        <View>
-          <Card style={{ marginTop: 16, marginBottom: 16, backgroundColor: choosenTheme.colors.primaryContainer }} >
-            <Card.Title title={item.class} subtitle={"Professeur : " + item.prof} />
-            <Card.Content>
-              <Text>Date : {item.date}</Text>
-              <Text>Heure : {item.hour}</Text>
-              <Text>Durée : {calculateDuration(item.hour)}</Text>
-              <Text>Type de cours : {item.type}</Text>
-              <Text>Raison : {item.reason}</Text>
-              <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
-            </Card.Content>
-          </Card>
-          <Divider/>
-        </View>
-      )))
-    }
-  }
-
-  function showRetards() {
-    if (retards.length > 0) {
-      return (retards.map((item) => (
-        <View>
-          <Card style={{ marginTop: 16, marginBottom: 16, backgroundColor: choosenTheme.colors.retard }} >
-            <Card.Title title={item.class} subtitle={"Professeur : " + item.prof} />
-            <Card.Content>
-              <Text>Date : {item.date}</Text>
-              <Text>Heure : {item.hour}</Text>
-              <Text>Durée : {calculateDuration(item.hour)}</Text>
-              <Text>Type de cours : {item.type}</Text>
-              <Text>Raison : {item.reason}</Text>
-              <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
-            </Card.Content>
-          </Card>
-          <Divider/>
-        </View>
-      )))
-    }
-  }
-
-  function showExclusions() {
-    if (exclusions.length > 0) {
-      return (exclusions.map((item) => (
-        <View>
-          <Card style={{ marginTop: 16, marginBottom: 16, backgroundColor: choosenTheme.colors.errorContainer }} >
-            <Card.Title title={item.class} subtitle={"Professeur : " + item.prof} />
-            <Card.Content>
-              <Text>Date : {item.date}</Text>
-              <Text>Heure : {item.hour}</Text>
-              <Text>Durée : {calculateDuration(item.hour)}</Text>
-              <Text>Type de cours : {item.type}</Text>
-              <Text>Raison : {item.reason}</Text>
-              <Text>Justifié : {item.justified ? 'Oui' : 'Non'}</Text>
-            </Card.Content>
-          </Card>
-          <Divider/>
-        </View>
-      )))
-    }
-  }
-
-  return (
-    <View style={styleScrollable.container}>
-      <Appbar.Header style={{ paddingTop: 0 }}>
-        <Appbar.BackAction onPress={() => logout(navigation)} />
-        <Appbar.Content title="Absences" />
-        <Appbar.Action icon="cog" onPress={() => goToSettings(navigation)} />
-      </Appbar.Header>
-
-      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Button style={ style.buttonActionChange } icon="plus" mode="contained-tonal" onPress={() => handleURL("https://absences.metrixmedia.fr")}> Justifier mon absence </Button>
-
-        <Text style={{ textAlign: 'left', marginTop: 16 }} variant="titleMedium">Total des heures d'absences : {totalHours}h</Text>
-        <Text style={{ textAlign: 'left' }} variant="titleMedium">Non justifiées : {totalHoursNonJustified}h</Text>
-        <Text style={{ textAlign: 'left' }} variant="titleMedium">Justifiées : {totalHoursJustified}h</Text>
-
-        <List.Accordion style={{ marginTop: 16, backgroundColor: choosenTheme.colors.primaryContainer, borderRadius: 16 }}
-          title={absences.length > 1 ? absences.length + " absences" : absences.length + " absence"}
-          left={props => <List.Icon {...props} icon="account-question" />}>
-          {showAbsences()}
-        </List.Accordion>
-
-        <List.Accordion style={{ marginTop: 8, backgroundColor: choosenTheme.colors.retard, borderRadius: 16 }}
-          title={retards.length > 1 ? retards.length + " retards" : retards.length + " retard"}
-          left={props => <List.Icon {...props} icon="camera-timer" />}>
-          {showRetards()}
-        </List.Accordion>
-
-        <List.Accordion style={{ marginTop: 8, marginBottom: 32, backgroundColor: choosenTheme.colors.errorContainer, borderRadius: 16 }}
-          title={exclusions.length > 1 ? exclusions.length + " exclusions" : exclusions.length + " exclusion"}
-          left={props => <List.Icon {...props} icon="skull-crossbones" />}>
-          {showExclusions()}
-        </List.Accordion>
-      </ScrollView>
     </View>
   );
 }
@@ -2285,7 +2087,7 @@ function ShowEDT({ navigation }) {
 
   return (
     <View style={styleScrollable.container}>
-      <Appbar.Header style={{ paddingTop: 0 }}>
+      <Appbar.Header elevated>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => navigation.goBack()} />
         </Tooltip>
@@ -2332,7 +2134,7 @@ function ShowEDT({ navigation }) {
 function ShowENT({ navigation }) {
   return (
     <View style={ styleScrollable.container }>
-      <Appbar.Header>
+      <Appbar.Header elevated statusBarHeight={0}>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => navigation.goBack()} />
         </Tooltip>
@@ -2341,15 +2143,21 @@ function ShowENT({ navigation }) {
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Choisissez votre application :</Text>
-        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} avatar={<Image size={24} source={require('./assets/ent/outlook.png')}/>} onPress={ () => handleURL("https://outlook.office.com/owa/?realm=etu.unice.fr&exsvurl=1&ll-cc=1036&modurl=0") }> Outlook (Emails) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/ent/moodle.png')}/>} onPress={ () => handleURL("https://portail-lms.univ-cotedazur.fr") }> Moodle (LMS) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"school"} onPress={ () => handleURL("https://mondossierweb.univ-cotedazur.fr/") }> Mon dossier Web </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"account-search"} onPress={ () => handleURL("https://annuaire.univ-cotedazur.fr") }> Annuaire UniCA </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"book"} onPress={ () => handleURL("https://dsi-extra.unice.fr/BU/Etudiant/index.html") }> Bibliothèques Universitaires</Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"printer"} onPress={ () => handleURL("https://dsi-extra.unice.fr/repro/index.html") }> Imprimer à la BU </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={"account"} onPress={ () => handleURL("https://link.univ-cotedazur.fr/fr/authentication/index/caslogin?1") }> Link UCA </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/ent/izly.png')}/>} onPress={ () => handleURL("https://mon-espace.izly.fr") }> Mon Espace Izly </Chip>
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Les applications ne sont pas compatibles avec UniceNotes et seront ouvertes avec un navigateur externe.</Text>
+        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} textStyle={{ paddingVertical: 8 }}  avatar={<Image size={24} source={require('./assets/ent/outlook.png')}/>} onPress={ () => handleURL("https://outlook.office.com/owa/?realm=etu.unice.fr&exsvurl=1&ll-cc=1036&modurl=0") }> Outlook (Emails) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/ent/moodle.png')}/>} onPress={ () => handleURL("https://portail-lms.univ-cotedazur.fr") }> Moodle (LMS) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} icon={"school"} onPress={ () => handleURL("https://mondossierweb.univ-cotedazur.fr/") }> Mon dossier Web </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} icon={"account-search"} onPress={ () => handleURL("https://annuaire.univ-cotedazur.fr") }> Annuaire UniCA </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} icon={"book"} onPress={ () => handleURL("https://dsi-extra.unice.fr/BU/Etudiant/index.html") }> Bibliothèques Universitaires</Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} icon={"printer"} onPress={ () => handleURL("https://dsi-extra.unice.fr/repro/index.html") }> Imprimer à la BU </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} icon={"account"} onPress={ () => handleURL("https://link.univ-cotedazur.fr/fr/authentication/index/caslogin?1") }> Link UCA </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }}  avatar={<Image size={24} source={require('./assets/ent/izly.png')}/>} onPress={ () => handleURL("https://mon-espace.izly.fr") }> Mon Espace Izly </Chip>
+        
+        <Card style={{ marginTop: 16 }}>
+          <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} />
+          <Card.Content>
+            <Text style={{ textAlign: 'left' }} variant="bodyLarge">Les applications ne sont pas compatibles avec UniceNotes et seront ouvertes avec un navigateur externe.</Text>
+          </Card.Content>
+        </Card>
       </ScrollView>
     </View>
   );
@@ -2380,7 +2188,7 @@ function ShowSettings({ navigation }) {
   function setHapticsBool(value) {
     setVibrations(value);
     hapticsOn = value;
-    saveUserdata("haptics", value.toString());
+    saveAsyncStore("haptics", value.toString());
     haptics("error");
   }
 
@@ -2393,7 +2201,11 @@ function ShowSettings({ navigation }) {
       deleteData(false);
       AsyncStorage.clear();
       haptics("success");
-      throw new Error('Data deletion forced');
+      Alert.alert(
+        "Données supprimées", 
+        "Les données ont été supprimées avec succès. L'application va redémarrer.", 
+        [{ text: "Fermer", onPress: () => { throw new Error('Data deletion forced') } }]
+      );
     } else if(mode == "downphoto") {
       getPhotoFromENT();
     }
@@ -2401,7 +2213,7 @@ function ShowSettings({ navigation }) {
 
   return (
     <View style={styleScrollable.container}>
-      <Appbar.Header style={{ paddingTop: 0 }}>
+      <Appbar.Header elevated>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => goBack()} />
         </Tooltip>
@@ -2411,8 +2223,8 @@ function ShowSettings({ navigation }) {
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         {
           username != null ? (
-            <Button style={[style.buttonActionChange, { marginBottom: 8, marginTop: 8, height: 48, justifyContent: 'center' }]} icon="account" mode="contained-tonal" onPress={ () => navigation.navigate('ShowUser')}>Mon compte</Button>
-          ) : null
+            <Button style={[style.buttonActionChange, { marginBottom: 8, marginTop: 16, height: 48, justifyContent: 'center' }]} labelStyle={{ paddingVertical: 4 }} icon="account" mode="contained-tonal" onPress={ () => navigation.navigate('ShowUser')}>Mon compte</Button>
+          ) : null 
         }
         <Button icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/support") }> F.A.Q. / Signaler un bug </Button>
 
@@ -2457,15 +2269,20 @@ function ShowSettings({ navigation }) {
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">Votre ENT. Dans votre poche.</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">© {new Date().getFullYear()} - MetrixMedia / hugofnm</Text>
+        <Text style={{ textAlign: 'left' }} variant="titleSmall">Merci d'avoir téléchargé UniceNotes :)</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">⚡ Version : {appVersion}</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">❤️ Fièrement développé par un GEII : 
           <Text style={style.textLink} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
         </Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">🛠️ Hash local du commit Git : {hash}</Text>
 
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur. Tout usage de cette application implique la seule responsabilité de l'utilisateur comme prévue dans les conditions d'utilisation.</Text>
-
-        <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">Merci d'avoir téléchargé UniceNotes :)</Text>
+        <Card style={{ marginTop: 16, textAlign: 'left' }}>
+          <Card.Title left={(props) => <Avatar.Icon {...props} icon="alert" />} />
+          <Card.Content>
+            <Text style={{ textAlign: 'left' }} variant="bodyMedium">UniceNotes n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur.</Text>
+            <Text style={{ textAlign: 'left' }} variant="titleSmall">Tout usage de cette application implique la seule responsabilité de l'utilisateur comme prévue dans les conditions d'utilisation.</Text>
+          </Card.Content>
+        </Card>
 
         <Button style={{ marginTop: 16 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
         <Button style={{ marginTop: 4 }} icon="account-child-circle" onPress={ () => handleURL("https://notes.metrixmedia.fr/privacy") }> Politique de confidentialité </Button>
@@ -2534,7 +2351,7 @@ function ShowUser({ navigation }) {
     }
     haptics("success");
     name = value;
-    saveUserdata("name", value);
+    saveAsyncStore("name", value);
     setTempName(value);
     Keyboard.dismiss();
   }
@@ -2555,7 +2372,7 @@ function ShowUser({ navigation }) {
 
   return (
     <View style={styleScrollable.container}>
-      <Appbar.Header style={{ paddingTop: 0 }}>
+      <Appbar.Header elevated statusBarHeight={0}>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => navigation.goBack()} />
         </Tooltip>
@@ -2563,19 +2380,24 @@ function ShowUser({ navigation }) {
       </Appbar.Header>
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Avatar.Image style={{ marginTop: 8, alignSelf: 'center' }} size={96} source={{ uri: tempPhoto }} />
+        <Avatar.Image style={{ marginTop: 16, alignSelf: 'center' }} size={96} source={{ uri: tempPhoto }} />
         <IconButton style={{ alignSelf: 'center', marginTop: -48, marginLeft: 96 }} icon="pencil" mode="contained-tonal" onPress={ () => pickImageAsync() } />
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Nom et prénom :</Text>
-        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 36 }} value={tempName} onChangeText={(value) => setTempName(value)} right={<TextInput.Icon icon="content-save" onPress={() => saveName(tempName)}/>} />
+        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 42 }} mode='outlined' value={tempName} onChangeText={(value) => setTempName(value)} right={<TextInput.Icon icon="content-save" onPress={() => saveName(tempName)}/>} />
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Nom d'utilisateur :</Text>
-        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 36 }} value={username} editable={false} />
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Cursus Apogée - ADE :</Text>
-        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 36 }} value={adeid} editable={false} right={<TextInput.Icon icon="pencil" onPress={() => navigation.navigate("EDTConfig")}/>} />
-        <Divider style={{ marginTop: 16, marginBottom: 16 }} />
-        <Button icon="form-textbox-password" mode="contained-tonal" onPress={ () => handleURL("https://sesame.unice.fr/web/app/prod/Compte/Gestion/mdp") }> Modifier mon mot de passe </Button>
-        <Button style={{ marginTop: 8 }} icon="calculator" mode="contained-tonal" onPress={ () => navigation.navigate('AverageConfig')}>Configuration de la moyenne générale</Button>
-        <Button style={[style.buttonLogout, { marginTop: 8, height: 48, justifyContent: 'center' }]} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer toutes mes données </Button>
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Pour restaurer votre photo par défaut, veuillez vous connecter grâce à l'onglet "Notes", puis cliquez sur la flèche sous votre photo.</Text>
+        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 42 }} mode='outlined' value={username} editable={false} />
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Code Apogée - ADE :</Text>
+        <TextInput style={{ textAlign: 'left', marginTop: 4, height: 42 }} mode='outlined' value={adeid} editable={false} right={<TextInput.Icon icon="pencil" onPress={() => navigation.navigate("EDTConfig")}/>} />
+        <Divider style={{ marginVertical: 16 }} />
+        <Button icon="calendar-edit" mode="contained-tonal" onPress={() => navigation.navigate("EDTConfig")}> Changer l'emploi du temps affiché </Button>
+        <Button style={{ marginTop: 8 }} icon="form-textbox-password" mode="contained-tonal" onPress={ () => handleURL("https://sesame.unice.fr/web/app/prod/Compte/Gestion/mdp") }> Modifier mon mot de passe </Button>
+        <Button style={[style.buttonLogout, { marginTop: 8, height: 48, justifyContent: 'center' }]} labelStyle={{ paddingVertical: 4 }} icon="delete" mode="contained-tonal" onPress={ () => askDeleteData() }> Supprimer toutes mes données </Button>
+        <Card style={{ marginTop: 16, marginBottom: 32 }}>
+          <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} />
+          <Card.Content>
+            <Text style={{ textAlign: 'left' }} variant="bodyLarge">Pour restaurer votre photo par défaut, veuillez vous connecter grâce à l'onglet "Notes", puis cliquez sur la flèche sous votre photo.</Text>
+          </Card.Content>
+        </Card>
       </ScrollView>
     </View>
   );
@@ -2595,7 +2417,7 @@ function IconConfig({ navigation }) {
 
   return (
     <View style={ styleScrollable.container }>
-      <Appbar.Header>
+      <Appbar.Header elevated statusBarHeight={0}>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => navigation.goBack()} />
         </Tooltip>
@@ -2605,140 +2427,29 @@ function IconConfig({ navigation }) {
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Choisissez votre icône :</Text>
         <Chip style={{ height: 36, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} disabled > Icônes officielles </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_magnet.png')}/>} onPress={ () => changeIconHome("magnet") }> Magnet </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_beach.png')}/>} onPress={ () => changeIconHome("beach") }> Beach </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_monaco.png')}/>} onPress={ () => changeIconHome("monaco") }> Monaco </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_melted.png')}/>} onPress={ () => changeIconHome("melted") }> Melted </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_zoomed.png')}/>} onPress={ () => changeIconHome("zoomed") }> Zoomed </Chip>
-        <Chip style={{ height: 36, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} disabled > Communautaire </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_glitched.png')}/>} onPress={ () => changeIconHome("glitched") }> Glitched (par @f.eli0tt) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_vaporwave.png')}/>} onPress={ () => changeIconHome("vaporwave") }> Vaporwave (par @nathan_jaffres) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_ios6.png')}/>} onPress={ () => changeIconHome("ios6") }> iOS 6 (par @ds.marius) </Chip>
-        <Chip style={{ height: 36, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} disabled > Événement </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_france.png')}/>} onPress={ () => changeIconHome("france") }> France - Euro et JO 2024 </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_magnet.png')}/>} onPress={ () => changeIconHome("magnet") }> Magnet </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_beach.png')}/>} onPress={ () => changeIconHome("beach") }> Beach </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_monaco.png')}/>} onPress={ () => changeIconHome("monaco") }> Monaco </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_melted.png')}/>} onPress={ () => changeIconHome("melted") }> Melted </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_zoomed.png')}/>} onPress={ () => changeIconHome("zoomed") }> Zoomed </Chip>
+        <Chip style={{ height: 36, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} disabled > Communautaire </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_glitched.png')}/>} onPress={ () => changeIconHome("glitched") }> Glitched (par @f.eli0tt) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_vaporwave.png')}/>} onPress={ () => changeIconHome("vaporwave") }> Vaporwave (par @nathan_jaffres) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_ios6.png')}/>} onPress={ () => changeIconHome("ios6") }> iOS 6 (par @ds.marius) </Chip>
+        <Chip style={{ height: 36, justifyContent: 'center', borderRadius: 0, marginTop: 1 }}disabled > Événement </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_france.png')}/>} onPress={ () => changeIconHome("france") }> France - Euro et JO 2024 </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_christmas2023.png')}/>} onPress={ () => changeIconHome("christmas2023") }> Christmas - Noël 2023 </Chip>
-        <Text style={{ marginTop: 16, marginBottom: 36, textAlign: 'left' }} variant="titleSmall">Vous trouvez pas "l'icône" qu'il vous faut ? Envoyez-nous vos oeuvres d'art à l'adresse :<Text style={style.textLink} onPress={() => Linking.openURL("mailto://oeuvredartpourlappliunicenotes@metrixmedia.fr")}> oeuvredartpourlappliunicenotes@metrixmedia.fr </Text></Text>
-      </ScrollView>
-    </View>
-  );
-}
-
-// Page de configuration de la moyenne générale
-function AverageConfig({ navigation }) {
-  const [automatique, setAutomatique] = useState(autoSet);
-
-  const [malus, setMalus] = useState(configAverage.includes("M"));
-  const [bonus, setBonus] = useState(configAverage.includes("B"));
-
-  const [matiereB, setMatiereBonus] = useState(matiereBonus.toString());
-  const [matiereM, setMatiereMalus] = useState(matiereMalus.toString());
-
-  function validate() {
-    Keyboard.dismiss();
-    var config = "";
-    if(malus) {
-      matiereMalus = matiereM.split(";");
-      config += "M ";
-      saveUserdata("matiereMalus", matiereMalus.toString());
-      
-    }
-    if(bonus) {
-      matiereBonus = matiereB.split(";");
-      config += "B ";
-      saveUserdata("matiereBonus", matiereBonus.toString());
-    }
-    configAverage = config;
-    saveUserdata("configAverage", config);
-    navigation.goBack();
-  }
-
-  function helpMe() {
-    Keyboard.dismiss();
-    Alert.alert("Syntaxe", "Vous devez écrire le nom de la matière à l'identique comme affichée sur UniceNotes séparée par un point-virgule. \n Exemple : 'Absences S1;Bonus Sport'");
-  }
-
-  function setAutoSet(value) {
-    autoSet = value;
-    setAutomatique(value);
-    saveUserdata("autoSet", value.toString());
-  }
-
-  function disable(value) {
-    switch(value) {
-      case "B":
-        setBonus(!bonus);
-        SecureStore.deleteItemAsync("matiereBonus");
-        matiereBonus = [];
-        break;
-      case "M":
-        setMalus(!malus);
-        SecureStore.deleteItemAsync("matiereMalus");
-        matiereMalus = [];
-        break;
-    }
-  }
-
-  return (
-    <View style={ styleScrollable.container }>
-      <Appbar.Header>
-        <Appbar.Content title="Moyenne" />
-      </Appbar.Header>
-
-      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-      <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleLarge'>Afin de pouvoir afficher votre moyenne générale correctement, vous devez configurer les bonus et malus appliqués.</Text>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }} >
-          <Switch onValueChange={ () => setAutoSet(!autoSet) } value={autoSet}/>
-          <Text style={{ marginLeft:8}}> Automatique (recommandé)</Text>
-      </View>
-
-      { // Montre switch bonus
-        !autoSet ? ( 
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:8 }} >
-              <Switch onValueChange={ () => disable("B") } value={bonus}/>
-              <Text style={{ marginLeft: 8, marginBottom: 8}}> Bonus</Text>
-          </View>
-        ) : null
-      }
-
-      { // Matière bonus
-        bonus ? ( 
-          <><TextInput
-            label="Matières bonus"
-            defaultValue={matiereB.toString()}
-            onChangeText={(text) => setMatiereBonus(text)}
-            onPressIn={() => haptics("selection")}
-            right={<TextInput.Icon icon="information" onPress={ () => helpMe() } />}
-            onSubmitEditing={() => Keyboard.dismiss()}
-            style={{ marginBottom: 16 }}
-          /></> ) : null
-      }
         
-      { // Montrer switch malus
-        !autoSet ? ( 
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom:8 }} >
-              <Switch onValueChange={ () => disable("M") } value={malus}/>
-              <Text style={{ marginLeft:8}}> Malus</Text>
-          </View>
-        ) : null
-      }
-
-      { // Matière malus
-        malus ? ( 
-          <><TextInput
-            label="Matières malus"
-            defaultValue={matiereM.toString()}
-            onChangeText={(text) => setMatiereMalus(text)}
-            onPressIn={() => haptics("selection")}
-            right={<TextInput.Icon icon="information" onPress={ () => helpMe() } />}
-            onSubmitEditing={() => Keyboard.dismiss()}
-            style={{ marginBottom: 8 }}
-          /></> ) : null
-      }
-
-      <Button style={{ marginTop: 8 }} icon="check" mode="contained" onPress={() => validate()}> Valider </Button>
+        <Card style={{ marginTop: 16, textAlign: 'left' }}>
+          <Card.Title left={(props) => <Avatar.Icon {...props} icon="flower" />} />
+          <Card.Content>
+            <Text style={{ textAlign: 'left' }} variant="bodyMedium">Vous trouvez pas "l'icône" qu'il vous faut ? Envoyez-nous vos oeuvres d'art à l'adresse :<Text style={style.textLink} onPress={() => Linking.openURL("mailto://app+icons@metrixmedia.fr")}> app+icons@metrixmedia.fr </Text></Text>
+          </Card.Content>
+        </Card>
+        
+        <Text style={{ marginTop: 16, marginBottom: 36, textAlign: 'left' }} variant="titleSmall"></Text>
       </ScrollView>
     </View>
   );
@@ -2754,6 +2465,7 @@ function ServerConfig({ navigation }) {
   const [isCustom, setIsCustom] = useState(false);
   const [statusUniceNotes, setStatusUniceNotes] = useState("timer-sand");
   const [statusIntracursus, setStatusIntracursus] = useState("timer-sand");
+  const [statusDW, setStatusDW] = useState("timer-sand");
   const [statusADE, setStatusADE] = useState("timer-sand");
   const [statusLoginUniCA, setStatusLoginUniCA] = useState("timer-sand");
 
@@ -2799,7 +2511,7 @@ function ServerConfig({ navigation }) {
     }
     if (value == "P") {
       selectedServer = servers[0];
-      saveUserdata("server", servers[0].toString());
+      saveAsyncStore("server", servers[0].toString());
       isConnected = false;
       dataIsLoaded = false;
       navigation.reset({
@@ -2817,7 +2529,7 @@ function ServerConfig({ navigation }) {
       res = await fetch(value.toString())
       if(res.status == 200) {
         selectedServer = value.toString();
-        saveUserdata("server", selectedServer);
+        saveAsyncStore("server", selectedServer);
         isConnected = false;
         dataIsLoaded = false;
         Alert.alert("Succès", "Veuillez redémarrer l'application pour appliquer les changements.");
@@ -2856,7 +2568,7 @@ function ServerConfig({ navigation }) {
       setStatusUniceNotes("close");
     });
 
-    await fetch("https://intracursus.unice.fr/").then((res) => {
+    await fetch("https://intracursus.unice.fr/uns").then((res) => {
       if(res.status == 200 || res.status == 302 || res.status == 301) {
         setStatusIntracursus("check");
       } else {
@@ -2866,7 +2578,17 @@ function ServerConfig({ navigation }) {
       setStatusIntracursus("close");
     });
 
-    await fetch("https://edtweb.univ-cotedazur.fr/").then((res) => {
+    await fetch("https://mondossierweb.univ-cotedazur.fr").then((res) => {
+      if(res.status == 200 || res.status == 302 || res.status == 301) {
+        setStatusDW("check");
+      } else {
+        setStatusDW("close");
+      }
+    }).catch((err) => {
+      setStatusDW("close");
+    });
+
+    await fetch("https://edtweb.univ-cotedazur.fr").then((res) => {
       if(res.status == 200 || res.status == 302 || res.status == 301) {
         setStatusADE("check");
       } else {
@@ -2891,7 +2613,7 @@ function ServerConfig({ navigation }) {
 
   return (
     <View style={ styleScrollable.container }>
-      <Appbar.Header>
+      <Appbar.Header elevated statusBarHeight={0}>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => navigation.goBack()} />
         </Tooltip>
@@ -2899,7 +2621,7 @@ function ServerConfig({ navigation }) {
       </Appbar.Header>
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Card style={{ marginBottom:16 }}>
+        <Card style={{ marginBottom: 16, marginTop: 16 }}>
           <Card.Title
               title="Changer le serveur UniceNotes"
               subtitle="⚠️ - Attention, risque de sécurité"
@@ -2928,13 +2650,14 @@ function ServerConfig({ navigation }) {
 
         <Button mode={"contained-tonal"} onPress={ () => startTest() } loading={loading} >Démarrer test serveurs</Button>
 
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Si l'une des cases ci-dessous est une croix, c'est que j'ai dû casser quelque chose sur les serveurs UniceNotes.</Text>
-        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16 }} icon={statusUniceNotes} disabled > Serveur UniceNotes Officiel </Chip>
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">Si ce serveur ne marche pas, c'est sûrement de ma faute (oups).</Text>
+        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16 }} mode='outlined' icon={statusUniceNotes} disabled > Serveur UniceNotes Officiel </Chip>
 
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">En revanche, si c'est de ce côté-ci, alors c'est les serveurs de l'Université / I.U.T. qui ne fonctionnent pas. (Spoiler je n'y peux rien :/)</Text>
-        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} icon={statusIntracursus} disabled > Serveur Intracursus (Notes) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginTop: 1 }} icon={statusADE} disabled > Serveur ADE (Emploi du temps) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1, marginBottom: insets.bottom }} icon={statusLoginUniCA} disabled > Serveur Login UniCA (Connexion) </Chip>
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">En revanche, si c'est de ce côté-ci, ce sont les serveurs de l'Université / I.U.T. qui ne fonctionnent pas. (Spoiler : je n'y peux rien :/)</Text>
+        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} mode='outlined' icon={statusIntracursus} disabled > Serveur Intracursus (Notes) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0 }} mode='outlined' icon={statusDW} disabled > Serveur Mon Dossier Web (Notes) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0 }} mode='outlined' icon={statusADE} disabled > Serveur ADE (Emploi du temps) </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginBottom: insets.bottom }} mode='outlined' icon={statusLoginUniCA} disabled > Serveur Login UniCA (Connexion) </Chip>
       </ScrollView>
 
       <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.errorContainer }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onErrorContainer }} backdropComponent={renderBackdrop}>
@@ -2953,6 +2676,8 @@ function ServerConfig({ navigation }) {
 
 // Page de configuration de l'emploi du temps
 function EDTConfig({ navigation }) {
+  const [mode, setMode] = useState(adeid.includes("-VET") ? 1 : 0);
+  const [tempAde, setTempAde] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -2976,40 +2701,98 @@ function EDTConfig({ navigation }) {
     setLoading(false);
   }
 
-  function selectCursus(value) {
-    adeid = value + "-VET";
-    save("adeid", adeid);
+  function selectCursus(value, individual = false) {
+    if(individual == false) {
+      adeid = value + "-VET";
+    } else {
+      adeid = value;
+    }
+    saveSecure("adeid", adeid);
     logout(navigation);
   }
 
   return (
     <View style={styleScrollable.container}>
-      <Searchbar
-        placeholder="Rechercher un cursus"
-        value={searchValue}
-        style={{ marginLeft: 20, marginRight: 20, marginTop: 16, marginBottom: 16 }}
-        onChangeText={(value) => searchCursus(value)}
-        loading={loading}
+      <Appbar.Header elevated statusBarHeight={0}>
+        <Tooltip title="Accueil">
+          <Appbar.BackAction onPress={() => navigation.goBack()} />
+        </Tooltip>
+        <Appbar.Content title="Config. EDT" />
+      </Appbar.Header>
+      <SegmentedButtons
+        style={{ marginLeft: 20, marginRight: 20, marginTop: 16, marginBottom: 8 }}
+        value={mode}
+        onValueChange={setMode}
+        buttons={[
+          {
+            value: 0,
+            label: 'Individuel',
+            showSelectedCheck: true
+          },
+          {
+            value: 1,
+            label: 'Cursus',     
+            showSelectedCheck: true
+          }
+        ]}
       />
-      <Text style={{ marginLeft: 25, marginRight: 25, marginTop: 16, textAlign: 'left' }} variant="titleMedium">
-        Cursus actuel : {adeid}
-      </Text>
-      <Divider style={{ marginTop: 16, marginBottom: 16 }} />
-      <ScrollView style={{ paddingLeft: 25, paddingRight: 25, marginBottom:16 }}>
-        <Text style={{ marginBottom: 16, textAlign: 'left' }} variant="titleSmall">
-          Sélectionnez un cursus pour changer l'emploi du temps affiché :
-        </Text>
-        {searchResults.map((item, index) => (
-          <View key={index} style={{ marginBottom:8 }}>
-            <Card style={{ marginBottom: 8 }} onPress={() => selectCursus(item.id)}>
-              <Card.Cover style={{ marginBottom:8, height: 10, backgroundColor: stringToColour(item.text) }} />
+      { mode == 0 ? (
+        <>
+          <Text style={{ marginLeft: 25, marginRight: 25, marginTop: 8, textAlign: 'left' }} variant="titleMedium">EDT affiché : {adeid}</Text>
+          <Divider style={{ marginTop: 16, marginBottom: 16 }} />
+          <ScrollView style={{ paddingLeft: 25, paddingRight: 25, marginBottom: 16 }}>
+            <Text style={{ marginBottom: 8, textAlign: 'left' }} variant="labelLarge">Entrez un numéro étudiant pour changer l'emploi du temps affiché :</Text>
+            <TextInput style={{ marginTop: 8, marginBottom: 8 }} label="Numéro étudiant" value={tempAde} onChangeText={setTempAde} right={<TextInput.Icon icon="content-save" onPress={() => selectCursus(tempAde, true)} />} />
+            <Text style={{ marginTop: 8, textAlign: 'left' }} variant="labelLarge">Ou cliquez ci-dessous pour restaurer votre emploi du temps individuel.</Text>
+            <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16 }} textStyle={{ paddingVertical: 8 }} icon="information" onPress={() => selectCursus(userADEData.uid, true)}> Restaurer votre numéro : {userADEData.uid} </Chip>
+            <Card style={{ marginTop: 16 }}>
+              <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} />
               <Card.Content>
-                <Text variant="titleMedium">{item.text}</Text>
+                <Text style={{ textAlign: 'left' }} variant="bodyLarge">{userADEData.uid == "demo" ? "Veuillez vous connecter (sur l'onglet Notes) afin de récupérer votre numéro étudiant." : "L'emploi du temps individuel comprend les cours de votre cursus (TD, ...) ainsi que les cours de groupes dont vous faites partie (TP, ...). "}</Text>
               </Card.Content>
             </Card>
-          </View>
-        ))}
-      </ScrollView>
+          </ScrollView>
+        </>
+      ) : (
+        <>
+          <Text style={{ marginLeft: 25, marginRight: 25, marginTop: 8, textAlign: 'left' }} variant="titleMedium">EDT affiché : {adeid}</Text>
+          <Searchbar
+            autoComplete='off' autoCorrect={false} autoCapitalize='none'
+            placeholder="Rechercher un cursus"
+            value={searchValue}
+            style={{ marginLeft: 20, marginRight: 20, marginTop: 8, marginBottom: 8 }}
+            onChangeText={(value) => searchCursus(value)}
+            loading={loading}
+            inputStyle={{ autoCorrect: false, autoComplete: 'off', autoCapitalize: 'none' }}
+          />
+          <Divider style={{ marginTop: 8, marginBottom: 16 }} />
+          <ScrollView style={{ paddingLeft: 25, paddingRight: 25, marginBottom: 16 }}>
+            <Text style={{ marginBottom: 16, textAlign: 'left' }} variant="titleSmall">Sélectionnez un cursus pour changer l'emploi du temps affiché :</Text>
+            <Card style={{ marginBottom: 8 }} onPress={() => selectCursus(userADEData.cursus, true)}>
+                  <Card.Cover style={{ marginBottom: 8, height: 10, backgroundColor: stringToColour(userADEData.cursus) }} />
+                  <Card.Content>
+                    <Text variant="titleMedium">Restaurer votre cursus : {userADEData.cursus}</Text>
+                  </Card.Content>
+            </Card>
+            {searchResults.map((item, index) => (
+              <View key={index} style={{ marginBottom: 8 }}>
+                <Card style={{ marginBottom: 8 }} onPress={() => selectCursus(item.id, false)}>
+                  <Card.Cover style={{ marginBottom: 8, height: 10, backgroundColor: stringToColour(item.text) }} />
+                  <Card.Content>
+                    <Text variant="titleMedium">{item.text}</Text>
+                  </Card.Content>
+                </Card>
+              </View>
+            ))}
+            <Card>
+              <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} />
+              <Card.Content>
+                <Text style={{ textAlign: 'left' }} variant="bodyLarge">L'emploi du temps par cursus comprend les cours du cursus sélectionné (TD, ...) ainsi que tous les cours de groupes, y compris ceux dont vous ne faites pas partie (TP, ...).</Text>
+              </Card.Content>
+            </Card>
+          </ScrollView>
+        </>
+      )}
     </View>
   );
 }
@@ -3033,12 +2816,10 @@ function App() {
         <Stack.Screen name="APIConnect" component={APIConnect} options={{ title: 'Chargement en cours...', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowGrades" component={ShowGrades} options={{ title: 'Notes', headerShown: false, gestureEnabled: false}} />
         <Stack.Screen name="ShowEDT" component={ShowEDT} options={{ title: 'Emploi du temps', headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="ShowAbsences" component={ShowAbsences} options={{ title: 'Absences (Disabled)', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ShowENT" component={ShowENT} options={{ title: 'Espace Numérique de Travail', presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres', headerShown: false }} />
         <Stack.Screen name="ShowUser" component={ShowUser} options={{ title: 'Mon compte', presentation: 'modal', headerShown: false, gestureEnabled: true }} />
         <Stack.Screen name="IconConfig" component={IconConfig} options={{ title: 'Icône', presentation: 'modal', headerShown: false, gestureEnabled: true  }} />
-        <Stack.Screen name="AverageConfig" component={AverageConfig} options={{ title: 'Configuration', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="ServerConfig" component={ServerConfig} options={{ title: 'Serveurs', presentation: 'modal', headerShown: false, gestureEnabled: true }} />
         <Stack.Screen name="EDTConfig" component={EDTConfig} options={{ title: 'Emploi du temps', presentation: 'modal', headerShown: false, gestureEnabled: true }} />
       </Stack.Navigator>
@@ -3226,14 +3007,8 @@ export default function Main() {
         icon: Platform.OS === "ios" ? "symbol:graduationcap" : undefined,
         params: { href: "/notes" }
       },
-      // {
-      //   id: "1",
-      //   title: "Absences",
-      //   icon: Platform.OS === "ios" ? "symbol:person.crop.circle.badge.exclam" : undefined,
-      //   params: { href: "/absences" }
-      // },
       {
-        id: "2",
+        id: "1",
         title: "Emploi du temps",
         icon: Platform.OS === "ios" ? "symbol:calendar" : undefined,
         params: { href: "/edt" }
