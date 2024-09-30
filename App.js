@@ -76,7 +76,7 @@ import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '2.1.0';
+var appVersion = '2.1.1';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -1441,6 +1441,7 @@ function Semesters ({ navigation }) {
         setTempPhoto(value);
       }); 
       if (semesters.length == 0 || semesters == null) {
+        setSelectable(false);
         Alert.alert("Attention", "Il se peut que l'I.U.T. n'ait pas encore publié vos résultats. Dans ce cas là, UniceNotes peut ne pas récupérer correctement vos notes. EC=0xP");
       } else {
         setLatestSemester(semesters[0].semester);
@@ -1451,7 +1452,6 @@ function Semesters ({ navigation }) {
 
   function getMySemesters() {
     if (semesters.length == 0 || semesters == null) {
-      setSelectable(false);
       return <Text style={{ textAlign: 'center', marginTop : 8 }} variant="titleMedium">Aucun autre semestre disponible. Veuillez vous reconnecter ultérieurement.</Text>
     }
 
@@ -1986,8 +1986,8 @@ function ShowGrades({ navigation }) {
 // Page d'affichage de l'emploi du temps
 function ShowEDT({ navigation }) {
   const [cal, setCalendar] = useState(calendar);
-  const [view, setView] = useState("workWeek");
-  const [viewIcon, setViewIcon] = useState("magnify-plus");
+  const [view, setView] = useState("threeDays");
+  const [viewIcon, setViewIcon] = useState("magnify-minus");
   const [menuVisible, setMenuVisible] = useState(false);
   const [title, setTitle] = useState("Infos");
   const [subtitle, setSubtitle] = useState("");
@@ -2068,7 +2068,7 @@ function ShowEDT({ navigation }) {
     const durationTime = new Date(durationMilliseconds);
     const stopTime = new Date(startTime.getTime() + durationMilliseconds);
     
-    res = eventItem.subtitle + "\nSalle : " + eventItem.description + "\n" + startTime.getHours() + ":" + startTime.getMinutes() + " → " + stopTime.getHours() + ":" + stopTime.getMinutes() + " (" + durationTime.getUTCHours() + "h" + durationTime.getMinutes() + ")"
+    res = eventItem.subtitle + "\n\nSalle : " + eventItem.description + "\n" + startTime.getHours() + ":" + startTime.getMinutes() + " → " + stopTime.getHours() + ":" + stopTime.getMinutes() + " (" + durationTime.getUTCHours() + "h" + durationTime.getMinutes() + ")"
     setTitle(eventItem.title);
     setSubtitle(res);
     if(bottomSheetInfo != null) {
@@ -2112,8 +2112,7 @@ function ShowEDT({ navigation }) {
       <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => showInfos(eventItem)} onChange={(date) => changeDate(date)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={7} end={20} renderEventContent={(event) => {
           return (
             <SafeAreaView style={{ margin: 10 }}>
-              <Text style={{ fontFamily:'', fontWeight:'bold', color:'black' }}>{event.title}</Text>
-              <Text style={{ color:'black' }}>{event.subtitle}</Text>
+              <Text style={{ fontFamily:'', fontWeight:'bold', color:'black', marginBottom: 4 }}>{event.title}</Text>
               <Text style={{ color:'black' }}>{event.description}</Text>
             </SafeAreaView>
           );
@@ -2696,12 +2695,21 @@ function EDTConfig({ navigation }) {
         } else {
           setSearchResults([]);
         }
+      }).catch((err) => {
+        setSearchResults([
+          { id: "demo", text: "Erreur, veuillez vérifier votre connexion." }
+        ]);
       });
     }
     setLoading(false);
   }
 
   function selectCursus(value, individual = false) {
+    if (value == "" || value == null) {
+      Alert.alert("Erreur", "Entrée invalide.");
+      return;
+    }
+
     if(individual == false) {
       adeid = value + "-VET";
     } else {
@@ -2742,13 +2750,17 @@ function EDTConfig({ navigation }) {
           <Divider style={{ marginTop: 16, marginBottom: 16 }} />
           <ScrollView style={{ paddingLeft: 25, paddingRight: 25, marginBottom: 16 }}>
             <Text style={{ marginBottom: 8, textAlign: 'left' }} variant="labelLarge">Entrez un numéro étudiant pour changer l'emploi du temps affiché :</Text>
-            <TextInput style={{ marginTop: 8, marginBottom: 8 }} label="Numéro étudiant" value={tempAde} onChangeText={setTempAde} right={<TextInput.Icon icon="content-save" onPress={() => selectCursus(tempAde, true)} />} />
+            <TextInput style={{ marginTop: 8, marginBottom: 8 }} keyboardType='number-pad' maxLength={ 12 } label="Numéro étudiant" value={tempAde} onChangeText={setTempAde} right={<TextInput.Icon icon="content-save" onPress={() => selectCursus(tempAde, true)} />} />
             <Text style={{ marginTop: 8, textAlign: 'left' }} variant="labelLarge">Ou cliquez ci-dessous pour restaurer votre emploi du temps individuel.</Text>
             <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16 }} textStyle={{ paddingVertical: 8 }} icon="information" onPress={() => selectCursus(userADEData.uid, true)}> Restaurer votre numéro : {userADEData.uid} </Chip>
             <Card style={{ marginTop: 16 }}>
               <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} />
               <Card.Content>
-                <Text style={{ textAlign: 'left' }} variant="bodyLarge">{userADEData.uid == "demo" ? "Veuillez vous connecter (sur l'onglet Notes) afin de récupérer votre numéro étudiant." : "L'emploi du temps individuel comprend les cours de votre cursus (TD, ...) ainsi que les cours de groupes dont vous faites partie (TP, ...). "}</Text>
+                <Text style={{ textAlign: 'left' }} variant="bodyLarge">
+                  {userADEData.uid == "demo" || userADEData.uid == "" || userADEData.uid == null ? 
+                  "Veuillez vous connecter (sur l'onglet Notes) afin de récupérer votre numéro étudiant." : 
+                  "L'emploi du temps individuel comprend les cours de votre cursus (TD, ...) ainsi que les cours de groupes dont vous faites partie (TP, ...). "}
+                </Text>
               </Card.Content>
             </Card>
           </ScrollView>
@@ -2764,6 +2776,7 @@ function EDTConfig({ navigation }) {
             onChangeText={(value) => searchCursus(value)}
             loading={loading}
             inputStyle={{ autoCorrect: false, autoComplete: 'off', autoCapitalize: 'none' }}
+            maxLength={ 32 }
           />
           <Divider style={{ marginTop: 8, marginBottom: 16 }} />
           <ScrollView style={{ paddingLeft: 25, paddingRight: 25, marginBottom: 16 }}>
