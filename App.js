@@ -76,7 +76,7 @@ import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '2.1.1';
+var appVersion = '2.1.2';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -1254,7 +1254,11 @@ function HomeScreen({ navigation }) {
   async function getMyCal(navigation) {
     setSelectable(false);
     setLoading(true);
-    calendar = await getCalendar();
+    if (nextEvent.summary == "ADE Indisponible") {
+      calendar = await getCalendarFromCache();
+    } else {
+      calendar = await getCalendar();
+    }
     setSelectable(true);
     setLoading(false);
     navigation.navigate('ShowEDT');
@@ -1377,7 +1381,7 @@ function HomeScreen({ navigation }) {
         </View>
         <Text style={{ textAlign: 'left' }} variant="displayLarge">Salut ! 👋</Text>
         <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleMedium'>Tu es connecté·e·s sous le compte de : {"\n"}{username} - {name}</Text>
-        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row'}} textStyle={{ paddingVertical: 8 }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes (Intracursus)</Chip>
+        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row'}} textStyle={{ paddingVertical: 8 }} disabled={!selectable} onPress={ () => handleLogin("notes") } icon="school" >Notes (I.U.T.)</Chip>
         <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row'}} textStyle={{ paddingVertical: 8 }} disabled={!selectable} onPress={ () => navigation.navigate(ShowENT) } icon="briefcase-variant" >Espace Numérique de Travail</Chip>
 
         <Card style={{ marginBottom: 16 }} disabled={!selectable} onPress={ () => getMyCal(navigation) }>
@@ -1387,8 +1391,14 @@ function HomeScreen({ navigation }) {
             <Text variant="bodyMedium" numberOfLines={1}>{nextEvent.location}</Text>
           </Card.Content>
           <Card.Actions>
-            <Chip disabled={!selectable} onPress={ () => getNextEvent("force") } icon="refresh" >Rafraîchir</Chip>
-            <Chip disabled={!selectable} onPress={ () => getMyCal(navigation) } icon="calendar" >Emploi du temps</Chip>
+            <Chip style={{ marginRight: 4 }} disabled={!selectable} onPress={() => getNextEvent("force")} icon="refresh">Rafraîchir</Chip>
+            { nextEvent.summary != "ADE Indisponible" ? (
+              <>
+                <Chip disabled={!selectable} onPress={() => getMyCal(navigation)} icon="calendar">Emploi du temps</Chip>
+              </>
+            ) : ( 
+              <Chip disabled={!selectable} onPress={() => getMyCal(navigation)} icon="calendar-alert">EDT (Hors-ligne)</Chip>
+             )}
           </Card.Actions>
         </Card>
 
@@ -1984,7 +1994,7 @@ function ShowGrades({ navigation }) {
 }
 
 // Page d'affichage de l'emploi du temps
-function ShowEDT({ navigation }) {
+function ShowEDT({ navigation }) { 
   const [cal, setCalendar] = useState(calendar);
   const [view, setView] = useState("threeDays");
   const [viewIcon, setViewIcon] = useState("magnify-minus");
@@ -2012,13 +2022,14 @@ function ShowEDT({ navigation }) {
 	);
   
   useEffect(() => { 
-    if(cal == null) {
-      async function readJSONonAwait() {
-        return await readJSONFromFile();
-      }
-      cal = JSON.parse(readJSONonAwait());
-      setCalendar(cal);
+    async function calCache() {
+      setCalendar(await getCalendarFromCache());
     }
+
+    if(cal == null) {
+      calCache();
+    }
+    
     setTimeout(() => goToToday(), 500);
   }, []);
 
@@ -2426,9 +2437,9 @@ function IconConfig({ navigation }) {
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Choisissez votre icône :</Text>
         <Chip style={{ height: 36, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} disabled > Icônes officielles </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut | ✅ iOS 18 </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_magnet.png')}/>} onPress={ () => changeIconHome("magnet") }> Magnet </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
+        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente | ✅ iOS 18 </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_beach.png')}/>} onPress={ () => changeIconHome("beach") }> Beach </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_monaco.png')}/>} onPress={ () => changeIconHome("monaco") }> Monaco </Chip>
         <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_melted.png')}/>} onPress={ () => changeIconHome("melted") }> Melted </Chip>
@@ -2749,8 +2760,8 @@ function EDTConfig({ navigation }) {
           <Text style={{ marginLeft: 25, marginRight: 25, marginTop: 8, textAlign: 'left' }} variant="titleMedium">EDT affiché : {adeid}</Text>
           <Divider style={{ marginTop: 16, marginBottom: 16 }} />
           <ScrollView style={{ paddingLeft: 25, paddingRight: 25, marginBottom: 16 }}>
-            <Text style={{ marginBottom: 8, textAlign: 'left' }} variant="labelLarge">Entrez un numéro étudiant pour changer l'emploi du temps affiché :</Text>
-            <TextInput style={{ marginTop: 8, marginBottom: 8 }} keyboardType='number-pad' maxLength={ 12 } label="Numéro étudiant" value={tempAde} onChangeText={setTempAde} right={<TextInput.Icon icon="content-save" onPress={() => selectCursus(tempAde, true)} />} />
+            <Text style={{ textAlign: 'left' }} variant="labelLarge">Entrez un numéro étudiant pour changer l'emploi du temps affiché :</Text>
+            <TextInput style={{ marginTop: 8, marginBottom: 8 }} mode='outlined' keyboardType='number-pad' maxLength={ 12 } label="Numéro étudiant" value={tempAde} onChangeText={setTempAde} right={<TextInput.Icon icon="content-save" onPress={() => selectCursus(tempAde, true)} />} />
             <Text style={{ marginTop: 8, textAlign: 'left' }} variant="labelLarge">Ou cliquez ci-dessous pour restaurer votre emploi du temps individuel.</Text>
             <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16 }} textStyle={{ paddingVertical: 8 }} icon="information" onPress={() => selectCursus(userADEData.uid, true)}> Restaurer votre numéro : {userADEData.uid} </Chip>
             <Card style={{ marginTop: 16 }}>
@@ -2758,7 +2769,7 @@ function EDTConfig({ navigation }) {
               <Card.Content>
                 <Text style={{ textAlign: 'left' }} variant="bodyLarge">
                   {userADEData.uid == "demo" || userADEData.uid == "" || userADEData.uid == null ? 
-                  "Veuillez vous connecter (sur l'onglet Notes) afin de récupérer votre numéro étudiant." : 
+                  "Votre numéro étudiant est celui indiqué sur votre carte étudiant. \nOu sinon, veuillez vous connecter (sur l'onglet Notes) afin de récupérer votre numéro étudiant." : 
                   "L'emploi du temps individuel comprend les cours de votre cursus (TD, ...) ainsi que les cours de groupes dont vous faites partie (TP, ...). "}
                 </Text>
               </Card.Content>
