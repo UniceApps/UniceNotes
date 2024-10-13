@@ -55,7 +55,7 @@ import * as QuickActions from "expo-quick-actions";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { TimelineCalendar, EventItem } from '@howljs/calendar-kit';
+import { CalendarBody, CalendarContainer, CalendarHeader } from '@howljs/calendar-kit';
 import Animated, { event, log, set, 
   Easing, loop, useSharedValue, 
   useAnimatedStyle, withSpring, withRepeat, 
@@ -76,7 +76,7 @@ import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = '2.1.2';
+var appVersion = '2.2.0';
 var isBeta = false;
 // IMPORTANT !!!
 
@@ -417,12 +417,12 @@ async function getCalendarFromCache() {
     cal.map((item) => {
       formattedCal.push({
         id : item.id,
-        start: item.start_time,
-        end: item.end_time,
+        start: { dateTime : item.start_time},
+        end: { dateTime : item.end_time},
         title: item.summary,
         subtitle: item.description,
         description: item.location,
-        color: stringToColour(item.description)
+        color: stringToColour(item.summary)
       })
     });
   } else {
@@ -468,8 +468,8 @@ async function getCalendar() {
       cal.map((item) => {
         formattedCal.push({
           id : item.id,
-          start: item.start_time,
-          end: item.end_time,
+          start: { dateTime : item.start_time},
+          end: { dateTime : item.end_time},
           title: item.summary,
           subtitle: item.description,
           description: item.location,
@@ -997,7 +997,7 @@ function OOBE({ navigation }) {
   }
 
   return (  
-    <SafeAreaView style={style.container}>
+    <View style={style.container}>
       {appearance == "dark" ? (
         <LottieView
           autoPlay
@@ -1085,7 +1085,7 @@ function OOBE({ navigation }) {
           </BottomSheet>
         )
       ) : (
-        <BottomSheet enableDynamicSizing contentHeight={128} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
+        <BottomSheet index={0} enableDynamicSizing contentHeight={128} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
             <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25}}>
               <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">UniceNotes</Text>
               <Text style={{ textAlign: 'left', marginBottom: 8 }} variant='titleLarge'>Application réservée à l'Université Côte d'Azur.</Text>
@@ -1105,7 +1105,7 @@ function OOBE({ navigation }) {
             </BottomSheetView>
         </BottomSheet>
       )}
-    </SafeAreaView>
+    </View>
   )
 }
 
@@ -1996,7 +1996,7 @@ function ShowGrades({ navigation }) {
 // Page d'affichage de l'emploi du temps
 function ShowEDT({ navigation }) { 
   const [cal, setCalendar] = useState(calendar);
-  const [view, setView] = useState("threeDays");
+  const [view, setView] = useState(3);
   const [viewIcon, setViewIcon] = useState("magnify-minus");
   const [menuVisible, setMenuVisible] = useState(false);
   const [title, setTitle] = useState("Infos");
@@ -2050,17 +2050,17 @@ function ShowEDT({ navigation }) {
   function changeView() {
     haptics("medium");
     toggleMenu();
-    if(view == "workWeek") {
-      setView("threeDays");
+    if(view == 5) {
+      setView(3);
       setViewIcon("magnify-minus");
     } else {
-      setView("workWeek");
+      setView(5);
       setViewIcon("magnify-plus");
     }
   }
 
-  function changeDate(date) {
-    var resDate = new Date(date.date.toString());
+  function changeDate(date) { 
+    var resDate = new Date(date.toString());
     resMonth = month[resDate.getMonth()];
     resYear = resDate.getFullYear();
     setSelectedMonth(resMonth);
@@ -2071,28 +2071,17 @@ function ShowEDT({ navigation }) {
     haptics("selection");
     var res;
 
-    const baseDate = new Date();
-    baseDate.setHours(7, 0, 0, 0);
-    const startTime = new Date(baseDate.getTime() + eventItem.startHour * 60 * 60 * 1000);
+    const startTime = new Date(eventItem._internal.startUnix);
 
-    const durationMilliseconds = eventItem.duration * 60 * 60 * 1000;
+    const durationMilliseconds = eventItem._internal.duration * 60 * 1000;
     const durationTime = new Date(durationMilliseconds);
-    const stopTime = new Date(startTime.getTime() + durationMilliseconds);
+    const stopTime = new Date(eventItem._internal.endUnix);
     
     res = eventItem.subtitle + "\n\nSalle : " + eventItem.description + "\n" + startTime.getHours() + ":" + startTime.getMinutes() + " → " + stopTime.getHours() + ":" + stopTime.getMinutes() + " (" + durationTime.getUTCHours() + "h" + durationTime.getMinutes() + ")"
     setTitle(eventItem.title);
     setSubtitle(res);
     if(bottomSheetInfo != null) {
       bottomSheetInfo.expand()
-    }
-  }
-
-  function menuNavigator(navigateTo) {
-    if(navigateTo == "settings") {
-      toggleMenu();
-      goToSettings(navigation);
-    } else if (navigateTo == "edtconfig") {
-      navigation.navigate('EDTConfig');
     }
   }
 
@@ -2120,14 +2109,29 @@ function ShowEDT({ navigation }) {
       <Divider style={{ marginBottom: 8 }} />
       <Text style={{ marginBottom: 8, textAlign: 'center' }} variant="titleMedium">{selectedMonth} {selectedYear}</Text>
 
-      <TimelineCalendar theme={styleCalendar.container} ref={calendarRef} onPressEvent={(eventItem) => showInfos(eventItem)} onChange={(date) => changeDate(date)} scrollToNow={true} viewMode={view} events={cal} allowPinchToZoom start={7} end={20} renderEventContent={(event) => {
-          return (
-            <SafeAreaView style={{ margin: 10 }}>
-              <Text style={{ fontFamily:'', fontWeight:'bold', color:'black', marginBottom: 4 }}>{event.title}</Text>
-              <Text style={{ color:'black' }}>{event.description}</Text>
-            </SafeAreaView>
-          );
-      }}/>
+      <CalendarContainer
+          events={cal} 
+          theme={styleCalendar.container} 
+          ref={calendarRef} 
+          onPressEvent={(eventItem) => showInfos(eventItem)} 
+          onChange={(date) => changeDate(date)}
+          scrollToNow={true} numberOfDays={view} 
+          allowPinchToZoom 
+          start={420} end={1200} 
+          useHaptic showWeekNumber 
+          unavailableHours={{ 6 : [{ start: 0, end: 24 * 60 }], 7 : [{ start: 0, end: 24 * 60 }] }}
+          timeZone='Europe/Paris'
+      >
+          <CalendarHeader />
+          <CalendarBody renderEvent={(event) => {
+            return (
+              <SafeAreaView style={{ margin: 8 }}>
+                <Text style={{ fontFamily:'', fontWeight:'bold', color:'black', marginBottom: 4 }}>{event.title}</Text>
+                <Text style={{ color:'black' }}>{event.description}</Text>
+              </SafeAreaView>
+            );
+          }} />
+      </CalendarContainer>
 
       <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.surfaceVariant }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onSurfaceVariant }} backdropComponent={renderBackdrop}>
         <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
@@ -3009,9 +3013,18 @@ const styleScrollable = StyleSheet.create({
 
 const styleCalendar = StyleSheet.create({
   container: {
-    backgroundColor: choosenTheme.colors.background,
-    cellBorderColor: choosenTheme.colors.surfaceVariant,
-    hourText: {color: choosenTheme.colors.onBackground}
+    colors : {
+      primary: choosenTheme.colors.primary,
+      onPrimary: choosenTheme.colors.onPrimary,
+      background: choosenTheme.colors.background,
+      onBackground: choosenTheme.colors.onBackground,
+      border : choosenTheme.colors.outline,
+      text: choosenTheme.colors.onBackground,
+    },
+    hourTextStyle: {color: choosenTheme.colors.onBackground},
+    weekNumber: {color: choosenTheme.colors.onPrimary},
+    weekNumberContainer: {backgroundColor: choosenTheme.colors.primary},
+    unavailableHourBackgroundColor: choosenTheme.colors.surfaceVariant,
   },
 });
 
