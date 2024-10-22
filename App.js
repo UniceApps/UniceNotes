@@ -49,20 +49,10 @@ import * as QuickActions from "expo-quick-actions";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { CalendarBody, CalendarContainer, CalendarHeader } from '@howljs/calendar-kit';
-import Animated, { event, log, set, 
-  Easing, loop, useSharedValue, 
-  useAnimatedStyle, withSpring, withRepeat, 
-  withSequence
-} from 'react-native-reanimated';
 import Bugsnag from '@bugsnag/expo';
-import LottieView from 'lottie-react-native';
 import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-// Internal components
-import EDT from './components/edt';
 
 // Disable this when using Expo Go
 import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
@@ -72,13 +62,12 @@ import { setAppIcon } from "@hugofnm/expo-dynamic-app-icon";
 // ---------------------------------------------
 
 // IMPORTANT !!!
-var appVersion = 'Lite';
+var appVersion = 'merci<3';
 var isBeta = false;
 // IMPORTANT !!!
 
 var initialQuickAction = null; // Quick action
 var calendar = {}; // User's calendar
-const edt = new EDT(); // EDT instance
 
 var adeid = SecureStore.getItemAsync("adeid").then((result) => {
   if (result != null) {
@@ -108,24 +97,15 @@ if (!__DEV__) {
   Bugsnag.start();
 }
 
-// SecureStore API
-async function saveSecure(key, value) {
-  await SecureStore.setItemAsync(key, value);
-}
-
 // AsyncStorage API
 async function saveAsyncStore(key, value) {
   await AsyncStorage.setItem(key, value);
 }
 
-// Fonction de suppression des données - GDPR friendly :)
+// Fonction de suppression des données
 async function deleteData(warnings = false, navigation = null) {
   if (warnings) {
     haptics("warning");
-  }
-
-  if(!__DEV__ && Platform.OS == "ios" && parseInt(Platform.Version, 10) >= 18){
-    setAppIcon("unicenotes");
   }
 
   // Suppression des anciennces données
@@ -134,26 +114,25 @@ async function deleteData(warnings = false, navigation = null) {
   await AsyncStorage.removeItem("name"); // Suppression du nom
   await AsyncStorage.removeItem("server"); // Suppression du serveur sélectionné
   await AsyncStorage.removeItem("userADEData"); // Suppression des données ADE utilisateur
-  await FileSystem.deleteAsync(FileSystem.documentDirectory + 'profile.png'); // Suppression de la photo de profil
-
-  // Suppression des données de l'application
-  await SecureStore.deleteItemAsync("adeid"); // Suppression de l'identifiant ADE
-  adeid = "";
-  await saveJSONToFile({}); // Suppression du calendrier hors-ligne
-  calendar = {};
   await AsyncStorage.removeItem("haptics"); // Suppression des paramètres retours haptiques
-  hapticsOn = true;
+  await SecureStore.deleteItemAsync("adeid"); // Suppression de l'identifiant ADE
+
   await FileSystem.deleteAsync(FileSystem.documentDirectory + 'calendar.json'); // Suppression du calendrier hors-ligne
+  await FileSystem.deleteAsync(FileSystem.documentDirectory + 'profile.png'); // Suppression de la photo de profil
 
   await Image.clearDiskCache();
   await Image.clearMemoryCache();
   await AsyncStorage.clear();
-  if (warnings) {
-    Alert.alert("Données supprimées", "Retour à la page de connexion.");
-    haptics("success");
-  }
+
+  Alert.alert("Données supprimées", "Vous pouvez désormais désinstaller l'application en toute sécurité.");
+  haptics("success");
+
   if (navigation != null) {
-    logout(navigation);
+    navigation.goBack();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'SplashScreen' }],
+    });
   }
 }
 
@@ -162,19 +141,6 @@ const handleURL = async (url) => {
   haptics("selection");
   await WebBrowser.openBrowserAsync(url);
 };
-
-// Fonction de déconnexion (UniceAPI + app si "Se souvenir de moi" est désactivé)
-function logout(navigation) {
-  haptics("heavy");
-  navigation.dispatch(
-    CommonActions.reset({
-      index: 0,
-      routes: [
-        { name: 'SplashScreen' }
-      ],
-    })
-  );
-}
 
 // Fonction de retour haptique
 function haptics(intensity) {
@@ -225,20 +191,6 @@ const saveJSONToFile = async (data) => {
   }
 };
 
-const readJSONFromFile = async () => {
-  const fileUri = FileSystem.documentDirectory + 'calendar.json'; // Specify the file path and name
-
-  try {
-    const jsonContent = await FileSystem.readAsStringAsync(fileUri);
-    const parsedData = JSON.parse(jsonContent);
-    return parsedData;
-  } catch (error) {
-    Alert.alert("Erreur", "Veuillez télécharger le calendrier avant de l'utiliser en mode hors-ligne ! EC=0xR");
-    haptics("error");
-    return null;
-  }
-};
-
 // Lighten the color
 const pSBC=(p,c0,c1,l)=>{
     let r,g,b,P,f,t,h,i=parseInt,m=Math.round,a=typeof(c1)=="string";
@@ -279,88 +231,6 @@ var stringToColour = function(str) {
     return pSBC(0.25, colour);
 }
 
-// Récupération du calendrier de l'utilisateur depuis le cache
-async function getCalendarFromCache() {
-  var cal = await readJSONFromFile();
-
-  formattedCal = [];
-
-  if(cal != null) {
-    cal.map((item) => {
-      formattedCal.push({
-        id : item.id,
-        start: { dateTime : item.start_time},
-        end: { dateTime : item.end_time},
-        title: item.summary,
-        subtitle: item.description,
-        description: item.location,
-        color: stringToColour(item.summary)
-      })
-    });
-  } else {
-    formattedCal = [];
-  }
-
-  calendar = formattedCal;
-  return formattedCal;
-}
-
-// Récupération du calendrier de l'utilisateur
-async function getCalendar() {
-    haptics("medium");
-    var netInfos = (await Network.getNetworkStateAsync()).isInternetReachable;
-
-    if (adeid == null) {
-      haptics("error");
-      Alert.alert("Erreur", "Votre identifiant ADE est introuvable. Veuillez fermer de force l'application et réessayez.");
-      deleteData(false);
-      return;
-    }
-    
-    if (netInfos == true) {
-      try{
-        var cal = await edt.getEDT(adeid);
-      } catch(e) {
-        haptics("error");
-        Alert.alert("Erreur", "Impossible de récupérer l'emploi du temps. EC=0xS");
-        return;
-      }
-
-      saveJSONToFile(cal);
-
-      formattedCal = [];
-
-      cal.map((item) => {
-        formattedCal.push({
-          id : item.id,
-          start: { dateTime : item.start_time},
-          end: { dateTime : item.end_time},
-          title: item.summary,
-          subtitle: item.description,
-          description: item.location,
-          color: stringToColour(item.summary)
-        })
-      });
-
-      return formattedCal;
-    } else {
-      formattedCal = await getCalendarFromCache();
-      return formattedCal;
-    }
-}
-
-// ---------------------------------------------
-// FONCTIONS NOTIFICATION PUSH
-// ---------------------------------------------
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
 // ---------------------------------------------
 // FONCTIONS VIEW (ECRANS DE L'APPLICATION)
 // ---------------------------------------------
@@ -368,7 +238,6 @@ Notifications.setNotificationHandler({
 // Page de transition (splashscreen)
 function SplashScreen({ navigation }) {
   const [count, setCount] = useState(0);
-  const [isDataStored, setIsDataStored] = useState(false);
   const [loading, setLoading] = useState(true);
   const [ok, setOk] = useState(true);
   const [titleError, setTitleError] = useState("Erreur");
@@ -398,7 +267,6 @@ function SplashScreen({ navigation }) {
 
   async function verifyLogin() {
     // Vérification de la version de l'application en récupérant le json contenant la dernière version
-    var version, isAvailable, maintenance, banned
     var res = true;
 
     if ((await Network.getNetworkStateAsync()).isInternetReachable == false) {
@@ -416,38 +284,10 @@ function SplashScreen({ navigation }) {
       accessOK = true;
       setOk(true);
     }
-    // Vérification de la disponibilité des usernames et mots de passe enregistrés
-    if(!isDataStored) {
-      if (accessOK && adeid != "demo") {
-        setLoading(false);
-        navigation.navigate('HomeScreen');
-      } else {
-        setIsDataStored(false);
-        if(accessOK) {
-          setLoading(false);
-          navigation.navigate('OOBE');
-        }
-      }
-    }
-  }
 
-  function specialMode() {
-    if(isBeta) {
-      return (
-        <Text style={{ textAlign: 'center' }} variant="displaySmall">BETA</Text>
-      );
-    }
-
-    if(!ok) {
-      return (
-        <Button style={{ marginTop: 16 }} icon="calendar-sync-outline" mode="contained" onPress={ () => getMyCal(navigation) }>Emploi du temps (hors-ligne)</Button>
-      );
-    }
-
-    if(appVersion == "Lite") {
-      return (
-        <Text style={{ textAlign: 'center' }} variant="displaySmall">Lite</Text>
-      );
+    if (accessOK) {
+      setLoading(false);
+      navigation.navigate('Goodbye');
     }
   }
 
@@ -455,26 +295,12 @@ function SplashScreen({ navigation }) {
     if(action == "nointernet") {
       setTitleError("Internet indisponible");
       setSubtitleError("Vous n'êtes pas connecté à Internet ! EC=0xT");
-    } else if(action == "noserver") {
-      setTitleError("Serveur indisponible");
-      setSubtitleError("Le serveur n'est pas accessible ! Essayez de changer de serveur dans les paramètres. EC=0xS");
-    } else if(action == "customservercheck") {
-      setTitleError("Serveur custom indisponible");
-      setSubtitleError("Il est possible que sa configuration soit mauvaise ou bien qu'il soit banni. Essayez de changer de serveur dans les paramètres. EC=0xS");
     }
     if(bottomSheetError != null) {
       setTimeout(() => {
         bottomSheetError.expand()
       }, 1000);
     }
-  }
-
-  async function getMyCal(navigation) {
-    if(bottomSheetInfo != null) {
-      bottomSheetInfo.close()
-    }
-    calendar = await getCalendarFromCache();
-    navigation.navigate('ShowEDT');
   }
 
   function refresh() {
@@ -489,8 +315,6 @@ function SplashScreen({ navigation }) {
       <Image source={require('./assets/color.png')} style={{ width: 200, height: 200, marginBottom: 16 }} />
 
       <Text style={{ textAlign: 'center' }} variant="displayLarge">UniceNotes</Text>
-
-      {specialMode()}
 
       <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
         <Tooltip title="Paramètres">
@@ -510,455 +334,6 @@ function SplashScreen({ navigation }) {
       </BottomSheet>
 
       <ActivityIndicator style={{ marginTop: 16 }} animating={loading} size="large" />
-    </View>
-  );
-}
-
-// Page OOBE (On-boarding experience)
-function OOBE({ navigation }) {
-  const insets = useSafeAreaInsets();
-
-  // ----------------
-  // Animation stuff
-  // ----------------
-
-  const rotation = useSharedValue(0);
-
-  // Configure the animation of the logo
-  const rotateConfig = {
-    damping: 2,
-    stiffness: 15,
-  };
-
-  // Define the rotation animation
-  rotation.value = withRepeat(
-    withSequence(
-      withSpring(0, rotateConfig),
-      withSpring(360, rotateConfig)
-    ),
-    -1, // -1 means infinite loop
-    false // use false to indicate non-reversing rotation
-  );
-
-  // Create an animated style for the logo
-  const animatedStyleLogo = useAnimatedStyle(() => {
-    return {
-      transform: [{ rotate: `${rotation.value}deg` }],
-    };
-  });
-
-  // ----------------
-  // Login stuff
-  // ----------------
-
-  const [ok, setOk] = useState(false);
-  const [appearance, setAppearance] = useState(Appearance.getColorScheme());
-
-  useEffect(() => {
-    if(ok) {
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [
-            { name: 'HomeScreen' }
-          ],
-        })
-      );
-    }
-  }, [ok]);
-
-  function goToSettingsSpecial(navigation) {
-    haptics("medium");
-    navigation.goBack();
-    navigation.navigate('ShowSettings');
-  }
-
-  return (  
-    <View style={style.container}>
-      {appearance == "dark" ? (
-        <LottieView
-          autoPlay
-          loop
-          resizeMode='cover'
-          source={require('./assets/lottie/background_login_dark')}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        />
-      ) : (
-        <LottieView
-          autoPlay
-          loop
-          resizeMode='cover'
-          source={require('./assets/lottie/background_login_light')}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        />
-      )}
-      <View style={{ flex: 1, alignSelf: 'center', height:'auto', marginTop: insets.top*2 }}>
-        <Animated.View style={[ animatedStyleLogo ]}>
-          <Image source={require('./assets/color.png')} style={{ width: 200, height: 200 }} />
-        </Animated.View>
-      </View>
-      <BottomSheet index={0} enableDynamicSizing contentHeight={128} backgroundStyle={{ backgroundColor: style.container.backgroundColor }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onBackground }}>
-          <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25}}>
-            <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">UniceNotes</Text>
-            <Text style={{ textAlign: 'left', marginBottom: 16 }} variant='titleLarge'>Bienvenu·e·s sur l'application qui remplace des intranets datant de la préhistoire, par une interface moderne, rapide et facile d'utilisation.</Text>
-            <Button style={{ marginBottom: 16 }} icon="skip-next" mode="contained" onPress={ () => setOk(true) }> Suivant </Button>
-            <View style={{ display: "flex", flexDirection: 'row', justifyContent:'center' }}>
-              <Tooltip title="Mentions légales">
-                <IconButton style={{ marginBottom: 4 }} icon="license" mode="contained" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }/>
-              </Tooltip>
-              <Tooltip title="Code source">
-                <IconButton style={{ marginBottom: 16 }} icon="source-branch" mode="contained" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }/>
-              </Tooltip>
-              <Tooltip title="Paramètres">
-                <IconButton style={{ marginBottom: insets.bottom }} icon="cog" mode="contained" onPress={ () => goToSettingsSpecial(navigation) }/>
-              </Tooltip>
-            </View>
-          </BottomSheetView>
-      </BottomSheet>
-    </View>
-  )
-}
-
-// Page d'accueil
-function HomeScreen({ navigation }) {
-  const [loading, setLoading] = useState(false);
-  const [selectable, setSelectable] = useState(true);
-  const [quickAction, setQuickAction] = useState(null);
-  const [nextEvent, setNextEvent] = useState({summary: "Chargement...", location: "Chargement..."});
-  const [nextEventLoaded, setNextEventLoaded] = useState(false);
-  const [titleError, setTitleError] = useState("Erreur");
-  const [subtitleError, setSubtitleError] = useState("");
-  const internetAvailable = (Network.getNetworkStateAsync()).isInternetReachable;
-  const insets = useSafeAreaInsets();
-
-  const renderBackdrop = useCallback(
-		(props) => (
-			<BottomSheetBackdrop {...props}
-        opacity={0.5}
-        enableTouchThrough={false}
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        style={[{ backgroundColor: 'rgba(0, 0, 0, 1)' }, StyleSheet.absoluteFillObject]} 
-      />
-		),
-		[]
-	);
-
-  async function getNextEvent(mode = "normal") {
-    while (!edt.READY) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    if (internetAvailable == false) {
-      setNextEvent({summary: "Chargement...", location: "Chargement..."});
-      setNextEventLoaded(true);
-      showError("nointernet");
-      return;
-    }
-
-    if(mode == "force") {
-      setNextEvent({summary: "Chargement...", location: "Chargement..."});
-    }
-
-    if(mode == "force" || ( mode == "normal" && nextEventLoaded == false )) {
-      try {
-        response = await edt.getNextEvent(adeid);
-        setNextEvent(response);
-        setNextEventLoaded(true);
-      } catch (e) {
-        setNextEvent({summary: "Erreur", location: "Impossible de récupérer le prochain cours"});
-        setNextEventLoaded(true);
-      }
-    }
-  }
-
-  async function getMyCal(navigation) {
-    setSelectable(false);
-    setLoading(true);
-    if (nextEvent.summary == "ADE Indisponible" || nextEvent.summary == "Erreur" || nextEvent.summary == "Chargement...") {
-      calendar = await getCalendarFromCache();
-    } else {
-      calendar = await getCalendar();
-    }
-    setSelectable(true);
-    setLoading(false);
-    navigation.navigate('ShowEDT');
-  }
-
-  function showError(action) {
-    if(action == "nobiologin") {
-      setTitleError("Erreur");
-      setSubtitleError("Authentification annulée. EC=0xB");
-    } else if(action == "noserver") {
-      setTitleError("Serveur indisponible");
-      setSubtitleError("Le serveur n'est pas accessible ! Essayez de changer de serveur dans les paramètres. EC=0xS");
-    } else if(action == "nointernet") {
-      setTitleError("Internet indisponible");
-      setSubtitleError("Vous n'êtes pas connecté à Internet ! EC=0xT");
-    } else if(action == "wronglogin") {
-      setTitleError("Erreur");
-      setSubtitleError("Vos identifiants sont incorrects. EC=0xI");
-    } else if(action == "alreadyrated") {
-      setTitleError("Erreur");
-      setSubtitleError("Vous avez déjà soumis une note à UniceNotes.");      
-    } else if(action == "info") {
-      setTitleError("Informations")
-      setSubtitleError("Ce n'est pas votre emploi du temps ? Vous pouvez changer l'EDT sélectionné dans Mon Compte > Code Apogée - ADE.");
-    }
-    if(bottomSheetError != null) {
-      bottomSheetError.expand()
-    }
-  }
-
-  useEffect(() => {
-    getNextEvent("normal");
-    if(initialQuickAction != null) {
-      setQuickAction(initialQuickAction.params.href);
-      initialQuickAction = null;
-    }
-  }, [])
-
-  useEffect(() => {
-    var state = navigation.getState();
-    if(selectable && quickAction != null && state.routes[state.index].name == "HomeScreen") {
-      setSelectable(false);
-      if (quickAction == "/notes") {
-        handleLogin("notes");
-      } else if (quickAction == "/edt") {
-        getMyCal(navigation);
-      }
-    }
-  }, [quickAction]);
-
-  const subscription = QuickActions.addListener((action) => {
-    setQuickAction(action.params.href);
-  });
-
-  return (
-    <View style={style.container}>
-      <SafeAreaView>
-        <View style={{ display: "flex", flexDirection: 'row', justifyContent:'left' }}>
-          <Avatar.Image style={{ marginTop: insets.top*2, marginBottom: 16 }} size={96} source={require('./assets/white.png')} />
-          <TouchableRipple onPress={() => goToSettings(navigation)} rippleColor="rgba(0, 0, 0, 0)" style={{ marginLeft: "auto", marginTop: insets.top*2, marginBottom: 50 }} >
-            <Avatar.Icon size={48} icon={"cog"} />
-          </TouchableRipple>
-        </View>
-        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="displayLarge">Salut ! 👋</Text>
-
-        <Card style={{ marginBottom: 8 }} disabled={!selectable} onPress={ () => getMyCal(navigation) }>
-          <Card.Title title="Prochain Cours" />
-          <Card.Content>
-            <Text variant="titleLarge" numberOfLines={1}>{nextEvent.summary}</Text>
-            <Text variant="bodyMedium" numberOfLines={1}>{nextEvent.location}</Text>
-          </Card.Content>
-          <Card.Actions>
-            <Chip disabled={!selectable} onPress={() => getNextEvent("force")} icon="refresh">Rafraîchir</Chip>
-            { nextEvent.summary != "ADE Indisponible" || nextEvent.summary != "Erreur" || nextEvent.summary != "Chargement..." ? (
-              <>
-                <Chip disabled={!selectable} onPress={() => getMyCal(navigation)} icon="calendar">Emploi du temps</Chip>
-              </>
-            ) : ( 
-              <Chip disabled={!selectable} onPress={() => getMyCal(navigation)} icon="calendar-alert">EDT (Hors-ligne)</Chip>
-             )}
-          </Card.Actions>
-        </Card>
-        <Chip style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row'}} textStyle={{ paddingVertical: 8 }} disabled={!selectable} onPress={ () => navigation.navigate(EDTConfig) } icon="pencil" >Modifier le calendrier</Chip>
-        <Chip style={{ height: 48, marginBottom: 16, justifyContent: 'center', flexDirection: 'row'}} textStyle={{ paddingVertical: 8 }} disabled={!selectable} onPress={ () => navigation.navigate(ShowENT) } icon="briefcase-variant" >Espace Numérique de Travail</Chip>
-        <Divider style={{ marginBottom: 16 }} />
-        <Text style={{ textAlign: 'center' }} variant='titleSmall'>Version {appVersion}</Text>
-        <ActivityIndicator style={{ marginTop: 8, marginBottom: insets.bottom }} animating={loading} size="large" />
-      </SafeAreaView>
-      <BottomSheet ref={(sheet) => bottomSheetError = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.errorContainer }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onErrorContainer }} backdropComponent={renderBackdrop}>
-        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
-          <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{titleError}</Text>
-          <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitleError}</Text>
-          <Button style={{ marginBottom: 16, backgroundColor: style.container.error }} icon="close" mode="contained" onPress={() => bottomSheetError.close()}> Fermer </Button>
-        </BottomSheetView>
-      </BottomSheet>
-    </View>
-  );
-}
-
-// Page d'affichage de l'emploi du temps
-function ShowEDT({ navigation }) { 
-  const [cal, setCalendar] = useState(calendar);
-  const [view, setView] = useState(3);
-  const [viewIcon, setViewIcon] = useState("magnify-minus");
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [title, setTitle] = useState("Infos");
-  const [subtitle, setSubtitle] = useState("");
-  const insets = useSafeAreaInsets();
-  const calendarRef = useRef(null);
-
-  const month = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-  const [selectedMonth, setSelectedMonth] = useState(month[new Date().getMonth()])
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-
-	const renderBackdrop = useCallback(
-		(props) => (
-			<BottomSheetBackdrop {...props}
-        opacity={0.5}
-        enableTouchThrough={false}
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        style={[{ backgroundColor: 'rgba(0, 0, 0, 1)' }, StyleSheet.absoluteFillObject]} 
-      />
-		),
-		[]
-	);
-  
-  useEffect(() => { 
-    async function calCache() {
-      setCalendar(await getCalendarFromCache());
-    }
-
-    if(cal == null) {
-      calCache();
-    }
-    
-    setTimeout(() => goToToday(), 500);
-  }, []);
-
-  function toggleMenu() {
-    haptics("medium");
-    setMenuVisible(!menuVisible);
-  }
-
-  function goToToday(toggle = false) {
-    haptics("medium");
-    if(toggle) {
-      toggleMenu();
-    }
-    var today = new Date();
-    calendarRef.current?.goToDate({date: today, hourScroll: true, animatedDate: true, animatedHour: true})
-  }
-
-  function changeView() {
-    haptics("medium");
-    toggleMenu();
-    if(view == 5) {
-      setView(3);
-      setViewIcon("magnify-minus");
-    } else {
-      setView(5);
-      setViewIcon("magnify-plus");
-    }
-  }
-
-  function changeDate(date) { 
-    var resDate = new Date(date.toString());
-    resMonth = month[resDate.getMonth()];
-    resYear = resDate.getFullYear();
-    setSelectedMonth(resMonth);
-    setSelectedYear(resYear);
-  }
-
-  function showInfos(eventItem){
-    haptics("selection");
-    var res;
-
-    const startTime = new Date(eventItem._internal.startUnix);
-
-    const durationMilliseconds = eventItem._internal.duration * 60 * 1000;
-    const durationTime = new Date(durationMilliseconds);
-    const stopTime = new Date(eventItem._internal.endUnix);
-    
-    res = eventItem.subtitle + "\n\nSalle : " + eventItem.description + "\n" + startTime.getHours() + ":" + startTime.getMinutes() + " → " + stopTime.getHours() + ":" + stopTime.getMinutes() + " (" + durationTime.getUTCHours() + "h" + durationTime.getMinutes() + ")"
-    setTitle(eventItem.title);
-    setSubtitle(res);
-    if(bottomSheetInfo != null) {
-      bottomSheetInfo.expand()
-    }
-  }
-
-  return (
-    <View style={styleScrollable.container}>
-      <Appbar.Header elevated>
-        <Tooltip title="Accueil">
-          <Appbar.BackAction onPress={() => navigation.goBack()} />
-        </Tooltip>
-        <Appbar.Content title="Emploi du temps" />
-        <Menu
-          visible={menuVisible}
-          onDismiss={toggleMenu}
-          anchor={<Appbar.Action icon="dots-vertical" onPress={() => toggleMenu()}/>}>
-          <Menu.Item title={adeid} />
-          <Menu.Item leadingIcon="magnify" onPress={() => { toggleMenu(); navigation.navigate('EDTConfig'); }} title="Voir un autre EDT" />
-          <Divider/>
-          <Menu.Item leadingIcon="update" onPress={() => {goToToday(true)}} title="Aujourd'hui" />
-          <Menu.Item leadingIcon={viewIcon} onPress={() => {changeView()}} title="Changer la vue" />
-          <Divider/>
-          <Menu.Item leadingIcon="cog" onPress={() => { toggleMenu(); goToSettings(navigation); }} title="Paramètres" />
-        </Menu>
-      </Appbar.Header>
-
-      <Divider style={{ marginBottom: 8 }} />
-      <Text style={{ marginBottom: 8, textAlign: 'center' }} variant="titleMedium">{selectedMonth} {selectedYear}</Text>
-
-      <CalendarContainer
-          events={cal} 
-          theme={styleCalendar.container} 
-          ref={calendarRef} 
-          onPressEvent={(eventItem) => showInfos(eventItem)} 
-          onChange={(date) => changeDate(date)}
-          scrollToNow={true} numberOfDays={view} 
-          allowPinchToZoom 
-          start={420} end={1200} 
-          useHaptic showWeekNumber 
-          unavailableHours={{ 6 : [{ start: 0, end: 24 * 60 }], 7 : [{ start: 0, end: 24 * 60 }] }}
-          timeZone='Europe/Paris'
-      >
-          <CalendarHeader />
-          <CalendarBody renderEvent={(event) => {
-            return (
-              <SafeAreaView style={{ margin: 8 }}>
-                <Text style={{ fontFamily:'', fontWeight:'bold', color:'black', marginBottom: 4 }}>{event.title}</Text>
-                <Text style={{ color:'black' }}>{event.description}</Text>
-              </SafeAreaView>
-            );
-          }} />
-      </CalendarContainer>
-
-      <BottomSheet ref={(sheet) => bottomSheetInfo = sheet} index={-1} enableDynamicSizing enablePanDownToClose contentHeight={64} bottomInset={ insets.bottom } detached={true} style={{ marginHorizontal: 24 }} backgroundStyle={{ backgroundColor: style.container.surfaceVariant }} handleIndicatorStyle={{ backgroundColor: choosenTheme.colors.onSurfaceVariant }} backdropComponent={renderBackdrop}>
-        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
-          <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">{title}</Text>
-          <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">{subtitle}</Text>
-          <Button style={{ marginBottom: 16 }} icon="close" mode="contained" onPress={() => bottomSheetInfo.close()}> Fermer </Button>
-        </BottomSheetView>
-      </BottomSheet>
-    </View>
-  );
-}
-
-// Page d'affichage des sous-applications de l'ENT
-function ShowENT({ navigation }) {
-  return (
-    <View style={ styleScrollable.container }>
-      <Appbar.Header elevated statusBarHeight={0}>
-        <Tooltip title="Accueil">
-          <Appbar.BackAction onPress={() => navigation.goBack()} />
-        </Tooltip>
-        <Appbar.Content title="ENT" />
-      </Appbar.Header>
-
-      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Choisissez votre application :</Text>
-        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} textStyle={{ paddingVertical: 8 }}  avatar={<Image size={24} source={require('./assets/ent/outlook.png')}/>} onPress={ () => handleURL("https://outlook.office.com/owa/?realm=etu.unice.fr&exsvurl=1&ll-cc=1036&modurl=0") }> Outlook (Emails) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/ent/moodle.png')}/>} onPress={ () => handleURL("https://portail-lms.univ-cotedazur.fr") }> Moodle (LMS) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} icon={"school"} onPress={ () => handleURL("https://mondossierweb.univ-cotedazur.fr/") }> Mon dossier Web </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} icon={"account-search"} onPress={ () => handleURL("https://annuaire.univ-cotedazur.fr") }> Annuaire UniCA </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} icon={"book"} onPress={ () => handleURL("https://dsi-extra.unice.fr/BU/Etudiant/index.html") }> Bibliothèques Universitaires</Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} icon={"printer"} onPress={ () => handleURL("https://dsi-extra.unice.fr/repro/index.html") }> Imprimer à la BU </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} icon={"account"} onPress={ () => handleURL("https://link.univ-cotedazur.fr/fr/authentication/index/caslogin?1") }> Link UCA </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', flexDirection: 'row', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }}  avatar={<Image size={24} source={require('./assets/ent/izly.png')}/>} onPress={ () => handleURL("https://mon-espace.izly.fr") }> Mon Espace Izly </Chip>
-        
-        <Card style={{ marginTop: 16 }}>
-          <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} />
-          <Card.Content>
-            <Text style={{ textAlign: 'left' }} variant="bodyLarge">Les applications ne sont pas compatibles avec UniceNotes et seront ouvertes avec un navigateur externe.</Text>
-          </Card.Content>
-        </Card>
-      </ScrollView>
     </View>
   );
 }
@@ -992,21 +367,6 @@ function ShowSettings({ navigation }) {
     haptics("error");
   }
 
-  function devToolbox(mode) {
-    if(mode == "crash") {
-      throw new Error('This is a crash');
-    } else if(mode == "deleteprofile") {
-      deleteData(false);
-      AsyncStorage.clear();
-      haptics("success");
-      Alert.alert(
-        "Données supprimées", 
-        "Les données ont été supprimées avec succès. L'application va redémarrer.", 
-        [{ text: "Fermer", onPress: () => { throw new Error('Data deletion forced') } }]
-      );
-    }
-  }
-
   return (
     <View style={styleScrollable.container}>
       <Appbar.Header elevated>
@@ -1017,20 +377,6 @@ function ShowSettings({ navigation }) {
       </Appbar.Header>
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Button style={{ marginTop:16 }} icon="bug" mode="contained-tonal" onPress={ () => handleURL("https://notes.metrixmedia.fr/support") }> F.A.Q. / Signaler un bug </Button>
-
-        <Divider style={{ marginTop: 16 }} />
-
-        <Card style={{ marginTop:16 }}>
-          <Card.Title
-              title="Sélection de l'icône"
-              subtitle="Changez l'icône de l'application"
-              left={(props) => <Avatar.Icon {...props} icon="shape-square-rounded-plus" />}
-          />
-          <Card.Actions>
-            <Button mode={"contained-tonal"} onPress={ () => navigation.navigate("IconConfig") }>Choisir</Button>
-          </Card.Actions>
-        </Card>
 
         <Card style={{ marginTop:16 }}>
           <Card.Title
@@ -1044,49 +390,18 @@ function ShowSettings({ navigation }) {
           </Card.Actions>
         </Card>
 
-        <Card style={{ marginTop:16 }}>
-          <Card.Title
-              title="Serveurs UniceNotes"
-              subtitle="Configuration, diagnostic, ..."
-              left={(props) => <Avatar.Icon {...props} icon="server-network" />}
-          />
-          <Card.Actions>
-            <Button mode={"contained-tonal"} onPress={ () => navigation.navigate("ServerConfig") }>Accéder</Button>
-          </Card.Actions>
-        </Card>
-
         <Divider style={{ marginTop: 16 }} />
 
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes Lite</Text>
+        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">UniceNotes</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">© {new Date().getFullYear()} - MetrixMedia / hugofnm</Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">⚡ Version : {appVersion}</Text>
+        <Text style={{ textAlign: 'left' }} variant="titleSmall">❤️ Fièrement développé par un GEII : 
+          <Text style={style.textLink} onPress={() => handleURL("https://github.com/hugofnm")}> @hugofnm </Text>
+        </Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">🛠️ Hash local du commit Git : {hash}</Text>
-
-        <Card style={{ marginTop: 16, textAlign: 'left' }}>
-          <Card.Title left={(props) => <Avatar.Icon {...props} icon="alert" />} />
-          <Card.Content>
-            <Text style={{ textAlign: 'left' }} variant="bodyMedium">Cette application n'est lié d'aucune forme à l'Université Côte d'Azur ou à l'I.U.T. de Nice Côte d'Azur.</Text>
-            <Text style={{ textAlign: 'left' }} variant="titleSmall">Tout usage de cette application implique la seule responsabilité de l'utilisateur comme prévue dans les conditions d'utilisation.</Text>
-          </Card.Content>
-        </Card>
 
         <Button style={{ marginTop: 16 }} icon="license" onPress={ () => handleURL("https://notes.metrixmedia.fr/credits") }> Mentions légales </Button>
         <Button style={{ marginTop: 4 }} icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/UniceNotes") }> Code source </Button>
-        <Button style={{ marginTop: 4 }} icon="account-remove" onPress={ () => devToolbox("deleteprofile") }> Forcer la suppression de données </Button>
-
-        { // Bouton de test de crash
-          isBeta ? ( 
-            <>
-              <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => devToolbox("crash") }> crash_app </Button> 
-              <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => devToolbox("crash") }> crash_app </Button> 
-              <Button style={{ marginTop: 4 }} icon="download" onPress={ () => devToolbox("downphoto") }> down_photoprofile </Button>
-              <Button style={{ marginTop: 4 }} icon="account-box-multiple" onPress={ () => devToolbox("deletephoto") }> del_photoprofile </Button>
-              <Button style={{ marginTop: 4 }} icon="bug" onPress={ () => devToolbox("crash") }> crash_app </Button>
-              <Button style={{ marginTop: 4 }} icon="download" onPress={ () => devToolbox("downphoto") }> down_photoprofile </Button>
-              <Button style={{ marginTop: 4 }} icon="account-box-multiple" onPress={ () => devToolbox("deletephoto") }> del_photoprofile </Button>
-            </>
-            ) : null
-        }
 
         <Divider style={{ marginTop: insets.bottom }} /> 
       </ScrollView>
@@ -1094,260 +409,56 @@ function ShowSettings({ navigation }) {
   );
 }
 
-// Page de changement d'icône
-function IconConfig({ navigation }) {
-  function changeIconHome(value) {
-    haptics("medium");
-    if(!__DEV__){
-      Alert.alert("Icône modifiée");
-      setAppIcon(value);
-    } else {
-      console.log("Changement d'icône : " + value);
-    }
-  }
-
-  return (
-    <View style={ styleScrollable.container }>
-      <Appbar.Header elevated statusBarHeight={0}>
-        <Tooltip title="Accueil">
-          <Appbar.BackAction onPress={() => navigation.goBack()} />
-        </Tooltip>
-        <Appbar.Content title="Icône" />
-      </Appbar.Header>
-
-      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">Choisissez votre icône :</Text>
-        <Chip style={{ height: 36, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} disabled > Icônes officielles </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icon.png')}/>} onPress={ () => changeIconHome("unicenotes") }> Par défaut </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_magnet.png')}/>} onPress={ () => changeIconHome("magnet") }> Magnet </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_ardente.png')}/>} onPress={ () => changeIconHome("ardente") }> Ardente </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_beach.png')}/>} onPress={ () => changeIconHome("beach") }> Beach </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_monaco.png')}/>} onPress={ () => changeIconHome("monaco") }> Monaco </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_melted.png')}/>} onPress={ () => changeIconHome("melted") }> Melted </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_zoomed.png')}/>} onPress={ () => changeIconHome("zoomed") }> Zoomed </Chip>
-        <Chip style={{ height: 36, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} disabled > Communautaire </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_glitched.png')}/>} onPress={ () => changeIconHome("glitched") }> Glitched (par @f.eli0tt) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_vaporwave.png')}/>} onPress={ () => changeIconHome("vaporwave") }> Vaporwave (par @nathan_jaffres) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_ios6.png')}/>} onPress={ () => changeIconHome("ios6") }> iOS 6 (par @ds.marius) </Chip>
-        <Chip style={{ height: 36, justifyContent: 'center', borderRadius: 0, marginTop: 1 }}disabled > Événement </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0, marginTop: 1 }} textStyle={{ paddingVertical: 8 }} avatar={<Image size={24} source={require('./assets/icons/icon_france.png')}/>} onPress={ () => changeIconHome("france") }> France - Euro et JO 2024 </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }} avatar={<Image size={24} source={require('./assets/icons/icon_christmas2023.png')}/>} onPress={ () => changeIconHome("christmas2023") }> Christmas - Noël 2023 </Chip>
-        
-        <Card style={{ marginTop: 16, textAlign: 'left' }}>
-          <Card.Title left={(props) => <Avatar.Icon {...props} icon="flower" />} />
-          <Card.Content>
-            <Text style={{ textAlign: 'left' }} variant="bodyMedium">Vous trouvez pas "l'icône" qu'il vous faut ? Envoyez-nous vos oeuvres d'art à l'adresse :<Text style={style.textLink} onPress={() => Linking.openURL("mailto://app+icons@metrixmedia.fr")}> app+icons@metrixmedia.fr </Text></Text>
-          </Card.Content>
-        </Card>
-        
-        <Text style={{ marginTop: 16, marginBottom: 36, textAlign: 'left' }} variant="titleSmall"></Text>
-      </ScrollView>
-    </View>
-  );
-}
-
-// Page de configuration des serveurs
-function ServerConfig({ navigation }) {
-  const insets = useSafeAreaInsets();
-
-  const [loading, setLoading] = useState(false);
-  const [statusIntracursus, setStatusIntracursus] = useState("timer-sand");
-  const [statusDW, setStatusDW] = useState("timer-sand");
-  const [statusADE, setStatusADE] = useState("timer-sand");
-  const [statusLoginUniCA, setStatusLoginUniCA] = useState("timer-sand");
-
-  async function startTest() {
-    setLoading(true)
-
-    await fetch("https://intracursus.unice.fr/uns").then((res) => {
-      if(res.status == 200 || res.status == 302 || res.status == 301) {
-        setStatusIntracursus("check");
-      } else {
-        setStatusIntracursus("close");
-      }
-    }).catch((err) => {
-      setStatusIntracursus("close");
-    });
-
-    await fetch("https://mondossierweb.univ-cotedazur.fr").then((res) => {
-      if(res.status == 200 || res.status == 302 || res.status == 301) {
-        setStatusDW("check");
-      } else {
-        setStatusDW("close");
-      }
-    }).catch((err) => {
-      setStatusDW("close");
-    });
-
-    await fetch("https://edtweb.univ-cotedazur.fr").then((res) => {
-      if(res.status == 200 || res.status == 302 || res.status == 301) {
-        setStatusADE("check");
-      } else {
-        setStatusADE("close");
-      }
-    }).catch((err) => {
-      setStatusADE("close");
-    });
-
-    await fetch("https://login.univ-cotedazur.fr").then((res) => {
-      if(res.status == 200) {
-        setStatusLoginUniCA("check");
-      } else {
-        setStatusLoginUniCA("close");
-      }
-    }).catch((err) => {
-      setStatusLoginUniCA("close");
-    });
-
-    setLoading(false)
-  }
-
-  return (
-    <View style={ styleScrollable.container }>
-      <Appbar.Header elevated statusBarHeight={0}>
-        <Tooltip title="Accueil">
-          <Appbar.BackAction onPress={() => navigation.goBack()} />
-        </Tooltip>
-        <Appbar.Content title="Serveurs" />
-      </Appbar.Header>
-
-      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Text style={{ marginTop:16, marginBottom: 16, textAlign: 'left' }} variant="titleMedium">Status des serveurs :</Text>
-
-        <Button mode={"contained-tonal"} onPress={ () => startTest() } loading={loading} >Démarrer test serveurs</Button>
-
-        <Chip style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} mode='outlined' icon={statusIntracursus} disabled > Serveur Intracursus (Notes) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0 }} mode='outlined' icon={statusDW} disabled > Serveur Mon Dossier Web (Notes) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderRadius: 0 }} mode='outlined' icon={statusADE} disabled > Serveur ADE (Emploi du temps) </Chip>
-        <Chip style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginBottom: insets.bottom }} mode='outlined' icon={statusLoginUniCA} disabled > Serveur Login UniCA (Connexion) </Chip>
-      </ScrollView>
-    </View>
-  );
-}
-
-// Page de configuration de l'emploi du temps
-function EDTConfig({ navigation }) {
-  const [mode, setMode] = useState(adeid.includes("-VET") ? 1 : 0);
-  const [tempAde, setTempAde] = useState("");
-  const [searchValue, setSearchValue] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {}, [searchResults, loading]);
-
-  async function searchCursus(value) {
-    setLoading(true);
-    setSearchValue(value);
-    if(value.length >= 2) {
-      await fetch("https://ade-consult.univ-cotedazur.fr/?action=search-vet&term=" + value).then((res) => {
-        if(res.status == 200) {
-          res.json().then((data) => {
-            setSearchResults(data.results);
-          });
-        } else {
-          setSearchResults([]);
-        }
-      }).catch((err) => {
-        setSearchResults([
-          { id: "demo", text: "Erreur, veuillez vérifier votre connexion." }
-        ]);
-      });
-    }
-    setLoading(false);
-  }
-
-  function selectCursus(value, individual = false) {
-    if (value == "" || value == null) {
-      Alert.alert("Erreur", "Entrée invalide.");
-      return;
-    }
-
-    if(individual == false) {
-      adeid = value + "-VET";
-    } else {
-      adeid = value;
-    }
-    saveSecure("adeid", adeid);
-    logout(navigation);
-  }
-
+// Page d'adieu
+function Goodbye({ navigation }) {
   return (
     <View style={styleScrollable.container}>
       <Appbar.Header elevated statusBarHeight={0}>
-        <Tooltip title="Accueil">
-          <Appbar.BackAction onPress={() => navigation.goBack()} />
-        </Tooltip>
-        <Appbar.Content title="Config. EDT" />
+        <Appbar.Content title="Adieu 👋" />
       </Appbar.Header>
-      <SegmentedButtons
-        style={{ marginLeft: 20, marginRight: 20, marginTop: 16, marginBottom: 8 }}
-        value={mode}
-        onValueChange={setMode}
-        buttons={[
-          {
-            value: 0,
-            label: 'Individuel',
-            showSelectedCheck: true
-          },
-          {
-            value: 1,
-            label: 'Cursus',     
-            showSelectedCheck: true
-          }
-        ]}
-      />
-      { mode == 0 ? (
-        <>
-          <Text style={{ marginLeft: 25, marginRight: 25, marginTop: 8, textAlign: 'left' }} variant="titleMedium">EDT affiché : {adeid}</Text>
+      
+      { adeid == "" | adeid == null | adeid == "demo" ?
+        <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
+
+          <Image source={require('./assets/end.png')} style={{ width: "100%", height: 200, marginTop: 32, marginBottom: 16 }} />
+
+          <Text style={{ marginTop: 16, marginBottom: 8, textAlign: 'left' }} variant="headlineSmall">Ce n'est qu'un aurevoir...</Text>
+          <Text style={{ textAlign: 'left' }} variant="bodyLarge">Pendant 2 ans et demi, UniceNotes vous a accompagné dans votre quotidien. </Text>
+          <Text style={{ textAlign: 'left' }} variant="bodyLarge">Aujourd'hui, il est temps de dire au revoir.</Text>
+          <Text style={{ textAlign: 'left' }} variant="bodyLarge">Merci pour votre confiance. ❤️</Text>
+
+          <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">- hugo</Text>
+
           <Divider style={{ marginTop: 16, marginBottom: 16 }} />
-          <ScrollView style={{ paddingLeft: 25, paddingRight: 25, marginBottom: 16 }}>
-            <Text style={{ textAlign: 'left' }} variant="labelLarge">Entrez un numéro étudiant pour changer l'emploi du temps affiché :</Text>
-            <TextInput style={{ marginTop: 8, marginBottom: 8 }} mode='outlined' keyboardType='number-pad' maxLength={ 12 } label="Numéro étudiant" value={tempAde} onChangeText={setTempAde} right={<TextInput.Icon icon="content-save" onPress={() => selectCursus(tempAde, true)} />} />
-            <Card style={{ marginTop: 16 }}>
-              <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} />
-              <Card.Content>
-                <Text style={{ textAlign: 'left' }} variant="bodyLarge">
-                  L'emploi du temps individuel comprend les cours de votre cursus (TD, ...) ainsi que les cours de groupes dont vous faites partie (TP, ...).
-                </Text>
-              </Card.Content>
-            </Card>
-          </ScrollView>
-        </>
-      ) : (
-        <>
-          <Text style={{ marginLeft: 25, marginRight: 25, marginTop: 8, textAlign: 'left' }} variant="titleMedium">EDT affiché : {adeid}</Text>
-          <Searchbar
-            autoComplete='off' autoCorrect={false} autoCapitalize='none'
-            placeholder="Rechercher un cursus"
-            value={searchValue}
-            style={{ marginLeft: 20, marginRight: 20, marginTop: 8, marginBottom: 8 }}
-            onChangeText={(value) => searchCursus(value)}
-            loading={loading}
-            inputStyle={{ autoCorrect: false, autoComplete: 'off', autoCapitalize: 'none' }}
-            maxLength={ 32 }
-          />
-          <Divider style={{ marginTop: 8, marginBottom: 16 }} />
-          <ScrollView style={{ paddingLeft: 25, paddingRight: 25, marginBottom: 16 }}>
-            <Text style={{ marginBottom: 16, textAlign: 'left' }} variant="titleSmall">Sélectionnez un cursus pour changer l'emploi du temps affiché :</Text>
-            {searchResults.map((item, index) => (
-              <View key={index} style={{ marginBottom: 8 }}>
-                <Card style={{ marginBottom: 8 }} onPress={() => selectCursus(item.id, false)}>
-                  <Card.Cover style={{ marginBottom: 8, height: 10, backgroundColor: stringToColour(item.text) }} />
-                  <Card.Content>
-                    <Text variant="titleMedium">{item.text}</Text>
-                  </Card.Content>
-                </Card>
-              </View>
-            ))}
-            <Card>
-              <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} />
-              <Card.Content>
-                <Text style={{ textAlign: 'left' }} variant="bodyLarge">L'emploi du temps par cursus comprend les cours du cursus sélectionné (TD, ...) ainsi que tous les cours de groupes, y compris ceux dont vous ne faites pas partie (TP, ...).</Text>
-              </Card.Content>
-            </Card>
-          </ScrollView>
-        </>
-      )}
+
+          <Text style={{ textAlign: 'left' }} variant="bodyLarge">Vous pouvez désinstaller l'application en toute sécurité. Aucune action n'est requise de votre part.</Text>
+
+          <Button style={{ marginTop: 16 }} mode='contained-tonal' icon="open-in-new" onPress={ () => handleURL("https://notes.metrixmedia.fr/export") }> Exporter mon emploi du temps </Button>
+          <Button style={{ marginTop: 8 }} mode='outlined' icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/") }> Code Source </Button>
+
+        </ScrollView>
+      :
+        <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
+
+          <Image source={require('./assets/theEnd.png')} style={{ width: "100%", height: 200, marginTop: 16, marginBottom: 16 }} />
+          
+          <Text style={{ marginTop: 16, marginBottom: 8, textAlign: 'left' }} variant="headlineSmall">Ce n'est qu'un aurevoir...</Text>
+          <Text style={{ textAlign: 'left' }} variant="bodyLarge">Pendant 2 ans et demi, UniceNotes vous a accompagné dans votre quotidien. </Text>
+          <Text style={{ textAlign: 'left' }} variant="bodyLarge">Aujourd'hui, il est temps de dire au revoir.</Text>
+          <Text style={{ textAlign: 'left' }} variant="bodyLarge">Merci pour votre confiance. ❤️</Text>
+
+          <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">- hugo</Text>
+          
+          <Divider style={{ marginTop: 16, marginBottom: 16 }} />
+          
+          <Text style={{ textAlign: 'left' }} variant="bodyLarge">Avant de partir, vous pouvez exporter votre emploi du temps actuel sur une autre application.</Text>
+          <Button style={{ marginTop: 16 }} mode='contained-tonal' icon="calendar-export" onPress={ () => handleURL("https://notes.metrixmedia.fr/export?userId="+adeid) }> Exporter mon emploi du temps </Button>
+          <Button style={{ marginTop: 8, backgroundColor: choosenTheme.colors.errorContainer }} mode='contained-tonal' icon="delete" onPress={ () => deleteData(false, navigation) }> Supprimer mes données </Button>
+          <Button style={{ marginTop: 8 }} mode='outlined' icon="source-branch" onPress={ () => handleURL("https://github.com/UniceApps/") }> Code Source </Button>
+
+        </ScrollView>
+      }
+
     </View>
   );
 }
@@ -1365,14 +476,8 @@ function App() {
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen name="SplashScreen" component={SplashScreen} options={{ title: 'UniceNotes', headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="OOBE" component={OOBE} options={{ title: 'OOBE', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ title: 'Se connecter', headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="ShowEDT" component={ShowEDT} options={{ title: 'Emploi du temps', headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="ShowENT" component={ShowENT} options={{ title: 'Espace Numérique de Travail', presentation: 'modal', headerShown: false }} />
         <Stack.Screen name="ShowSettings" component={ShowSettings} options={{ title: 'Paramètres', headerShown: false }} />
-        <Stack.Screen name="IconConfig" component={IconConfig} options={{ title: 'Icône', presentation: 'modal', headerShown: false, gestureEnabled: true  }} />
-        <Stack.Screen name="ServerConfig" component={ServerConfig} options={{ title: 'Serveurs', presentation: 'modal', headerShown: false, gestureEnabled: true }} />
-        <Stack.Screen name="EDTConfig" component={EDTConfig} options={{ title: 'Emploi du temps', presentation: 'modal', headerShown: false, gestureEnabled: true }} />
+        <Stack.Screen name="Goodbye" component={Goodbye} options={{ title: 'Emploi du temps', presentation: 'modal', headerShown: false, gestureEnabled: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -1534,23 +639,6 @@ const styleScrollable = StyleSheet.create({
   },
 });
 
-const styleCalendar = StyleSheet.create({
-  container: {
-    colors : {
-      primary: choosenTheme.colors.primary,
-      onPrimary: choosenTheme.colors.onPrimary,
-      background: choosenTheme.colors.background,
-      onBackground: choosenTheme.colors.onBackground,
-      border : choosenTheme.colors.outline,
-      text: choosenTheme.colors.onBackground,
-    },
-    hourTextStyle: {color: choosenTheme.colors.onBackground},
-    weekNumber: {color: choosenTheme.colors.onPrimary},
-    weekNumberContainer: {backgroundColor: choosenTheme.colors.primary},
-    unavailableHourBackgroundColor: choosenTheme.colors.surfaceVariant,
-  },
-});
-
 // ---------------------------------------------
 // MAIN
 // ---------------------------------------------
@@ -1563,9 +651,10 @@ export default function Main() {
     QuickActions.setItems([
       {
         id: "0",
-        title: "Emploi du temps",
-        icon: Platform.OS === "ios" ? "symbol:calendar" : undefined,
-        params: { href: "/edt" }
+        title: "Merci d'avoir utilisé UniceNotes",
+        subtitle : "- hugo",
+        icon: Platform.OS === "ios" ? "symbol:heart.fill" : undefined,
+        params: { href: "" }
       }
     ]);
 
