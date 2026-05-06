@@ -2,10 +2,10 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "2.2.0",
+    "version": "3.0.0",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./src/assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "unicenotes",
     "updates": {
@@ -17,23 +17,29 @@
     "ios": {
       "appStoreUrl": "https://apps.apple.com/fr/app/unicenotes/id1668992337",
       "supportsTablet": true,
-      "icon": "./assets/icon.png",
+      "icon": {
+        "light": "./src/assets/icon.png",
+        "dark": "./src/assets/icon.png",
+        "tinted": "./src/assets/tinted.png"
+      },
       "infoPlist": {
         "NSFaceIDUsageDescription": "Connectez-vous sur l'application grâce à FaceID / TouchID.",
         "NSNotificationsUsageDescription": "Recevez des notifications pour être informé des nouvelles notes.",
-        "CFBundleLocalizations": ["fr"],
+        "CFBundleLocalizations": [
+          "fr"
+        ],
         "CFBundleDevelopmentRegion": "fr",
         "CADisableMinimumFrameDurationOnPhone": true
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "11.0.0",
+      "buildNumber": "12.0.0",
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 34
+      "versionCode": 35
     },
     "extra": {
       "eas": {
@@ -46,63 +52,67 @@
     },
     "owner": "hugofnm",
     "plugins": [
+      "expo-router",
       "@bugsnag/plugin-expo-eas-sourcemaps",
       [
         "@hugofnm/expo-dynamic-app-icon",
         {
           "unicenotes": {
-            "image": "./assets/icon.png",
+            "image": "./src/assets/icon.png",
             "prerendered": false
           },
           "magnet": {
-            "image": "./assets/icons/icon_magnet.png",
+            "image": "./src/assets/icons/icon_magnet.png",
             "prerendered": false
           },
           "ardente": {
-            "image": "./assets/icons/icon_ardente.png",
+            "image": "./src/assets/icons/icon_ardente.png",
             "prerendered": false
           },
           "beach": {
-            "image": "./assets/icons/icon_beach.png",
+            "image": "./src/assets/icons/icon_beach.png",
             "prerendered": false
           },
           "melted": {
-            "image": "./assets/icons/icon_melted.png",
+            "image": "./src/assets/icons/icon_melted.png",
             "prerendered": false
           },
           "zoomed": {
-            "image": "./assets/icons/icon_zoomed.png",
+            "image": "./src/assets/icons/icon_zoomed.png",
             "prerendered": false
           },
           "monaco": {
-            "image": "./assets/icons/icon_monaco.png",
+            "image": "./src/assets/icons/icon_monaco.png",
             "prerendered": false
           },
           "christmas2023": {
-            "image": "./assets/icons/icon_christmas2023.png",
+            "image": "./src/assets/icons/icon_christmas2023.png",
             "prerendered": false
           },
           "france": {
-            "image": "./assets/icons/icon_france.png",
+            "image": "./src/assets/icons/icon_france.png",
             "prerendered": false
           },
           "glitched": {
-            "image": "./assets/icons/icon_glitched.png",
+            "image": "./src/assets/icons/icon_glitched.png",
             "prerendered": false
           },
           "vaporwave": {
-            "image": "./assets/icons/icon_vaporwave.png",
+            "image": "./src/assets/icons/icon_vaporwave.png",
             "prerendered": false
           },
           "ios6": {
-            "image": "./assets/icons/icon_ios6.png",
+            "image": "./src/assets/icons/icon_ios6.png",
             "prerendered": true
           }
         }
       ],
       "expo-font",
       "expo-secure-store",
-      "expo-quick-actions"
-    ]
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }
