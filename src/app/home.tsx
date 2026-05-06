@@ -1,0 +1,237 @@
+import { APP_VERSION } from '@/src/constants/config';
+import { getChoosenTheme } from '@/src/constants/theme';
+import { useApp } from '@/src/context/AppContext';
+import { edtService } from '@/src/services/edt';
+import type { NextEvent } from '@/src/types';
+import { handleURL } from '@/src/utils/api';
+import { haptics } from '@/src/utils/haptics';
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetView,
+  BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Avatar,
+  Button,
+  Card,
+  Chip,
+  Divider,
+  IconButton,
+  Text,
+  Tooltip,
+  TouchableRipple,
+} from 'react-native-paper';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+export default function HomeScreen() {
+  const router = useRouter();
+  const { adeid, setCalendar } = useApp();
+  const theme = getChoosenTheme();
+  const insets = useSafeAreaInsets();
+
+  const [loading, setLoading] = useState(false);
+  const [selectable, setSelectable] = useState(true);
+  const [nextEvent, setNextEvent] = useState<NextEvent>({
+    summary: 'Chargement...',
+    location: 'Chargement...',
+  });
+  const [nextEventLoaded, setNextEventLoaded] = useState(false);
+  const [infoTitle, setInfoTitle] = useState('Informations');
+  const [infoSubtitle, setInfoSubtitle] = useState('');
+
+  const bottomSheetInfoRef = useRef<BottomSheet>(null);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        opacity={0.5}
+        enableTouchThrough={false}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        style={[{ backgroundColor: 'rgba(0, 0, 0, 1)' }, StyleSheet.absoluteFill]}
+      />
+    ),
+    [],
+  );
+
+  useEffect(() => {
+    getNextEvent('normal');
+  }, []);
+
+  function showInfo(action: string) {
+    if (action === 'info') {
+      setInfoTitle('Informations');
+      setInfoSubtitle(
+        "Ce n'est pas votre emploi du temps ? Vous pouvez changer l'EDT sélectionné dans Config. EDT.",
+      );
+    }
+    bottomSheetInfoRef.current?.expand();
+  }
+
+  async function getNextEvent(mode: 'normal' | 'force') {
+    if (mode === 'force') {
+      setNextEvent({ summary: 'Chargement...', location: 'Chargement...' });
+    }
+    if (mode === 'force' || (mode === 'normal' && !nextEventLoaded)) {
+      const result = await edtService.getNextEvent(adeid ?? 'demo');
+      setNextEvent(result);
+      setNextEventLoaded(true);
+    }
+  }
+
+  async function getMyCal() {
+    haptics('medium');
+    setSelectable(false);
+    setLoading(true);
+    const cal = await edtService.getEDT(adeid ?? 'demo');
+    setCalendar(cal);
+    setSelectable(true);
+    setLoading(false);
+    router.push('/show-edt');
+  }
+
+  return (
+    <View
+      style={{ flex: 1, backgroundColor: theme.colors.background, paddingLeft: 25, paddingRight: 25 }}
+    >
+      <SafeAreaView>
+        <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-start' }}>
+          <Avatar.Image
+            style={{ marginTop: insets.top * 2, marginBottom: 16 }}
+            size={96}
+            source={require('../assets/white.png')}
+          />
+          <TouchableRipple
+            onPress={() => router.push('/settings')}
+            rippleColor="rgba(0, 0, 0, 0)"
+            style={{ marginLeft: 'auto', marginTop: insets.top * 2, marginBottom: 50 }}
+          >
+            <Avatar.Icon size={48} icon="cog" />
+          </TouchableRipple>
+        </View>
+
+        <Text style={{ textAlign: 'left' }} variant="displayLarge">
+          Salut ! 👋
+        </Text>
+        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">
+          Bienvenue sur UniceNotes.{'\n'}
+          EDT configuré : {adeid ?? 'Non configuré'}
+        </Text>
+
+        <Card style={{ marginBottom: 8 }} disabled={!selectable} onPress={getMyCal}>
+          <Card.Title title="Prochain Cours" />
+          <Card.Content>
+            <Text variant="titleLarge" numberOfLines={1}>
+              {nextEvent.summary}
+            </Text>
+            <Text variant="bodyMedium" numberOfLines={1}>
+              {nextEvent.location}
+            </Text>
+          </Card.Content>
+          <Card.Actions>
+            <Chip
+              style={{ marginRight: 4 }}
+              disabled={!selectable}
+              onPress={() => getNextEvent('force')}
+              icon="refresh"
+            >
+              Rafraîchir
+            </Chip>
+            {nextEvent.summary !== 'ADE Indisponible' ? (
+              <Chip disabled={!selectable} onPress={getMyCal} icon="calendar">
+                Emploi du temps
+              </Chip>
+            ) : (
+              <Chip disabled={!selectable} onPress={getMyCal} icon="calendar-alert">
+                EDT (Hors-ligne)
+              </Chip>
+            )}
+          </Card.Actions>
+        </Card>
+
+        <Chip
+          style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row' }}
+          textStyle={{ paddingVertical: 8 }}
+          disabled={!selectable}
+          onPress={() => router.push('/edt-config')}
+          icon="calendar-edit"
+        >
+          Configuration EDT
+        </Chip>
+        <Chip
+          style={{ height: 48, marginBottom: 16, justifyContent: 'center', flexDirection: 'row' }}
+          textStyle={{ paddingVertical: 8 }}
+          disabled={!selectable}
+          onPress={() => router.push('/show-ent')}
+          icon="briefcase-variant"
+        >
+          Espace Numérique de Travail
+        </Chip>
+
+        <Divider style={{ marginBottom: 8 }} />
+        <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
+          <Tooltip title="Informations">
+            <IconButton
+              style={{ marginBottom: 4 }}
+              icon="information"
+              mode="contained"
+              onPress={() => showInfo('info')}
+            />
+          </Tooltip>
+          <Tooltip title="Code source">
+            <IconButton
+              style={{ marginBottom: 16 }}
+              icon="source-branch"
+              mode="contained"
+              onPress={() => handleURL('https://github.com/UniceApps/UniceNotes')}
+            />
+          </Tooltip>
+        </View>
+
+        <Text style={{ textAlign: 'center' }} variant="titleSmall">
+          Version {APP_VERSION}
+        </Text>
+        <ActivityIndicator
+          style={{ marginTop: 8, marginBottom: insets.bottom }}
+          animating={loading}
+          size="large"
+        />
+      </SafeAreaView>
+
+      <BottomSheet
+        ref={bottomSheetInfoRef}
+        index={-1}
+        enableDynamicSizing
+        enablePanDownToClose
+        bottomInset={insets.bottom}
+        detached
+        style={{ marginHorizontal: 24 }}
+        backgroundStyle={{ backgroundColor: theme.colors.surfaceVariant }}
+        handleIndicatorStyle={{ backgroundColor: theme.colors.onSurfaceVariant }}
+        backdropComponent={renderBackdrop}
+      >
+        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
+          <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">
+            {infoTitle}
+          </Text>
+          <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">
+            {infoSubtitle}
+          </Text>
+          <Button
+            style={{ marginBottom: 16 }}
+            icon="close"
+            mode="contained"
+            onPress={() => bottomSheetInfoRef.current?.close()}
+          >
+            Fermer
+          </Button>
+        </BottomSheetView>
+      </BottomSheet>
+    </View>
+  );
+}
