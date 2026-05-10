@@ -14,6 +14,8 @@ interface AppContextValue {
   setCalendar: (v: CalendarEvent[]) => void;
   clearAllData: () => Promise<void>;
   isInitialized: boolean;
+  updateModalShown: boolean; // boolean to track if the update modal has been shown
+  setUpdateModalShown: (v: boolean) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -23,15 +25,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [hapticsOn, setHapticsOnState] = useState(true);
   const [calendar, setCalendar] = useState<CalendarEvent[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [updateModalShown, setUpdateModalShown] = useState(false);
 
   useEffect(() => {
     loadPersistedData();
   }, []);
 
   async function loadPersistedData() {
-    const [storedAdeid, storedHaptics] = await Promise.all([
+    const [storedAdeid, storedHaptics, storedUpdateModalShown] = await Promise.all([
       SecureStore.getItemAsync('adeid'),
       AsyncStorage.getItem('haptics'),
+      AsyncStorage.getItem('updateModalShown'),
     ]);
 
     if (storedAdeid) setAdeid(storedAdeid);
@@ -40,6 +44,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setHapticsOnState(h);
       setHapticsEnabled(h);
     }
+
+    if (storedUpdateModalShown !== null) {
+      setUpdateModalShown(storedUpdateModalShown === 'true');
+    }
+
     setIsInitialized(true);
   }
 
@@ -52,6 +61,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await Promise.all([
       SecureStore.deleteItemAsync('adeid'),
       AsyncStorage.removeItem('haptics'),
+      AsyncStorage.removeItem('updateModalShown'),
     ]);
 
     const calFile = new File(Paths.document, 'calendar.json');
@@ -62,6 +72,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAdeid(null);
     setHapticsOn(true);
     setCalendar([]);
+    setUpdateModalShown(false);
   }
 
   return (
@@ -75,6 +86,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCalendar,
         clearAllData,
         isInitialized,
+        updateModalShown,
+        setUpdateModalShown,
       }}
     >
       {children}

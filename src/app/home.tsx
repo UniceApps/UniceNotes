@@ -1,4 +1,4 @@
-import { APP_VERSION } from '@/src/constants/config';
+import { APP_VERSION, RELEASE_NOTES } from '@/src/constants/config';
 import { getChoosenTheme } from '@/src/constants/theme';
 import { useApp } from '@/src/context/AppContext';
 import { edtService } from '@/src/services/edt';
@@ -7,8 +7,8 @@ import { handleURL } from '@/src/utils/api';
 import { haptics } from '@/src/utils/haptics';
 import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetView,
   BottomSheetBackdropProps,
+  BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -26,10 +26,11 @@ import {
   TouchableRipple,
 } from 'react-native-paper';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { saveAsync } from '../utils/storage';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { adeid, setCalendar } = useApp();
+  const { adeid, setCalendar, updateModalShown, setUpdateModalShown } = useApp();
   const theme = getChoosenTheme();
   const insets = useSafeAreaInsets();
 
@@ -61,6 +62,11 @@ export default function HomeScreen() {
 
   useEffect(() => {
     getNextEvent('normal');
+
+    // check in app context if update modal has been shown, if not show it and set it to true
+    if (!updateModalShown) {
+      showUpdateModal();
+    }
   }, []);
 
   function showInfo(action: string) {
@@ -93,6 +99,16 @@ export default function HomeScreen() {
     setSelectable(true);
     setLoading(false);
     router.push('/show-edt');
+  }
+
+  async function showUpdateModal() {
+    // wait 1 second before showing the update modal
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setInfoTitle(RELEASE_NOTES.info);
+    setInfoSubtitle(RELEASE_NOTES.subtitle);
+    saveAsync('updateModalShown', 'true');
+    setUpdateModalShown(true);
+    bottomSheetInfoRef.current?.expand();
   }
 
   return (
@@ -130,7 +146,7 @@ export default function HomeScreen() {
               {nextEvent.summary}
             </Text>
             <Text variant="bodyMedium" numberOfLines={1}>
-              {nextEvent.location}
+              {nextEvent.location || "Salle non précisée"}
             </Text>
           </Card.Content>
           <Card.Actions>
@@ -162,6 +178,15 @@ export default function HomeScreen() {
           icon="calendar-edit"
         >
           Configuration EDT
+        </Chip>
+        <Chip
+          style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row' }}
+          textStyle={{ paddingVertical: 8 }}
+          disabled={!selectable}
+          icon="abacus"
+          onPress={() => handleURL('https://sco.polytech.unice.fr/1/mobile.etudiant')}
+        >
+          PronoteCampus
         </Chip>
         <Chip
           style={{ height: 48, marginBottom: 16, justifyContent: 'center', flexDirection: 'row' }}
