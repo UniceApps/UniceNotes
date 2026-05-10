@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "3.0.0",
+    "version": "3.1.0",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -18,13 +18,13 @@
       "appStoreUrl": "https://apps.apple.com/fr/app/unicenotes/id1668992337",
       "supportsTablet": true,
       "icon": {
-        "light": "./src/assets/icon.png",
-        "dark": "./src/assets/icon.png",
-        "tinted": "./src/assets/tinted.png"
+        "light": "./src/assets/ios/default.png",
+        "dark": "./src/assets/ios/dark.png",
+        "tinted": "./src/assets/ios/tinteddark.png"
       },
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Connectez-vous sur l'application grâce à FaceID / TouchID.",
-        "NSNotificationsUsageDescription": "Recevez des notifications pour être informé des nouvelles notes.",
+        "NSFaceIDUsageDescription": "Connectez-vous sur l'application grâce à l'authentification biométrique.",
+        "NSNotificationsUsageDescription": "Recevez des notifications pour être informé de diverses choses.",
         "CFBundleLocalizations": [
           "fr"
         ],
@@ -32,18 +32,18 @@
         "CADisableMinimumFrameDurationOnPhone": true
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "13.0.0",
+      "buildNumber": "13.1.0",
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 36,
+      "versionCode": 37,
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/foreground.png",
-        "monochromeImage": "./src/assets/tinted.png",
-        "backgroundImage": "./src/assets/background.png"
+        "foregroundImage": "./src/assets/android/foreground.png",
+        "monochromeImage": "./src/assets/android/monochrome.png",
+        "backgroundColor": "#FFFFFF"
       }
     },
     "extra": {
