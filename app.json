@@ -66,6 +66,10 @@
             "image": "./src/assets/icon.png",
             "prerendered": false
           },
+          "old": {
+            "image": "./src/assets/icons/icon_old.png",
+            "prerendered": false
+          },
           "magnet": {
             "image": "./src/assets/icons/icon_magnet.png",
             "prerendered": false

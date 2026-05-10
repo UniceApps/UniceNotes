@@ -27,8 +27,6 @@ export default function IconConfigScreen() {
     haptics('medium');
     if (!__DEV__) {
       setAppIcon(value);
-    } else {
-      console.log("Changement d'icône : " + value);
     }
   }
 
@@ -61,6 +59,14 @@ export default function IconConfigScreen() {
           onPress={() => changeIconHome('unicenotes')}
         >
           Par défaut
+        </Chip>
+        <Chip
+          style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
+          textStyle={{ paddingVertical: 8 }}
+          avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_old.png')} />}
+          onPress={() => changeIconHome('old')}
+        >
+          Old Style
         </Chip>
         <Chip
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}

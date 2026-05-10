@@ -13,7 +13,7 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Platform } from 'react-native';
 import {
   ActivityIndicator,
   Avatar,
@@ -63,6 +63,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     getNextEvent('normal');
+    if (Platform.OS === 'ios') pushWidgetTimeline();
 
     // check in app context if update modal has been shown, if not show it and set it to true
     if (!updateModalShown) {
@@ -88,13 +89,6 @@ export default function HomeScreen() {
       const result = await edtService.getNextEvent(adeid ?? 'demo');
       setNextEvent(result);
       setNextEventLoaded(true);
-      try {
-        const courses = await edtService.getNextTwoCourses(adeid ?? 'demo');
-        NextClassWidgetInstance.updateSnapshot({ courses });
-      } catch {
-        // Widget non disponible en mode dev ou non configuré
-        console.warn('NextClassWidget: Impossible de récupérer les prochains cours pour le widget');
-      }
     }
   }
 
@@ -102,11 +96,28 @@ export default function HomeScreen() {
     haptics('medium');
     setSelectable(false);
     setLoading(true);
+
     const cal = await edtService.getEDT(adeid ?? 'demo');
     setCalendar(cal);
+    if (Platform.OS === 'ios') {
+      try {
+        NextClassWidgetInstance.updateTimeline(edtService.buildWidgetTimeline(cal));
+      } catch { }
+    }
+
     setSelectable(true);
     setLoading(false);
     router.push('/show-edt');
+  }
+
+  async function pushWidgetTimeline() {
+    try {
+      const events = await edtService.getEDT(adeid ?? 'demo');
+      const timeline = edtService.buildWidgetTimeline(events);
+      NextClassWidgetInstance.updateTimeline(timeline);
+    } catch {
+      // widget non configuré ou ADE indisponible
+    }
   }
 
   async function showUpdateModal() {

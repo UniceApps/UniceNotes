@@ -1,6 +1,6 @@
 import { File, Paths } from 'expo-file-system';
 import ICAL from 'ical.js';
-import type { CalendarEvent, NextEvent, WidgetClass } from '../types';
+import type { CalendarEvent, NextClassWidgetProps, NextEvent, WidgetClass } from '../types';
 import { stringToColour } from '../utils/color';
 
 interface ICALComponent {
@@ -142,6 +142,41 @@ export class EDT {
     return { summary: next.summary, location: next.location };
   }
 
+  async getNextEvent(adeid: string): Promise<NextEvent> {
+    const icalData = await this.fetchEDT(adeid);
+    if (!icalData) {
+      return { summary: 'ADE Indisponible', location: 'Impossible de récupérer le cours.' };
+    }
+    const events = this.parseICal(icalData);
+    return this.findNextEvent(events);
+  }
+
+  private convertToCalendarEvents(events: ICALEvent[]): CalendarEvent[] {
+    return events.map((e, index) => ({
+      id: e.uid ?? String(index),
+      start: { dateTime: e.startDate.toJSDate().toISOString() },
+      end: { dateTime: e.endDate.toJSDate().toISOString() },
+      title: e.summary ?? '',
+      subtitle: e.description ?? '',
+      description: e.location ?? '',
+      color: stringToColour(e.summary ?? ''),
+    }));
+  }
+
+  async getEDT(adeid: string): Promise<CalendarEvent[]> {
+    if (!adeid || adeid === 'demo') return [];
+
+    const icalData = await this.fetchEDT(adeid);
+    if (!icalData) return getCalendarFromCache();
+    const events = this.parseICal(icalData);
+    const calEvents = this.convertToCalendarEvents(events);
+    try {
+      CALENDAR_FILE.write(JSON.stringify(calEvents));
+    } catch { }
+    return calEvents;
+  }
+
+  // Widget
   findNextTwoCourses(events: ICALEvent[]): WidgetClass[] {
     const now = new Date();
     const windowStart = new Date(now.getTime() - 15 * 60 * 1000);
@@ -174,36 +209,61 @@ export class EDT {
     return this.findNextTwoCourses(events);
   }
 
-  async getNextEvent(adeid: string): Promise<NextEvent> {
-    const icalData = await this.fetchEDT(adeid);
-    if (!icalData) {
-      return { summary: 'ADE Indisponible', location: 'Impossible de récupérer le cours.' };
+  buildWidgetTimeline(
+    events: CalendarEvent[],
+  ): Array<{ date: Date; props: NextClassWidgetProps }> {
+    if (events.length === 0) {
+      return [
+        {
+          date: new Date(),
+          props: { courses: [], configured: false },
+        },
+      ];
     }
-    const events = this.parseICal(icalData);
-    return this.findNextEvent(events);
-  }
 
-  private convertToCalendarEvents(events: ICALEvent[]): CalendarEvent[] {
-    return events.map((e, index) => ({
-      id: e.uid ?? String(index),
-      start: { dateTime: e.startDate.toJSDate().toISOString() },
-      end: { dateTime: e.endDate.toJSDate().toISOString() },
-      title: e.summary ?? '',
-      subtitle: e.description ?? '',
-      description: e.location ?? '',
-      color: stringToColour(e.summary ?? ''),
-    }));
-  }
+    const now = new Date();
+    const cutoff = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 jours
 
-  async getEDT(adeid: string): Promise<CalendarEvent[]> {
-    const icalData = await this.fetchEDT(adeid);
-    if (!icalData) return getCalendarFromCache();
-    const events = this.parseICal(icalData);
-    const calEvents = this.convertToCalendarEvents(events);
-    try {
-      CALENDAR_FILE.write(JSON.stringify(calEvents));
-    } catch { }
-    return calEvents;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmt = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+    // Tous les cours futurs triés par heure de début
+    const allFuture = events
+      .filter((e) => new Date(e.end.dateTime) > now)
+      .sort(
+        (a, b) =>
+          new Date(a.start.dateTime).getTime() - new Date(b.start.dateTime).getTime(),
+      );
+
+    // Les 2 prochains cours non encore terminés à partir d'un instant donné
+    const getCoursesAt = (from: Date): WidgetClass[] =>
+      allFuture
+        .filter((e) => new Date(e.end.dateTime) > from)
+        .slice(0, 2)
+        .map((e) => ({
+          title: e.title,
+          room: e.description, // description = location dans CalendarEvent
+          startTime: fmt(new Date(e.start.dateTime)),
+          endTime: fmt(new Date(e.end.dateTime)),
+        }));
+
+    const seen = new Set<number>();
+    const timeline: Array<{ date: Date; props: NextClassWidgetProps }> = [];
+
+    seen.add(now.getTime());
+    timeline.push({ date: now, props: { courses: getCoursesAt(now), configured: true } });
+
+    // Une entrée à chaque fin de cours dans les 24h
+    for (const event of allFuture) {
+      const endDate = new Date(event.end.dateTime);
+      const ms = endDate.getTime();
+      if (endDate <= cutoff && !seen.has(ms)) {
+        seen.add(ms);
+        timeline.push({ date: endDate, props: { courses: getCoursesAt(endDate), configured: true } });
+      }
+    }
+
+    return timeline;
   }
 }
 
