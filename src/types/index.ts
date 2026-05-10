@@ -27,6 +27,7 @@ export interface WidgetClass {
 
 export interface NextClassWidgetProps {
   courses: WidgetClass[];
+  configured?: boolean;
 }
 
 export type HapticIntensity =
