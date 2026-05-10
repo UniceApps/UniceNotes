@@ -18,6 +18,17 @@ export interface NextEvent {
   location: string;
 }
 
+export interface WidgetClass {
+  title: string;
+  room: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface NextClassWidgetProps {
+  courses: WidgetClass[];
+}
+
 export type HapticIntensity =
   | 'light'
   | 'medium'

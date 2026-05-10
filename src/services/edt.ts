@@ -1,12 +1,7 @@
 import { File, Paths } from 'expo-file-system';
+import ICAL from 'ical.js';
+import type { CalendarEvent, NextEvent, WidgetClass } from '../types';
 import { stringToColour } from '../utils/color';
-import type { CalendarEvent, NextEvent } from '../types';
-
-const ICAL = require('ical.js') as {
-  parse: (input: string) => unknown[];
-  Component: new (jcalData: unknown) => ICALComponent;
-  Event: new (component: unknown) => ICALEvent;
-};
 
 interface ICALComponent {
   getAllSubcomponents(name: string): unknown[];
@@ -23,96 +18,86 @@ interface ICALEvent {
 
 const ADE_BASE = 'https://edtweb.univ-cotedazur.fr';
 const CALENDAR_FILE = new File(Paths.document, 'calendar.json');
+const ONGOING_THRESHOLD_MS = 15 * 60 * 1000;
 
-class EDTDate {
-  ADE_DATE: string;
+function getAcademicYearDateRange(): string {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
+  const startYear = month >= 9 ? year : year - 1;
+  const endYear = startYear + 1;
+  return `&firstDate=${startYear}-09-01&lastDate=${endYear}-08-31`;
+}
 
-  constructor() {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-    const startYear = month >= 9 ? year : year - 1;
-    const endYear = startYear + 1;
-    this.ADE_DATE = `&firstDate=${startYear}-09-01&lastDate=${endYear}-08-31`;
+function getCurrentAcademicYearString(): string {
+  const now = new Date();
+  const startYear = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${startYear}-${startYear + 1}`;
+}
+
+async function fetchSessionId(): Promise<string | null> {
+  try {
+    const res = await fetch(`${ADE_BASE}/jsp/webapi?function=connect&login=Individuel&password=`);
+    if (!res.ok) return null;
+    const text = await res.text();
+    const match = text.match(/<session id="(.*?)"\s*\/>/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
   }
 }
 
-class EDTConfig {
-  async getSessionId(): Promise<string | null> {
-    try {
-      const res = await fetch(
-        `${ADE_BASE}/jsp/webapi?function=connect&login=Individuel&password=`,
-      );
-      if (!res.ok) return null;
-      const text = await res.text();
-      const match = text.match(/<session id="(.*?)"\s*\/>/);
-      return match ? match[1] : null;
-    } catch {
-      return null;
-    }
-  }
+async function fetchProjectId(sessionId: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${ADE_BASE}/jsp/webapi?function=getProjects&sessionId=${sessionId}&detail=2`,
+    );
+    if (!res.ok) return null;
+    const text = await res.text();
+    const yearStr = getCurrentAcademicYearString();
+    const projectRegex = /<project\s+id="(\d+)"\s+name="([^"]*)"/g;
 
-  async getProjects(sessionId: string): Promise<string | null> {
-    try {
-      const res = await fetch(
-        `${ADE_BASE}/jsp/webapi?function=getProjects&sessionId=${sessionId}&detail=2`,
-      );
-      if (!res.ok) return null;
-      const text = await res.text();
-      const now = new Date();
-      const startYear = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
-      const yearStr = `${startYear}-${startYear + 1}`;
-      const projectRegex = /<project\s+id="(\d+)"\s+name="([^"]*)"/g;
-      const matches = text.matchAll(projectRegex);
-
-      for (const match of matches) {
-        const [_, id, name] = match;
-
-        if (name.includes(yearStr) && name.toLowerCase().includes('prod')) {
-          return id;
-        }
+    for (const [_, id, name] of text.matchAll(projectRegex)) {
+      if (name.includes(yearStr) && name.toLowerCase().includes('prod')) {
+        return id;
       }
-
-      return null;
-    } catch {
-      return null;
     }
-  }
 
-  async getConfig(): Promise<string | null> {
-    const sessionId = await this.getSessionId();
-    if (!sessionId) return null;
-    return this.getProjects(sessionId);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveProjectId(): Promise<string | null> {
+  const sessionId = await fetchSessionId();
+  if (!sessionId) return null;
+  return fetchProjectId(sessionId);
+}
+
+async function getCalendarFromCache(): Promise<CalendarEvent[]> {
+  try {
+    const json = await CALENDAR_FILE.text();
+    return JSON.parse(json) as CalendarEvent[];
+  } catch {
+    return [];
   }
 }
 
 export class EDT {
   private ADE_PROJECT: string | null = null;
-  private ADE_DATE: string;
-  READY = false;
+  private readonly ADE_DATE: string;
+  private readonly _ready: Promise<void>;
 
   constructor() {
-    this.ADE_DATE = new EDTDate().ADE_DATE;
-    new EDTConfig().getConfig().then((projectId) => {
-      this.ADE_PROJECT = projectId;
-      this.READY = true;
+    this.ADE_DATE = getAcademicYearDateRange();
+    this._ready = resolveProjectId().then((id) => {
+      this.ADE_PROJECT = id;
     });
   }
 
   private waitUntilReady(): Promise<void> {
-    if (this.READY) return Promise.resolve();
-    return new Promise<void>((resolve) => {
-      const interval = setInterval(() => {
-        if (this.READY) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 100);
-      setTimeout(() => {
-        clearInterval(interval);
-        resolve();
-      }, 10000);
-    });
+    return this._ready;
   }
 
   async fetchEDT(adeid: string): Promise<string | null> {
@@ -133,8 +118,8 @@ export class EDT {
   parseICal(icalData: string): ICALEvent[] {
     try {
       const parsed = ICAL.parse(icalData);
-      const comp = new ICAL.Component(parsed);
-      return comp.getAllSubcomponents('vevent').map((v) => new ICAL.Event(v));
+      const comp = new ICAL.Component(parsed) as ICALComponent;
+      return comp.getAllSubcomponents('vevent').map((v) => new ICAL.Event(v as ICAL.Component) as ICALEvent);
     } catch {
       return [];
     }
@@ -142,7 +127,7 @@ export class EDT {
 
   findNextEvent(events: ICALEvent[]): NextEvent {
     const now = new Date();
-    const windowStart = new Date(now.getTime() - 15 * 60 * 1000);
+    const windowStart = new Date(now.getTime() - ONGOING_THRESHOLD_MS);
 
     const sorted = events
       .map((e) => ({
@@ -155,6 +140,38 @@ export class EDT {
     const next = sorted.find((e) => e.start >= windowStart);
     if (!next) return { summary: 'Aucun cours', location: 'Profitez-en !' };
     return { summary: next.summary, location: next.location };
+  }
+
+  findNextTwoCourses(events: ICALEvent[]): WidgetClass[] {
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - 15 * 60 * 1000);
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmt = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+    return events
+      .map((e) => ({
+        start: e.startDate.toJSDate(),
+        end: e.endDate.toJSDate(),
+        title: e.summary ?? 'Cours inconnu',
+        room: e.location ?? '',
+      }))
+      .filter((e) => e.start >= windowStart)
+      .sort((a, b) => a.start.getTime() - b.start.getTime())
+      .slice(0, 2)
+      .map((e) => ({
+        title: e.title,
+        room: e.room,
+        startTime: fmt(e.start),
+        endTime: fmt(e.end),
+      }));
+  }
+
+  async getNextTwoCourses(adeid: string): Promise<WidgetClass[]> {
+    const icalData = await this.fetchEDT(adeid);
+    if (!icalData) return [];
+    const events = this.parseICal(icalData);
+    return this.findNextTwoCourses(events);
   }
 
   async getNextEvent(adeid: string): Promise<NextEvent> {
@@ -187,15 +204,6 @@ export class EDT {
       CALENDAR_FILE.write(JSON.stringify(calEvents));
     } catch { }
     return calEvents;
-  }
-}
-
-async function getCalendarFromCache(): Promise<CalendarEvent[]> {
-  try {
-    const json = await CALENDAR_FILE.text();
-    return JSON.parse(json) as CalendarEvent[];
-  } catch {
-    return [];
   }
 }
 
