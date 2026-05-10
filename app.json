@@ -39,7 +39,12 @@
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 36
+      "versionCode": 36,
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/foreground.png",
+        "monochromeImage": "./src/assets/tinted.png",
+        "backgroundImage": "./src/assets/background.png"
+      }
     },
     "extra": {
       "eas": {

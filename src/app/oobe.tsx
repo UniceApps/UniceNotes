@@ -43,6 +43,7 @@ export default function OOBEScreen() {
     await saveSecure('adeid', 'demo');
     setAdeid('demo');
     router.replace('/home');
+    router.push('/edt-config');
   }
 
   const bgStyle = { backgroundColor: theme.colors.background };

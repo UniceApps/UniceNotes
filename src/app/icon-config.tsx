@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, Alert } from 'react-native';
+import { View, ScrollView, Platform } from 'react-native';
 import { Text, Appbar, Card, Avatar, Chip, Tooltip } from 'react-native-paper';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
@@ -26,7 +26,6 @@ export default function IconConfigScreen() {
   function changeIconHome(value: string) {
     haptics('medium');
     if (!__DEV__) {
-      Alert.alert('Icône modifiée');
       setAppIcon(value);
     } else {
       console.log("Changement d'icône : " + value);
@@ -40,7 +39,7 @@ export default function IconConfigScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center' }}>
-      <Appbar.Header elevated statusBarHeight={0}>
+      <Appbar.Header elevated statusBarHeight={Platform.OS === 'ios' ? 0 : undefined}>
         <Tooltip title="Retour">
           <Appbar.BackAction onPress={() => router.back()} />
         </Tooltip>

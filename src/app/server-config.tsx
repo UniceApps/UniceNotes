@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Platform } from 'react-native';
 import {
   Text,
   Button,
@@ -44,7 +44,7 @@ export default function ServerConfigScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center' }}>
-      <Appbar.Header elevated statusBarHeight={0}>
+      <Appbar.Header elevated statusBarHeight={Platform.OS === 'ios' ? 0 : undefined}>
         <Tooltip title="Retour">
           <Appbar.BackAction onPress={() => router.back()} />
         </Tooltip>
