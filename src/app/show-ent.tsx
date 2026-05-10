@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Platform } from 'react-native';
 import { Text, Appbar, Card, Avatar, Chip, Tooltip } from 'react-native-paper';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -18,7 +18,7 @@ export default function ShowENTScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center' }}>
-      <Appbar.Header elevated statusBarHeight={0}>
+      <Appbar.Header elevated statusBarHeight={Platform.OS === 'ios' ? 0 : undefined}>
         <Tooltip title="Accueil">
           <Appbar.BackAction onPress={() => router.back()} />
         </Tooltip>
@@ -49,6 +49,14 @@ export default function ShowENTScreen() {
         <Chip
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
+          icon="abacus"
+          onPress={() => handleURL('https://sco.polytech.unice.fr/1')}
+        >
+          PronoteCampus (bientôt natif)
+        </Chip>
+        <Chip
+          style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
+          textStyle={{ paddingVertical: 8 }}
           icon="school"
           onPress={() => handleURL('https://mondossierweb.univ-cotedazur.fr/')}
         >
@@ -66,7 +74,7 @@ export default function ShowENTScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           icon="book"
-          onPress={() => handleURL('https://dsi-extra.unice.fr/BU/Etudiant/index.html')}
+          onPress={() => handleURL('https://bu.univ-cotedazur.fr/') }
         >
           Bibliothèques Universitaires
         </Chip>
@@ -74,9 +82,9 @@ export default function ShowENTScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           icon="printer"
-          onPress={() => handleURL('https://dsi-extra.unice.fr/repro/index.html')}
+          onPress={() => handleURL('https://impression.univ-cotedazur.fr/') }
         >
-          Imprimer à la BU
+          Imprimerie Universitaire
         </Chip>
         <Chip
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
@@ -84,7 +92,7 @@ export default function ShowENTScreen() {
           icon="account"
           onPress={() => handleURL('https://link.univ-cotedazur.fr/fr/authentication/index/caslogin?1')}
         >
-          Link UCA
+          UniCA Alumni (anciennement Link)
         </Chip>
         <Chip
           style={{ ...chipStyle, borderTopLeftRadius: 0, borderTopRightRadius: 0, marginTop: 1 }}

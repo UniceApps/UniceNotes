@@ -8,7 +8,6 @@ import {
   Menu,
   Tooltip,
 } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { CalendarBody, CalendarContainer, CalendarHeader } from '@howljs/calendar-kit';
 import BottomSheet, {
   BottomSheetView,

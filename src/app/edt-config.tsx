@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, Alert } from 'react-native';
+import { View, ScrollView, Alert, Platform } from 'react-native';
 import {
   Text,
   Appbar,
@@ -9,6 +9,7 @@ import {
   SegmentedButtons,
   Searchbar,
   Tooltip,
+  Button,
 } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/src/context/AppContext';
@@ -64,7 +65,7 @@ export default function EDTConfigScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center' }}>
-      <Appbar.Header elevated statusBarHeight={0}>
+      <Appbar.Header elevated statusBarHeight={Platform.OS === 'ios' ? 0 : undefined}>
         <Tooltip title="Retour">
           <Appbar.BackAction onPress={() => router.back()} />
         </Tooltip>
@@ -97,13 +98,14 @@ export default function EDTConfigScreen() {
             label="Numéro étudiant"
             value={tempAde}
             onChangeText={setTempAde}
-            right={
-              <TextInput.Icon
-                icon="content-save"
-                onPress={() => selectCursus(tempAde, true)}
-              />
-            }
           />
+          <Button
+            mode="contained-tonal"
+            icon="content-save"
+            onPress={() => selectCursus(tempAde, true)}
+            style={{ marginTop: 8 }}>
+            Sauvegarder
+          </Button>
           <Card style={{ marginTop: 16 }}>
             <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} title />
             <Card.Content>
