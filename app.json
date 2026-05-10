@@ -52,7 +52,7 @@
       },
       "bugsnag": {
         "apiKey": "$(BUGSNAG_API_KEY)"
-      }, 
+      },
       "github_hash": "$(EAS_BUILD_GIT_COMMIT_HASH)"
     },
     "owner": "hugofnm",
@@ -114,7 +114,25 @@
       ],
       "expo-font",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "fr.hugofnm.unicenotes.widgets",
+          "groupIdentifier": "group.fr.hugofnm.unicenotes",
+          "widgets": [
+            {
+              "name": "NextClassWidget",
+              "displayName": "Prochains Cours",
+              "description": "Affiche vos deux prochains cours UniceNotes",
+              "supportedFamilies": [
+                "systemSmall",
+                "systemMedium"
+              ]
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -5,6 +5,7 @@ import { edtService } from '@/src/services/edt';
 import type { NextEvent } from '@/src/types';
 import { handleURL } from '@/src/utils/api';
 import { haptics } from '@/src/utils/haptics';
+import { NextClassWidgetInstance } from '@/src/widgets/NextClassWidget';
 import BottomSheet, {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
@@ -87,6 +88,13 @@ export default function HomeScreen() {
       const result = await edtService.getNextEvent(adeid ?? 'demo');
       setNextEvent(result);
       setNextEventLoaded(true);
+      try {
+        const courses = await edtService.getNextTwoCourses(adeid ?? 'demo');
+        NextClassWidgetInstance.updateSnapshot({ courses });
+      } catch {
+        // Widget non disponible en mode dev ou non configuré
+        console.warn('NextClassWidget: Impossible de récupérer les prochains cours pour le widget');
+      }
     }
   }
 
