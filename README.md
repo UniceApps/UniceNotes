@@ -39,26 +39,15 @@ Certains composants intégrés peuvent être sous des licences différentes, con
 
 ## 🔒 Confidentialité
 
-> [!TIP]
-> La version 3.0.0 de l'application est uniquement locale. Toutes les données restent sur le téléphone. Ce paragraphe ne s'applique donc pas.
-
 L'application UniceNotes ne collecte **aucune** donnée personnelle. 
 \
 L'application UniceNotes utilise :
-- Le nom d'utilisateur 
-- Le nom complet
-- La photo de profil
-- Les notes (avec les moyennes)
+- Le nom d'utilisateur / numéro étudiant
 - L'emploi du temps
-- Les absences, retards et exclusions
-
 
 avec votre consentement (en vous connectant sur l'application et en acceptant les conditions d'utilisation) afin de vous fournir une expérience utilisateur optimale.
-Ces données sont récupérées depuis le site web Intracursus ou ADE de l'Université Côte d'Azur et ne quittent pas votre appareil.
 \
-Les données de connexion sont **stockées sur votre appareil** et ne sont pas stockées sur un serveur (Seuls vos identifiants sont utilisés sur ```login.univ-cotedazur.fr``` afin de vous identifier et créer un token). 
-\
-Les données de connexion (critiques) sont stockées dans un format **crypté** dans la Keychain d'Apple / Keystore d'Android et ne peuvent être déchiffrées que par l'utilisateur lorsqu'il s'identifie grâce à un code ou grâce à une option de connxion biométrique. [Voir l'API SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
+Les données critiques sont stockées dans un format **crypté** dans la Keychain d'Apple / Keystore d'Android et ne peuvent être déchiffrées que par l'utilisateur lorsqu'il s'identifie grâce à un code ou grâce à une option de connxion biométrique. [Voir l'API SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
 \
 Les données non-critiques sont stockées dans un stockage persistant nommé AsyncStorage de React Native. [Voir l'API AsyncStorage](https://react-native-async-storage.github.io/async-storage/docs/usage/)
 
@@ -91,8 +80,6 @@ eas login
 eas build --platform all
 ```
 
-Si le code source de l'application est modifié, la version compilée de celle-ci ne fonctionnera plus sur les serveurs officiels dû à des mécanismes de protection intégrés à l'API pour éviter les abus. Toute tentative de contournement de ces mécanismes est interdite et peut conduire à des bannissements automatiques d'adresses IP.
-
 ## 📄 Légal
 
 The Apple logo® and the App Store® are trademarks of Apple Inc., registered in the U.S. and other countries. 
@@ -106,7 +93,7 @@ Toute ressemblance avec le nom de l'application, le logo et l'interface ne saura
 
 Toute utilisation de l'application UniceNotes est sous la seule responsabilité de l'utilisateur.
 
-Cette application agit comme un navigateur internet où l'utilisateur effectue des pseudos-requêtes (GET HTTPS) sur l'intranet de l'Université Côte d'Azur. Cette application ne contient aucun code malveillant et ne vise pas à nuire à l'Université Côte d'Azur ou à ses utilisateurs. Les éventuelles suspiscions de "fuites de données" sont infondées dûes à la nature de l'application (les données sont stockées sur l'appareil de l'utilisateur et non sur des serveurs tiers). Plus d'infos : [Voir la documentation](https://github.com/UniceApps/UniceAPIDocumentation).
+Cette application agit comme un client internet où l'utilisateur effectue des pseudos-requêtes (GET HTTPS) sur l'intranet de l'Université Côte d'Azur à travers des API exposées. Cette application ne contient aucun code malveillant et ne vise pas à nuire à l'Université Côte d'Azur ou à ses utilisateurs. Les éventuelles suspiscions de "fuites de données" sont infondées dûes à la nature de l'application (les données sont stockées sur l'appareil de l'utilisateur et non sur des serveurs tiers).
 
 ## 🤝 Conditions d'utilisation :
 [Consulter les conditions d'utilisation](https://notes.metrixmedia.fr/eula)

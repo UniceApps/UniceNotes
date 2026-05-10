@@ -1,0 +1,29 @@
+name: Create Production Builds
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build_android:
+    name: Build Android App
+    type: build
+    params:
+      platform: android
+  build_ios:
+    name: Build iOS App
+    type: build
+    params:
+      platform: ios
+  submit_android_build:
+    name: Submit Android Build
+    needs: [build_android]
+    type: submit
+    params:
+      build_id: ${{ needs.build_android.outputs.build_id }}
+  submit_ios_build:
+    name: Submit iOS Build
+    needs: [build_ios]
+    type: submit
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
