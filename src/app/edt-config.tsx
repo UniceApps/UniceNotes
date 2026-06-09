@@ -4,6 +4,7 @@ import {
   Text,
   Appbar,
   Card,
+  Divider,
   Avatar,
   TextInput,
   SegmentedButtons,
@@ -77,42 +78,49 @@ export default function EDTConfigScreen() {
         value={mode}
         onValueChange={setMode}
         buttons={[
-          { value: '0', label: 'Individuel', showSelectedCheck: true },
-          { value: '1', label: 'Cursus', showSelectedCheck: true },
+          { value: '0', label: 'Individuel', icon: 'account', showSelectedCheck: true },
+          { value: '1', label: 'Cursus', icon: 'account-group', showSelectedCheck: true },
         ]}
       />
 
       {mode === '0' ? (
         <ScrollView style={{ paddingLeft: 25, paddingRight: 25, marginBottom: 16 }}>
-          <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleMedium">
+          <Text style={{ marginTop: 8, marginBottom: 8, textAlign: 'left' }} variant="titleMedium">
             EDT affiché : {adeid ?? 'Non configuré'}
           </Text>
-          <Text style={{ marginTop: 16, textAlign: 'left' }} variant="labelLarge">
-            Entrez votre numéro étudiant pour configurer l&apos;emploi du temps affiché :
-          </Text>
-          <TextInput
-            style={{ marginTop: 8, marginBottom: 8 }}
-            mode="outlined"
-            keyboardType="number-pad"
-            maxLength={12}
-            label="Numéro étudiant"
-            value={tempAde}
-            onChangeText={setTempAde}
-          />
-          <Button
-            mode="contained-tonal"
-            icon="content-save"
-            onPress={() => selectCursus(tempAde, true)}
-            style={{ marginTop: 8 }}>
-            Sauvegarder
-          </Button>
+
+          <Card style={{ backgroundColor: theme.colors.surface }}>
+            <Card.Content>
+              <Text style={{ textAlign: 'left' }} variant="labelLarge">
+                Entrez votre numéro étudiant pour configurer l&apos;emploi du temps affiché :
+              </Text>
+              <TextInput
+                style={{ marginTop: 8, marginBottom: 8 }}
+                mode="outlined"
+                keyboardType="number-pad"
+                maxLength={12}
+                label="Numéro étudiant"
+                value={tempAde}
+                onChangeText={setTempAde}
+              />
+              <Button
+                mode="contained-tonal"
+                icon="content-save"
+                onPress={() => selectCursus(tempAde, true)}
+                style={{ marginTop: 8 }}>
+                Sauvegarder
+              </Button>
+            </Card.Content>
+          </Card>
           <Card style={{ marginTop: 16 }}>
             <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} title />
             <Card.Content>
-              <Text style={{ textAlign: 'left' }} variant="bodyLarge">
-                Votre numéro étudiant est celui indiqué sur votre carte étudiant.
-                L&apos;emploi du temps individuel comprend les cours de votre cursus (TD, ...) ainsi que
-                les cours de groupes dont vous faites partie (TP, ...).
+              <Text style={{ textAlign: 'left' }} variant="bodyMedium">
+                Votre numéro étudiant est celui indiqué sur votre carte étudiant. Il commence souvent par 22.
+              </Text>
+              <Text style={{ marginTop: 8, textAlign: 'left' }} variant="bodyMedium">
+                L&apos;emploi du temps individuel comprend les cours de votre cursus ainsi que
+                les cours de groupes dont vous faites partie.
               </Text>
             </Card.Content>
           </Card>
@@ -122,12 +130,15 @@ export default function EDTConfigScreen() {
           <Text style={{ marginLeft: 25, marginRight: 25, marginTop: 8, textAlign: 'left' }} variant="titleMedium">
             EDT affiché : {adeid ?? 'Non configuré'}
           </Text>
+
+          <Divider style={{ marginLeft: 20, marginRight: 20, marginTop: 8, height: 1 }} />
+
           <Searchbar
             autoCorrect={false}
             autoCapitalize="none"
             placeholder="Rechercher un cursus"
             value={searchValue}
-            style={{ marginLeft: 20, marginRight: 20, marginTop: 8, marginBottom: 8 }}
+            style={{ marginLeft: 20, marginRight: 20, marginTop: 16, marginBottom: 8 }}
             onChangeText={searchCursus}
             loading={loading}
             maxLength={32}
@@ -151,9 +162,9 @@ export default function EDTConfigScreen() {
             <Card>
               <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} title />
               <Card.Content>
-                <Text style={{ textAlign: 'left' }} variant="bodyLarge">
-                  L&apos;emploi du temps par cursus comprend les cours du cursus sélectionné (TD, ...) ainsi
-                  que tous les cours de groupes, y compris ceux dont vous ne faites pas partie (TP, ...).
+                <Text style={{ textAlign: 'left' }} variant="bodyMedium">
+                  L&apos;emploi du temps par cursus comprend les cours du cursus sélectionné ainsi
+                  que tous les cours de groupes, y compris ceux dont vous ne faites pas partie.
                 </Text>
               </Card.Content>
             </Card>
