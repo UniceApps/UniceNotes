@@ -1,4 +1,4 @@
-import { APP_VERSION, RELEASE_NOTES } from '@/src/constants/config';
+import { RELEASE_NOTES } from '@/src/constants/config';
 import { getChoosenTheme } from '@/src/constants/theme';
 import { useApp } from '@/src/context/AppContext';
 import { edtService } from '@/src/services/edt';
@@ -13,7 +13,7 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import {
   ActivityIndicator,
   Avatar,
@@ -28,6 +28,20 @@ import {
 } from 'react-native-paper';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { saveAsync } from '../utils/storage';
+
+const WELCOME_MESSAGES = [
+  'Passe une excellente journée !',
+  'Quoi de prévu aujourd\'hui ? :)',
+  'Prêt pour une bonne session de cours ?',
+  'On avance, un cours a la fois.',
+  'Bon courage pour la journée !',
+  'Let\'s go, on s\'organise bien aujourd\'hui.',
+  'Petit check rapide de ton EDT ?'
+];
+
+function getRandomWelcomeMessage() {
+  return WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)];
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -44,6 +58,7 @@ export default function HomeScreen() {
   const [nextEventLoaded, setNextEventLoaded] = useState(false);
   const [infoTitle, setInfoTitle] = useState('Informations');
   const [infoSubtitle, setInfoSubtitle] = useState('');
+  const [welcomeMessage] = useState(getRandomWelcomeMessage);
 
   const bottomSheetInfoRef = useRef<BottomSheet>(null);
 
@@ -160,9 +175,8 @@ export default function HomeScreen() {
         <Text style={{ textAlign: 'left' }} variant="displayLarge">
           Salut ! 👋
         </Text>
-        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">
-          Bienvenue sur UniceNotes.{'\n'}
-          EDT configuré : {adeid ?? 'Non configuré'}
+        <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="headlineSmall">
+          {welcomeMessage}
         </Text>
 
         <Card style={{ marginBottom: 8 }} disabled={!selectable} onPress={getMyCal}>
@@ -235,9 +249,6 @@ export default function HomeScreen() {
           </Tooltip>
         </View>
 
-        <Text style={{ textAlign: 'center' }} variant="titleSmall">
-          Version {APP_VERSION}
-        </Text>
         <ActivityIndicator
           style={{ marginTop: 8, marginBottom: insets.bottom }}
           animating={loading}

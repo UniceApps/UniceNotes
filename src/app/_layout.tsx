@@ -41,7 +41,7 @@ export default function RootLayout() {
               <Stack.Screen name="show-edt" />
               <Stack.Screen
                 name="show-ent"
-                options={{ presentation: 'modal' }}
+                options={{ presentation: 'modal', gestureEnabled: true }}
               />
               <Stack.Screen name="settings" />
               <Stack.Screen
