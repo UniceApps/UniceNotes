@@ -4,6 +4,7 @@ import { File, Paths } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CalendarEvent } from '../types';
 import { setHapticsEnabled } from '../utils/haptics';
+import { router } from 'expo-router';
 
 interface AppContextValue {
   adeid: string | null;
@@ -65,7 +66,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ]);
 
     const calFile = new File(Paths.document, 'calendar.json');
+    if (calFile.exists) {
     calFile.delete();
+    }
 
     await AsyncStorage.clear();
 
@@ -73,6 +76,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setHapticsOn(true);
     setCalendar([]);
     setUpdateModalShown(false);
+    router.replace('/oobe'); // redirect to onboarding after data wipe
   }
 
   return (

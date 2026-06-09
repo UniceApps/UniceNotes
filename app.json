@@ -136,6 +136,18 @@
             }
           ]
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./src/assets/ios/default.png",
+          "dark": {
+            "image": "./src/assets/ios/dark.png",
+            "backgroundColor": "#232323"
+          },
+          "imageWidth": 200
+        }
       ]
     ],
     "experiments": {

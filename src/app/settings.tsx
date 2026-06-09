@@ -176,11 +176,10 @@ export default function ShowSettingsScreen() {
           onPress={() =>
             clearAllData().then(() => {
               haptics('success');
-              throw new Error('Data deletion forced');
             })
           }
         >
-          Forcer la suppression de données
+          Supprimer mes données de l'application
         </Button>
 
         {IS_BETA && (
