@@ -75,7 +75,7 @@ export default function HomeScreen() {
     if (action === 'info') {
       setInfoTitle('Informations');
       setInfoSubtitle(
-        "Ce n'est pas votre emploi du temps ? Vous pouvez changer l'EDT sélectionné dans Config. EDT.",
+        "Ce n'est pas votre emploi du temps ? Vous pouvez changer l'EDT sélectionné en cliquant sur l'icône de calendrier en haut à droite de l'écran d'accueil.",
       );
     }
     bottomSheetInfoRef.current?.expand();
@@ -142,9 +142,16 @@ export default function HomeScreen() {
             source={require('../assets/white.png')}
           />
           <TouchableRipple
-            onPress={() => router.push('/settings')}
+            onPress={() => router.push('/edt-config')}
             rippleColor="rgba(0, 0, 0, 0)"
             style={{ marginLeft: 'auto', marginTop: insets.top * 2, marginBottom: 50 }}
+          >
+            <Avatar.Icon size={48} icon="calendar-edit" />
+          </TouchableRipple>
+          <TouchableRipple
+            onPress={() => router.push('/settings')}
+            rippleColor="rgba(0, 0, 0, 0)"
+            style={{ marginLeft: 8, marginTop: insets.top * 2, marginBottom: 50 }}
           >
             <Avatar.Icon size={48} icon="cog" />
           </TouchableRipple>
@@ -189,15 +196,6 @@ export default function HomeScreen() {
           </Card.Actions>
         </Card>
 
-        <Chip
-          style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row' }}
-          textStyle={{ paddingVertical: 8 }}
-          disabled={!selectable}
-          onPress={() => router.push('/edt-config')}
-          icon="calendar-edit"
-        >
-          Configuration EDT
-        </Chip>
         <Chip
           style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row' }}
           textStyle={{ paddingVertical: 8 }}
