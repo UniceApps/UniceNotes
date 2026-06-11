@@ -14,7 +14,7 @@ import {
 } from 'react-native-paper';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/src/context/AppContext';
-import { getChoosenTheme } from '@/src/constants/theme';
+import { useChoosenTheme } from '@/src/constants/theme';
 import { haptics } from '@/src/utils/haptics';
 import { saveSecure } from '@/src/utils/storage';
 import { stringToColour } from '@/src/utils/color';
@@ -23,7 +23,7 @@ import type { SearchResult } from '@/src/types';
 export default function EDTConfigScreen() {
   const router = useRouter();
   const { adeid, setAdeid } = useApp();
-  const theme = getChoosenTheme();
+  const theme = useChoosenTheme();
 
   const [mode, setMode] = useState(adeid?.includes('-VET') ? '1' : '0');
   const [tempAde, setTempAde] = useState('');

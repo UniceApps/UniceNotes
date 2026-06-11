@@ -17,7 +17,7 @@ import BottomSheet, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/src/context/AppContext';
-import { getChoosenTheme, getCalendarTheme } from '@/src/constants/theme';
+import { useChoosenTheme, getCalendarTheme } from '@/src/constants/theme';
 import { haptics } from '@/src/utils/haptics';
 import { getCalendarFromCache } from '@/src/utils/calendar';
 
@@ -29,7 +29,7 @@ const MONTHS = [
 export default function ShowEDTScreen() {
   const router = useRouter();
   const { calendar, setCalendar, adeid } = useApp();
-  const theme = getChoosenTheme();
+  const theme = useChoosenTheme();
   const insets = useSafeAreaInsets();
 
   const [view, setView] = useState(3);
@@ -135,7 +135,7 @@ export default function ShowEDTScreen() {
     bottomSheetInfoRef.current?.expand();
   }
 
-  const calTheme = getCalendarTheme(theme as Parameters<typeof getCalendarTheme>[0]);
+  const calTheme = getCalendarTheme(theme);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center' }}>

@@ -6,12 +6,12 @@ import * as Font from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider } from '@/src/context/AppContext';
-import { getChoosenTheme, updateFontConfig } from '@/src/constants/theme';
+import { useChoosenTheme, updateFontConfig } from '@/src/constants/theme';
 import 'react-native-reanimated';
 
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
-  const [theme, setTheme] = useState(getChoosenTheme());
+  const theme = useChoosenTheme();
 
   useEffect(() => {
     async function loadFonts() {
@@ -19,7 +19,6 @@ export default function RootLayout() {
         Bahnschrift: require('../assets/bahnschrift.ttf'),
       });
       updateFontConfig();
-      setTheme(getChoosenTheme());
       setIsReady(true);
     }
 

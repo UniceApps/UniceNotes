@@ -1,5 +1,5 @@
-import { Appearance } from 'react-native';
-import { configureFonts } from 'react-native-paper';
+import { useColorScheme } from 'react-native';
+import { configureFonts, MD3Theme } from 'react-native-paper';
 
 export const lightTheme = {
   dark: false,
@@ -96,22 +96,24 @@ export const darkTheme = {
   },
 };
 
-let _theme: typeof lightTheme | typeof darkTheme =
-  Appearance.getColorScheme() === 'dark' ? darkTheme : lightTheme;
+export type AppTheme = (typeof lightTheme | typeof darkTheme) & {
+  fonts?: MD3Theme['fonts'];
+};
+
+let _fonts: MD3Theme['fonts'] | null = null;
 
 export function updateFontConfig(): void {
-  const fontConfig = { fontFamily: 'Bahnschrift' };
-  _theme = {
-    ..._theme,
-    fonts: configureFonts({ config: fontConfig }),
-  } as typeof _theme;
+  _fonts = configureFonts({ config: { fontFamily: 'Bahnschrift' } });
 }
 
-export function getChoosenTheme(): typeof lightTheme | typeof darkTheme {
-  return _theme;
+// hook: re-renders the component when the system switches between light and dark
+export function useChoosenTheme(): AppTheme {
+  const scheme = useColorScheme();
+  const base = scheme === 'dark' ? darkTheme : lightTheme;
+  return _fonts ? { ...base, fonts: _fonts } : base;
 }
 
-export function getCalendarTheme(theme: typeof lightTheme) {
+export function getCalendarTheme(theme: AppTheme) {
   return {
     colors: {
       primary: theme.colors.primary,

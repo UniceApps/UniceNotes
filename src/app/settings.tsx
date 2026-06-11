@@ -12,7 +12,7 @@ import {
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/src/context/AppContext';
-import { getChoosenTheme } from '@/src/constants/theme';
+import { useChoosenTheme } from '@/src/constants/theme';
 import { APP_VERSION, IS_BETA } from '@/src/constants/config';
 import { haptics } from '@/src/utils/haptics';
 import { saveAsync } from '@/src/utils/storage';
@@ -21,7 +21,7 @@ import { handleURL } from '@/src/utils/api';
 export default function ShowSettingsScreen() {
   const router = useRouter();
   const { hapticsOn, setHapticsOn, clearAllData } = useApp();
-  const theme = getChoosenTheme();
+  const theme = useChoosenTheme();
 
   const hash = Constants.expoConfig?.extra?.github_hash as string | undefined;
 

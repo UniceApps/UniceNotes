@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CalendarEvent } from '../types';
 import { setHapticsEnabled } from '../utils/haptics';
 import { router } from 'expo-router';
+import { APP_VERSION } from '../constants/config';
 
 interface AppContextValue {
   adeid: string | null;
@@ -15,7 +16,7 @@ interface AppContextValue {
   setCalendar: (v: CalendarEvent[]) => void;
   clearAllData: () => Promise<void>;
   isInitialized: boolean;
-  updateModalShown: boolean; // boolean to track if the update modal has been shown
+  updateModalShown: boolean; // true if release notes were already shown for the current APP_VERSION
   setUpdateModalShown: (v: boolean) => void;
 }
 
@@ -33,10 +34,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function loadPersistedData() {
-    const [storedAdeid, storedHaptics, storedUpdateModalShown] = await Promise.all([
+    const [storedAdeid, storedHaptics, releaseNotesVersion] = await Promise.all([
       SecureStore.getItemAsync('adeid'),
       AsyncStorage.getItem('haptics'),
-      AsyncStorage.getItem('updateModalShown'),
+      AsyncStorage.getItem('releaseNotesVersion'),
     ]);
 
     if (storedAdeid) setAdeid(storedAdeid);
@@ -46,9 +47,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setHapticsEnabled(h);
     }
 
-    if (storedUpdateModalShown !== null) {
-      setUpdateModalShown(storedUpdateModalShown === 'true');
-    }
+    // release notes already shown only if they were shown for this exact version
+    setUpdateModalShown(releaseNotesVersion === APP_VERSION);
+    // legacy boolean flag from versions <= 3.1.0, no longer used
+    AsyncStorage.removeItem('updateModalShown');
 
     setIsInitialized(true);
   }
@@ -62,7 +64,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await Promise.all([
       SecureStore.deleteItemAsync('adeid'),
       AsyncStorage.removeItem('haptics'),
-      AsyncStorage.removeItem('updateModalShown'),
+      AsyncStorage.removeItem('releaseNotesVersion'),
     ]);
 
     const calFile = new File(Paths.document, 'calendar.json');

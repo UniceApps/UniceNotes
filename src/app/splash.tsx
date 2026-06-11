@@ -17,7 +17,7 @@ import BottomSheet, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/src/context/AppContext';
-import { getChoosenTheme } from '@/src/constants/theme';
+import { useChoosenTheme } from '@/src/constants/theme';
 import { getCalendarFromCache } from '@/src/utils/calendar';
 
 export default function SplashScreen() {
@@ -28,7 +28,7 @@ export default function SplashScreen() {
   const [titleError, setTitleError] = useState('Erreur');
   const [subtitleError, setSubtitleError] = useState('');
   const insets = useSafeAreaInsets();
-  const theme = getChoosenTheme();
+  const theme = useChoosenTheme();
 
   const bottomSheetErrorRef = useRef<BottomSheet>(null);
 
