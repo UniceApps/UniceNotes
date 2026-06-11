@@ -9,11 +9,11 @@ import {
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { getChoosenTheme } from '@/src/constants/theme';
+import { useChoosenTheme } from '@/src/constants/theme';
 
 export default function ServerConfigScreen() {
   const router = useRouter();
-  const theme = getChoosenTheme();
+  const theme = useChoosenTheme();
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(false);

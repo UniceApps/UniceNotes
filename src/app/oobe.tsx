@@ -14,7 +14,7 @@ import Animated, {
 import LottieView from 'lottie-react-native';
 import { useRouter } from 'expo-router';
 import { useApp } from '@/src/context/AppContext';
-import { getChoosenTheme } from '@/src/constants/theme';
+import { useChoosenTheme } from '@/src/constants/theme';
 import { haptics } from '@/src/utils/haptics';
 import { saveSecure } from '@/src/utils/storage';
 import { handleURL } from '@/src/utils/api';
@@ -22,7 +22,7 @@ import { handleURL } from '@/src/utils/api';
 export default function OOBEScreen() {
   const router = useRouter();
   const { setAdeid } = useApp();
-  const theme = getChoosenTheme();
+  const theme = useChoosenTheme();
   const insets = useSafeAreaInsets();
 
   const rotation = useSharedValue(0);

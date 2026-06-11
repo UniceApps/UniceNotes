@@ -4,7 +4,7 @@ import { Text, Appbar, Card, Avatar, Chip, Tooltip } from 'react-native-paper';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { getChoosenTheme } from '@/src/constants/theme';
+import { useChoosenTheme } from '@/src/constants/theme';
 import { haptics } from '@/src/utils/haptics';
 
 let setAppIcon: (name: string) => void;
@@ -21,7 +21,7 @@ if (!__DEV__) {
 
 export default function IconConfigScreen() {
   const router = useRouter();
-  const theme = getChoosenTheme();
+  const theme = useChoosenTheme();
 
   function changeIconHome(value: string) {
     haptics('medium');

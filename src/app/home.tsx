@@ -1,5 +1,5 @@
-import { RELEASE_NOTES } from '@/src/constants/config';
-import { getChoosenTheme } from '@/src/constants/theme';
+import { APP_VERSION, RELEASE_NOTES } from '@/src/constants/config';
+import { useChoosenTheme } from '@/src/constants/theme';
 import { useApp } from '@/src/context/AppContext';
 import { edtService } from '@/src/services/edt';
 import type { NextEvent } from '@/src/types';
@@ -46,7 +46,7 @@ function getRandomWelcomeMessage() {
 export default function HomeScreen() {
   const router = useRouter();
   const { adeid, setCalendar, updateModalShown, setUpdateModalShown } = useApp();
-  const theme = getChoosenTheme();
+  const theme = useChoosenTheme();
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(false);
@@ -140,7 +140,7 @@ export default function HomeScreen() {
     await new Promise(resolve => setTimeout(resolve, 1500));
     setInfoTitle(RELEASE_NOTES.info);
     setInfoSubtitle(RELEASE_NOTES.subtitle);
-    saveAsync('updateModalShown', 'true');
+    saveAsync('releaseNotesVersion', APP_VERSION);
     setUpdateModalShown(true);
     bottomSheetInfoRef.current?.expand();
   }
@@ -214,7 +214,7 @@ export default function HomeScreen() {
           style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row' }}
           textStyle={{ paddingVertical: 8 }}
           disabled={!selectable}
-          icon="abacus"
+          icon="calculator-variant-outline"
           onPress={() => handleURL('https://sco.polytech.unice.fr/1/mobile.etudiant')}
         >
           PronoteCampus
@@ -226,7 +226,7 @@ export default function HomeScreen() {
           onPress={() => router.push('/show-ent')}
           icon="briefcase-variant"
         >
-          Espace Numérique de Travail
+          Intranet Étudiant (ENT)
         </Chip>
 
         <Divider style={{ marginBottom: 8 }} />

@@ -1,4 +1,4 @@
-import { getChoosenTheme } from '@/src/constants/theme';
+import { useChoosenTheme } from '@/src/constants/theme';
 import { handleURL } from '@/src/utils/api';
 import { useRouter } from 'expo-router';
 import React from 'react';
@@ -73,7 +73,7 @@ const apps = [
 
 export default function ShowENTScreen() {
   const router = useRouter();
-  const theme = getChoosenTheme();
+  const theme = useChoosenTheme();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
