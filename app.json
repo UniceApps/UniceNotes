@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "3.1.0",
+    "version": "3.1.1",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -32,14 +32,14 @@
         "CADisableMinimumFrameDurationOnPhone": true
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "13.1.0",
+      "buildNumber": "13.1.1",
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 37,
+      "versionCode": 38,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/android/foreground.png",
         "monochromeImage": "./src/assets/android/monochrome.png",
@@ -60,61 +60,117 @@
       "expo-router",
       "@bugsnag/plugin-expo-eas-sourcemaps",
       [
-        "@hugofnm/expo-dynamic-app-icon",
-        {
-          "unicenotes": {
-            "image": "./src/assets/icon.png",
-            "prerendered": false
+        "expo-alternate-app-icons",
+        [
+          {
+            "name": "UniceNotes",
+            "ios": {
+              "light": "./src/assets/ios/default.png",
+              "dark": "./src/assets/ios/dark.png",
+              "tinted": "./src/assets/ios/tinteddark.png"
+            },
+            "android": {
+              "foregroundImage": "./src/assets/android/foreground.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "old": {
-            "image": "./src/assets/icons/icon_old.png",
-            "prerendered": false
+          {
+            "name": "Old",
+            "ios": "./src/assets/icons/icon_old.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_old.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "magnet": {
-            "image": "./src/assets/icons/icon_magnet.png",
-            "prerendered": false
+          {
+            "name": "Magnet",
+            "ios": "./src/assets/icons/icon_magnet.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_magnet.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "ardente": {
-            "image": "./src/assets/icons/icon_ardente.png",
-            "prerendered": false
+          {
+            "name": "Ardente",
+            "ios": "./src/assets/icons/icon_ardente.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_ardente.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "beach": {
-            "image": "./src/assets/icons/icon_beach.png",
-            "prerendered": false
+          {
+            "name": "Beach",
+            "ios": "./src/assets/icons/icon_beach.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_beach.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "melted": {
-            "image": "./src/assets/icons/icon_melted.png",
-            "prerendered": false
+          {
+            "name": "Melted",
+            "ios": "./src/assets/icons/icon_melted.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_melted.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "zoomed": {
-            "image": "./src/assets/icons/icon_zoomed.png",
-            "prerendered": false
+          {
+            "name": "Zoomed",
+            "ios": "./src/assets/icons/icon_zoomed.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_zoomed.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "monaco": {
-            "image": "./src/assets/icons/icon_monaco.png",
-            "prerendered": false
+          {
+            "name": "Monaco",
+            "ios": "./src/assets/icons/icon_monaco.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_monaco.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "christmas2023": {
-            "image": "./src/assets/icons/icon_christmas2023.png",
-            "prerendered": false
+          {
+            "name": "Christmas2023",
+            "ios": "./src/assets/icons/icon_christmas2023.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_christmas2023.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "france": {
-            "image": "./src/assets/icons/icon_france.png",
-            "prerendered": false
+          {
+            "name": "France",
+            "ios": "./src/assets/icons/icon_france.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_france.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "glitched": {
-            "image": "./src/assets/icons/icon_glitched.png",
-            "prerendered": false
+          {
+            "name": "Glitched",
+            "ios": "./src/assets/icons/icon_glitched.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_glitched.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "vaporwave": {
-            "image": "./src/assets/icons/icon_vaporwave.png",
-            "prerendered": false
+          {
+            "name": "Vaporwave",
+            "ios": "./src/assets/icons/icon_vaporwave.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_vaporwave.png",
+              "backgroundColor": "#FFFFFF"
+            }
           },
-          "ios6": {
-            "image": "./src/assets/icons/icon_ios6.png",
-            "prerendered": true
+          {
+            "name": "Ios6",
+            "ios": "./src/assets/icons/icon_ios6.png",
+            "android": {
+              "foregroundImage": "./src/assets/icons/icon_ios6.png",
+              "backgroundColor": "#FFFFFF"
+            }
           }
-        }
+        ]
       ],
       "expo-font",
       "expo-secure-store",
