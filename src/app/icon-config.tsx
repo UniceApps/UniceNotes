@@ -6,27 +6,19 @@ import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useChoosenTheme } from '@/src/constants/theme';
 import { haptics } from '@/src/utils/haptics';
-
-let setAppIcon: (name: string) => void;
-if (!__DEV__) {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    setAppIcon = require('@hugofnm/expo-dynamic-app-icon').setAppIcon;
-  } catch {
-    setAppIcon = () => {};
-  }
-} else {
-  setAppIcon = (name: string) => console.log('Icon changed to:', name);
-}
+import { setAlternateAppIcon, resetAppIcon } from 'expo-alternate-app-icons';
 
 export default function IconConfigScreen() {
   const router = useRouter();
   const theme = useChoosenTheme();
 
-  function changeIconHome(value: string) {
+  async function changeIconHome(value: string) {
     haptics('medium');
-    if (!__DEV__) {
-      setAppIcon(value);
+    try {
+      console.log('Changing app icon to:', value);
+      await setAlternateAppIcon(value);
+    } catch (e) {
+      console.error('Error changing app icon:', e);
     }
   }
 
@@ -56,7 +48,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icon.png')} />}
-          onPress={() => changeIconHome('unicenotes')}
+          onPress={() => resetAppIcon()}
         >
           Par défaut
         </Chip>
@@ -64,7 +56,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_old.png')} />}
-          onPress={() => changeIconHome('old')}
+          onPress={() => changeIconHome('Old')}
         >
           Old Style
         </Chip>
@@ -72,7 +64,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_magnet.png')} />}
-          onPress={() => changeIconHome('magnet')}
+          onPress={() => changeIconHome('Magnet')}
         >
           Magnet
         </Chip>
@@ -80,7 +72,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_ardente.png')} />}
-          onPress={() => changeIconHome('ardente')}
+          onPress={() => changeIconHome('Ardente')}
         >
           Ardente
         </Chip>
@@ -88,7 +80,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_beach.png')} />}
-          onPress={() => changeIconHome('beach')}
+          onPress={() => changeIconHome('Beach')}
         >
           Beach
         </Chip>
@@ -96,7 +88,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_monaco.png')} />}
-          onPress={() => changeIconHome('monaco')}
+          onPress={() => changeIconHome('Monaco')}
         >
           Monaco
         </Chip>
@@ -104,7 +96,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_melted.png')} />}
-          onPress={() => changeIconHome('melted')}
+          onPress={() => changeIconHome('Melted')}
         >
           Melted
         </Chip>
@@ -112,7 +104,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_zoomed.png')} />}
-          onPress={() => changeIconHome('zoomed')}
+          onPress={() => changeIconHome('Zoomed')}
         >
           Zoomed
         </Chip>
@@ -124,7 +116,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_glitched.png')} />}
-          onPress={() => changeIconHome('glitched')}
+          onPress={() => changeIconHome('Glitched')}
         >
           Glitched (par @f.eli0tt)
         </Chip>
@@ -132,7 +124,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_vaporwave.png')} />}
-          onPress={() => changeIconHome('vaporwave')}
+          onPress={() => changeIconHome('Vaporwave')}
         >
           Vaporwave (par @nathan_jaffres)
         </Chip>
@@ -140,7 +132,7 @@ export default function IconConfigScreen() {
           style={{ ...chipStyle, borderRadius: 0, marginTop: 1 }}
           textStyle={{ paddingVertical: 8 }}
           avatar={<Image style={{ width: 24, height: 24 }} source={require('../assets/icons/icon_ios6.png')} />}
-          onPress={() => changeIconHome('ios6')}
+          onPress={() => changeIconHome('Ios6')}
         >
           iOS 6 (par @ds.marius)
         </Chip>

@@ -249,6 +249,10 @@ export default function HomeScreen() {
           </Tooltip>
         </View>
 
+        <Text style={{ textAlign: 'center' }} variant="titleSmall">
+          {adeid ? `Connecté en tant que ${adeid}` : "Non connecté"}
+        </Text>
+
         <ActivityIndicator
           style={{ marginTop: 8, marginBottom: insets.bottom }}
           animating={loading}
