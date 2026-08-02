@@ -11,7 +11,7 @@ const apps = [
     subtitle: 'Emails',
     icon: 'email-outline',
     image: require('../assets/ent/outlook.png'),
-    url: 'https://outlook.office.com/owa/?realm=etu.unice.fr&exsvurl=1&ll-cc=1036&modurl=0',
+    url: 'https://outlook.office.com/owa/?realm=etu.univ-cotedazur.fr&exsvurl=1&ll-cc=1036&modurl=0',
   },
   {
     label: 'Moodle',

@@ -28,7 +28,7 @@ export default function IconConfigScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated statusBarHeight={Platform.OS === 'ios' ? 0 : undefined}>
         <Tooltip title="Retour">
           <Appbar.BackAction onPress={() => router.back()} />
