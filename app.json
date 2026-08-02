@@ -56,6 +56,9 @@
     "owner": "hugofnm",
     "plugins": [
       "expo-router",
+      "expo-image",
+      "expo-sharing",
+      "expo-status-bar",
       [
         "expo-alternate-app-icons",
         [
