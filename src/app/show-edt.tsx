@@ -124,7 +124,6 @@ export default function ShowEDTScreen() {
     const stopTime = new Date(eventItem._internal.endUnix);
     const durationMs = eventItem._internal.duration * 60 * 1000;
     const durationTime = new Date(durationMs);
-    console.log(eventItem.subtitle);
 
     const res =
       eventItem.subtitle +
