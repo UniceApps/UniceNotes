@@ -157,7 +157,7 @@ export default function IconConfigScreen() {
         </Chip>
 
         <Card style={{ marginTop: 16 }}>
-          <Card.Title left={(props) => <Avatar.Icon {...props} icon="flower" />} title />
+          <Card.Title left={(props) => <Avatar.Icon {...props} icon="flower" />} title="" />
           <Card.Content>
             <Text style={{ textAlign: 'left' }} variant="bodyMedium">
               Vous trouvez pas &quot;l&apos;icône&quot; qu&apos;il vous faut ? Envoyez-nous vos oeuvres d&apos;art à l&apos;adresse :{' '}

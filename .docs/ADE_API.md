@@ -77,9 +77,9 @@ Exemple d’une ressource :
 ```
 
 ## GETEVENTS
-Récupérer les évennements de la journée
+Récupérer les événements de la journée
 
-`https://adresse-ade/jsp/webapi?sessionId=xxxxxxxxxxxxx&function=getEvents&date=05/02/2023&detail=0``
+`https://adresse-ade/jsp/webapi?sessionId=xxxxxxxxxxxxx&function=getEvents&date=05/02/2023&detail=0`
 
 ```
 Params :
