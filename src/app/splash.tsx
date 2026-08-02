@@ -40,7 +40,7 @@ export default function SplashScreen() {
         enableTouchThrough={false}
         appearsOnIndex={0}
         disappearsOnIndex={-1}
-        style={[{ backgroundColor: 'rgba(0, 0, 0, 1)' }, StyleSheet.absoluteFillObject]}
+        style={[{ backgroundColor: 'rgba(0, 0, 0, 1)' }, StyleSheet.absoluteFill]}
       />
     ),
     [],

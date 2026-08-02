@@ -4,7 +4,6 @@ import {
   Text,
   Appbar,
   Card,
-  Divider,
   Avatar,
   TextInput,
   SegmentedButtons,

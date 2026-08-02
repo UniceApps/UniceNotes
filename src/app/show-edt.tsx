@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
+
 import {
   Text,
   Button,
@@ -8,6 +9,7 @@ import {
   Menu,
   Tooltip,
 } from 'react-native-paper';
+
 import { CalendarBody, CalendarContainer, CalendarHeader } from '@howljs/calendar-kit';
 import BottomSheet, {
   BottomSheetView,
@@ -16,6 +18,7 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+
 import { useApp } from '@/src/context/AppContext';
 import { useChoosenTheme, getCalendarTheme } from '@/src/constants/theme';
 import { haptics } from '@/src/utils/haptics';
@@ -40,7 +43,7 @@ export default function ShowEDTScreen() {
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth()]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  const calendarRef = useRef<React.ElementRef<typeof CalendarContainer>>(null);
+  const calendarRef = useRef<React.ComponentRef<typeof CalendarContainer>>(null);
   const bottomSheetInfoRef = useRef<BottomSheet>(null);
 
   const renderBackdrop = useCallback(
@@ -51,7 +54,7 @@ export default function ShowEDTScreen() {
         enableTouchThrough={false}
         appearsOnIndex={0}
         disappearsOnIndex={-1}
-        style={[{ backgroundColor: 'rgba(0, 0, 0, 1)' }, StyleSheet.absoluteFillObject]}
+        style={[{ backgroundColor: 'rgba(0, 0, 0, 1)' }, StyleSheet.absoluteFill]}
       />
     ),
     [],
@@ -67,6 +70,14 @@ export default function ShowEDTScreen() {
     }
     setTimeout(() => goToToday(), 500);
   }, []);
+
+  function cleanOutputString(input: string) {
+    return input
+      .replace(/[ \t]+/g, ' ')
+      .replace(/^[ \t]+|[ \t]+$/gm, '')
+      .replace(/\n\s*\n+/g, '\n')
+      .trim();
+  }
 
   function toggleMenu() {
     haptics('medium');
@@ -113,6 +124,8 @@ export default function ShowEDTScreen() {
     const stopTime = new Date(eventItem._internal.endUnix);
     const durationMs = eventItem._internal.duration * 60 * 1000;
     const durationTime = new Date(durationMs);
+    console.log(eventItem.subtitle);
+
     const res =
       eventItem.subtitle +
       '\n\nSalle : ' +
@@ -131,7 +144,10 @@ export default function ShowEDTScreen() {
       durationTime.getMinutes() +
       ')';
     setInfoTitle(eventItem.title);
-    setInfoSubtitle(res);
+
+    let cleanRes: string = cleanOutputString(res);
+    setInfoSubtitle(cleanRes);
+
     bottomSheetInfoRef.current?.expand();
   }
 
