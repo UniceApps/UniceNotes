@@ -43,7 +43,7 @@ export default function ShowSettingsScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated>
         <Tooltip title="Retour">
           <Appbar.BackAction onPress={goBack} />
@@ -59,6 +59,15 @@ export default function ShowSettingsScreen() {
           onPress={() => handleURL('https://notes.metrixmedia.fr/support')}
         >
           F.A.Q. / Signaler un bug
+        </Button>
+
+        <Button
+          style={{ marginTop: 8 }}
+          icon="calendar-edit"
+          mode="contained-tonal"
+          onPress={() => router.push('/edt-config')}
+        >
+          Configurer l&apos;emploi du temps
         </Button>
 
         <Divider style={{ marginTop: 16 }} />
@@ -123,7 +132,7 @@ export default function ShowSettingsScreen() {
           ⚡ Version : {APP_VERSION}
         </Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">
-          ❤️ Fièrement développé par un SI3 :{' '}
+          ❤️ Fièrement développé par un SI :{' '}
           <Text
             style={{ color: theme.colors.primary }}
             onPress={() => handleURL('https://github.com/hugofnm')}
