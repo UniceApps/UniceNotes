@@ -32,11 +32,12 @@ import { saveAsync } from '../utils/storage';
 const WELCOME_MESSAGES = [
   'Passe une excellente journée !',
   'Quoi de prévu aujourd\'hui ? :)',
-  'Prêt pour une bonne session de cours ?',
-  'On avance, un cours a la fois.',
-  'Bon courage pour la journée !',
-  'Let\'s go, on s\'organise bien aujourd\'hui.',
-  'Petit check rapide de ton EDT ?'
+  'Voyons ce qui t\'attend aujourd\'hui.',
+  'Un œil sur l\'emploi du temps ?',
+  'On fait le point sur la journée ?',
+  'C\'est quoi le plan pour aujourd\'hui ?',
+  'Petit check rapide de ta journée ?',
+  'Ravi de te revoir ! ^^',
 ];
 
 function getRandomWelcomeMessage() {
@@ -152,21 +153,21 @@ export default function HomeScreen() {
       <SafeAreaView>
         <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-start' }}>
           <Avatar.Image
-            style={{ marginTop: insets.top * 2, marginBottom: 16 }}
+            style={{ marginTop: insets.top * 1.5, marginBottom: 16 }}
             size={96}
             source={require('../assets/white.png')}
           />
           <TouchableRipple
             onPress={() => router.push('/edt-config')}
             rippleColor="rgba(0, 0, 0, 0)"
-            style={{ marginLeft: 'auto', marginTop: insets.top * 2, marginBottom: 50 }}
+            style={{ marginLeft: 'auto', marginTop: insets.top * 1.5, marginBottom: 50 }}
           >
             <Avatar.Icon size={48} icon="calendar-edit" />
           </TouchableRipple>
           <TouchableRipple
             onPress={() => router.push('/settings')}
             rippleColor="rgba(0, 0, 0, 0)"
-            style={{ marginLeft: 8, marginTop: insets.top * 2, marginBottom: 50 }}
+            style={{ marginLeft: 8, marginTop: insets.top * 1.5, marginBottom: 50 }}
           >
             <Avatar.Icon size={48} icon="cog" />
           </TouchableRipple>
