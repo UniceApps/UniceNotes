@@ -26,11 +26,16 @@ export default function ServerConfigScreen() {
     setLoading(true);
 
     const check = async (url: string, setter: (v: string) => void, okStatuses: number[] = [200]) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
         setter(okStatuses.includes(res.status) ? 'check' : 'close');
       } catch {
         setter('close');
+      } finally {
+        clearTimeout(timeout);
       }
     };
 
@@ -43,7 +48,7 @@ export default function ServerConfigScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, justifyContent: 'center' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated statusBarHeight={Platform.OS === 'ios' ? 0 : undefined}>
         <Tooltip title="Retour">
           <Appbar.BackAction onPress={() => router.back()} />
