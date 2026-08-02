@@ -13,6 +13,11 @@ export interface SearchResult {
   text: string;
 }
 
+export interface AdeProject {
+  id: string;
+  name: string;
+}
+
 export interface NextEvent {
   summary: string;
   location: string;

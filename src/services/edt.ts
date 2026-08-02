@@ -1,7 +1,8 @@
 import { File, Paths } from 'expo-file-system';
 import ICAL from 'ical.js';
-import type { CalendarEvent, NextClassWidgetProps, NextEvent, WidgetClass } from '../types';
+import type { AdeProject, CalendarEvent, NextClassWidgetProps, NextEvent, WidgetClass } from '../types';
 import { stringToColour } from '../utils/color';
+import { getAsync, removeAsync, saveAsync } from '../utils/storage';
 
 interface ICALComponent {
   getAllSubcomponents(name: string): unknown[];
@@ -19,6 +20,7 @@ interface ICALEvent {
 const ADE_BASE = 'https://edtweb.univ-cotedazur.fr';
 const CALENDAR_FILE = new File(Paths.document, 'calendar.json');
 const ONGOING_THRESHOLD_MS = 15 * 60 * 1000;
+const ADE_PROJECT_OVERRIDE_KEY = 'adeProjectOverride';
 
 function getAcademicYearDateRange(): string {
   const now = new Date();
@@ -37,7 +39,17 @@ function getCurrentAcademicYearString(): string {
 
 async function fetchSessionId(): Promise<string | null> {
   try {
-    const res = await fetch(`${ADE_BASE}/jsp/webapi?function=connect&login=Individuel&password=`);
+    // nouveau mode d'authentification de l'API ADE
+    // header Basic avec un token codé en base64
+    const authHeader = `Basic SW5kaXZpZHVlbDpVbGdrVEdqcmg2OWU=`;
+
+    const res = await fetch(`${ADE_BASE}/jsp/webapi?function=connect`, {
+      method: "GET",
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+
     if (!res.ok) return null;
     const text = await res.text();
     const match = text.match(/<session id="(.*?)"\s*\/>/);
@@ -47,32 +59,26 @@ async function fetchSessionId(): Promise<string | null> {
   }
 }
 
-async function fetchProjectId(sessionId: string): Promise<string | null> {
+async function fetchProjects(sessionId: string): Promise<AdeProject[]> {
   try {
     const res = await fetch(
       `${ADE_BASE}/jsp/webapi?function=getProjects&sessionId=${sessionId}&detail=2`,
     );
-    if (!res.ok) return null;
+    if (!res.ok) return [];
     const text = await res.text();
-    const yearStr = getCurrentAcademicYearString();
     const projectRegex = /<project\s+id="(\d+)"\s+name="([^"]*)"/g;
-
-    for (const [_, id, name] of text.matchAll(projectRegex)) {
-      if (name.includes(yearStr) && name.toLowerCase().includes('prod')) {
-        return id;
-      }
-    }
-
-    return null;
+    return Array.from(text.matchAll(projectRegex)).map(([, id, name]) => ({ id, name }));
   } catch {
-    return null;
+    return [];
   }
 }
 
-async function resolveProjectId(): Promise<string | null> {
-  const sessionId = await fetchSessionId();
-  if (!sessionId) return null;
-  return fetchProjectId(sessionId);
+function pickAutoProjectId(projects: AdeProject[]): string | null {
+  const yearStr = getCurrentAcademicYearString();
+  const match = projects.find(
+    (p) => p.name.includes(yearStr) && p.name.toLowerCase().includes('prod'),
+  );
+  return match?.id ?? null;
 }
 
 async function getCalendarFromCache(): Promise<CalendarEvent[]> {
@@ -86,18 +92,62 @@ async function getCalendarFromCache(): Promise<CalendarEvent[]> {
 
 export class EDT {
   private ADE_PROJECT: string | null = null;
+  private isOverridden = false;
+  private projects: AdeProject[] = [];
   private readonly ADE_DATE: string;
   private readonly _ready: Promise<void>;
 
   constructor() {
     this.ADE_DATE = getAcademicYearDateRange();
-    this._ready = resolveProjectId().then((id) => {
-      this.ADE_PROJECT = id;
-    });
+    this._ready = this.resolveProject();
+  }
+
+  private async resolveProject(): Promise<void> {
+    const sessionId = await fetchSessionId();
+    if (!sessionId) return;
+    this.projects = await fetchProjects(sessionId);
+
+    const override = await getAsync(ADE_PROJECT_OVERRIDE_KEY);
+    if (override) {
+      const stillExists = this.projects.some((p) => p.id === override);
+      if (stillExists) {
+        this.ADE_PROJECT = override;
+        this.isOverridden = true;
+        return;
+      }
+      // le projet choisi manuellement n'existe plus (nouvelle année ADE), retour en mode auto
+      await removeAsync(ADE_PROJECT_OVERRIDE_KEY);
+    }
+
+    this.ADE_PROJECT = pickAutoProjectId(this.projects);
+    this.isOverridden = false;
   }
 
   private waitUntilReady(): Promise<void> {
     return this._ready;
+  }
+
+  async getProjectSelection(): Promise<{
+    projects: AdeProject[];
+    selectedId: string | null;
+    isOverridden: boolean;
+  }> {
+    await this.waitUntilReady();
+    return { projects: this.projects, selectedId: this.ADE_PROJECT, isOverridden: this.isOverridden };
+  }
+
+  async setProjectOverride(id: string | null): Promise<void> {
+    await this.waitUntilReady();
+    if (id === null) {
+      await removeAsync(ADE_PROJECT_OVERRIDE_KEY);
+      this.ADE_PROJECT = pickAutoProjectId(this.projects);
+      this.isOverridden = false;
+      return;
+    }
+    if (!this.projects.some((p) => p.id === id)) return;
+    await saveAsync(ADE_PROJECT_OVERRIDE_KEY, id);
+    this.ADE_PROJECT = id;
+    this.isOverridden = true;
   }
 
   async fetchEDT(adeid: string): Promise<string | null> {

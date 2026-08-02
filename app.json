@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "3.1.1",
+    "version": "3.1.2",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -32,14 +32,12 @@
         "CADisableMinimumFrameDurationOnPhone": true
       },
       "bundleIdentifier": "fr.hugofnm.unicenotes",
-      "buildNumber": "13.1.1",
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "fr.hugofnm.unicenotes",
-      "versionCode": 38,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/android/foreground.png",
         "monochromeImage": "./src/assets/android/monochrome.png",

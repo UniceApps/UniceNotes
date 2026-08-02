@@ -1,11 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { File, Paths } from 'expo-file-system';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CalendarEvent } from '../types';
 import { setHapticsEnabled } from '../utils/haptics';
 import { router } from 'expo-router';
 import { APP_VERSION } from '../constants/config';
+import { clearAsync, deleteSecure, getAsync, getSecure, removeAsync } from '../utils/storage';
 
 interface AppContextValue {
   adeid: string | null;
@@ -35,9 +34,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   async function loadPersistedData() {
     const [storedAdeid, storedHaptics, releaseNotesVersion] = await Promise.all([
-      SecureStore.getItemAsync('adeid'),
-      AsyncStorage.getItem('haptics'),
-      AsyncStorage.getItem('releaseNotesVersion'),
+      getSecure('adeid'),
+      getAsync('haptics'),
+      getAsync('releaseNotesVersion'),
     ]);
 
     if (storedAdeid) setAdeid(storedAdeid);
@@ -49,8 +48,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // release notes already shown only if they were shown for this exact version
     setUpdateModalShown(releaseNotesVersion === APP_VERSION);
-    // legacy boolean flag from versions <= 3.1.0, no longer used
-    AsyncStorage.removeItem('updateModalShown');
 
     setIsInitialized(true);
   }
@@ -62,9 +59,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   async function clearAllData() {
     await Promise.all([
-      SecureStore.deleteItemAsync('adeid'),
-      AsyncStorage.removeItem('haptics'),
-      AsyncStorage.removeItem('releaseNotesVersion'),
+      deleteSecure('adeid'),
+      removeAsync('haptics'),
+      removeAsync('releaseNotesVersion'),
     ]);
 
     const calFile = new File(Paths.document, 'calendar.json');
@@ -72,7 +69,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     calFile.delete();
     }
 
-    await AsyncStorage.clear();
+    await clearAsync();
 
     setAdeid(null);
     setHapticsOn(true);
