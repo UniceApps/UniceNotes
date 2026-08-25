@@ -22,11 +22,17 @@ const CALENDAR_FILE = new File(Paths.document, 'calendar.json');
 const ONGOING_THRESHOLD_MS = 15 * 60 * 1000;
 const ADE_PROJECT_OVERRIDE_KEY = 'adeProjectOverride';
 
-function getAcademicYearDateRange(): string {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
-  const startYear = month >= 9 ? year : year - 1;
+function getAcademicYearDateRange(projectName?: string): string {
+  const match = projectName?.match(/(\d{4})-(\d{4})/);
+  let startYear: number;
+  if (match) {
+    startYear = Number(match[1]);
+  } else {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    startYear = month >= 9 ? year : year - 1;
+  }
   const endYear = startYear + 1;
   return `&firstDate=${startYear}-09-01&lastDate=${endYear}-08-31`;
 }
@@ -81,6 +87,14 @@ function pickAutoProjectId(projects: AdeProject[]): string | null {
   return match?.id ?? null;
 }
 
+async function disconnectSession(sessionId: string): Promise<void> {
+  try {
+    await fetch(`${ADE_BASE}/jsp/webapi?function=disconnect&sessionId=${sessionId}`);
+  } catch {
+    // la session expirera d'elle-même côté serveur
+  }
+}
+
 async function getCalendarFromCache(): Promise<CalendarEvent[]> {
   try {
     const json = await CALENDAR_FILE.text();
@@ -94,11 +108,9 @@ export class EDT {
   private ADE_PROJECT: string | null = null;
   private isOverridden = false;
   private projects: AdeProject[] = [];
-  private readonly ADE_DATE: string;
   private readonly _ready: Promise<void>;
 
   constructor() {
-    this.ADE_DATE = getAcademicYearDateRange();
     this._ready = this.resolveProject();
   }
 
@@ -106,6 +118,7 @@ export class EDT {
     const sessionId = await fetchSessionId();
     if (!sessionId) return;
     this.projects = await fetchProjects(sessionId);
+    await disconnectSession(sessionId);
 
     const override = await getAsync(ADE_PROJECT_OVERRIDE_KEY);
     if (override) {
@@ -154,9 +167,11 @@ export class EDT {
     await this.waitUntilReady();
     if (!this.ADE_PROJECT) return null;
     try {
+      const projectName = this.projects.find((p) => p.id === this.ADE_PROJECT)?.name;
+      const dateRange = getAcademicYearDateRange(projectName);
       const url =
         `${ADE_BASE}/jsp/custom/modules/plannings/anonymous_cal.jsp` +
-        `?code=${adeid}&projectId=${this.ADE_PROJECT}&calType=ical${this.ADE_DATE}`;
+        `?code=${adeid}&projectId=${this.ADE_PROJECT}&calType=ical${dateRange}`;
       const res = await fetch(url);
       if (!res.ok) return null;
       return res.text();
