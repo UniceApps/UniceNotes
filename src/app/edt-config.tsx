@@ -198,7 +198,7 @@ export default function EDTConfigScreen() {
                 <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} title />
                 <Card.Content>
                   <Text style={{ textAlign: 'left' }} variant="bodyMedium">
-                    Votre numéro étudiant est celui indiqué sur votre carte étudiant. Il commence souvent par 22.
+                    Votre numéro étudiant est celui indiqué sur votre carte étudiant.
                   </Text>
                   <Text style={{ marginTop: 8, textAlign: 'left' }} variant="bodyMedium">
                     L&apos;emploi du temps individuel comprend les cours de votre cursus ainsi que

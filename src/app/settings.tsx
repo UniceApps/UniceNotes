@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Alert } from 'react-native';
 import {
   Text,
   Button,
@@ -40,6 +40,28 @@ export default function ShowSettingsScreen() {
     setHapticsOn(value);
     saveAsync('haptics', value.toString());
     haptics('error');
+  }
+
+  function deleteAllData() {
+    Alert.alert(
+      'Supprimer mes données',
+      'Êtes-vous sûr de vouloir supprimer toutes vos données de l\'application ? Cette action est irréversible.',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => {
+            clearAllData().then(() => {
+              haptics('success');
+            });
+          },
+        },
+      ],
+    )
   }
 
   return (
@@ -182,11 +204,7 @@ export default function ShowSettingsScreen() {
         <Button
           style={{ marginTop: 4 }}
           icon="account-remove"
-          onPress={() =>
-            clearAllData().then(() => {
-              haptics('success');
-            })
-          }
+          onPress={() => deleteAllData()}
         >
           Supprimer mes données de l'application
         </Button>

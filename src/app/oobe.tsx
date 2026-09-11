@@ -1,23 +1,28 @@
-import React, { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { Text, Button, IconButton, Tooltip } from 'react-native-paper';
+
 import { Image } from 'expo-image';
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+
+import { Button, IconButton, Text, Tooltip } from 'react-native-paper';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withRepeat,
   withSequence,
   withSpring,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import LottieView from 'lottie-react-native';
-import { useRouter } from 'expo-router';
-import { useApp } from '@/src/context/AppContext';
+
 import { useChoosenTheme } from '@/src/constants/theme';
+import { useApp } from '@/src/context/AppContext';
+import { handleURL } from '@/src/utils/api';
 import { haptics } from '@/src/utils/haptics';
 import { saveSecure } from '@/src/utils/storage';
-import { handleURL } from '@/src/utils/api';
+
+type Step = 'welcome' | 'edt' | 'pronote';
 
 export default function OOBEScreen() {
   const router = useRouter();
@@ -80,14 +85,14 @@ export default function OOBEScreen() {
           <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">
             UniceNotes
           </Text>
-          <Text style={{ textAlign: 'left', marginBottom: 8 }} variant="titleLarge">
-            Application réservée à l&apos;Université Côte d&apos;Azur.
+              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleLarge">
+                Délaissez les vieux intranets et retrouvez vos notes et votre emploi du temps directement dans l&apos;application.
           </Text>
-          <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">
-            Bienvenue sur UniceNotes. Visualisez votre emploi du temps directement
-            depuis l&apos;application, sans compte requis.
+              <Text style={{ textAlign: 'center', marginBottom: 8 }} variant="titleSmall">
+                En continuant, vous acceptez les conditions{'\n'}
+                d&apos;utilisation ainsi que la politique de confidentialité.
           </Text>
-          <Button style={{ marginBottom: 16 }} icon="skip-next" mode="contained" onPress={handleStart}>
+              <Button style={{ marginBottom: 8 }} icon="skip-next" mode="contained" onPress={handleWelcomeNext}>
             Suivant
           </Button>
           <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
