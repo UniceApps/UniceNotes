@@ -6,6 +6,7 @@ import {
   Button,
   Appbar,
   Divider,
+  Icon,
   Menu,
   Tooltip,
 } from 'react-native-paper';
@@ -31,7 +32,7 @@ const MONTHS = [
 
 export default function ShowEDTScreen() {
   const router = useRouter();
-  const { calendar, setCalendar, adeid } = useApp();
+  const { calendar, setCalendar, calendarOffline, adeid } = useApp();
   const theme = useChoosenTheme();
   const insets = useSafeAreaInsets();
 
@@ -152,6 +153,9 @@ export default function ShowEDTScreen() {
 
   const calTheme = getCalendarTheme(theme);
 
+  const offlineBannerBg = theme.dark ? theme.colors.errorContainer : theme.colors.error;
+  const offlineBannerFg = theme.dark ? theme.colors.onErrorContainer : theme.colors.onError;
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated>
@@ -181,6 +185,26 @@ export default function ShowEDTScreen() {
           />
         </Menu>
       </Appbar.Header>
+
+      {calendarOffline && (
+        <View
+          accessibilityRole="alert"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            backgroundColor: offlineBannerBg,
+          }}
+        >
+          <Icon source="wifi-off" size={18} color={offlineBannerFg} />
+          <Text variant="labelLarge" style={{ color: offlineBannerFg, textAlign: 'center' }}>
+            Hors ligne
+          </Text>
+        </View>
+      )}
 
       <Divider style={{ marginBottom: 8 }} />
       <Text style={{ marginBottom: 8, textAlign: 'center' }} variant="titleMedium">

@@ -1,6 +1,11 @@
-import { File, Paths } from 'expo-file-system';
 import ICAL from 'ical.js';
-import type { AdeProject, CalendarEvent, NextClassWidgetProps, NextEvent, WidgetClass } from '../types';
+
+import type { 
+  AdeProject, CalendarEvent, EDTResult, 
+  NextClassWidgetProps, NextEvent, WidgetClass 
+} from '../types';
+
+import { getCalendarFromCache, saveCalendarToFile } from '../utils/calendar';
 import { stringToColour } from '../utils/color';
 import { getAsync, removeAsync, saveAsync } from '../utils/storage';
 
@@ -18,9 +23,10 @@ interface ICALEvent {
 }
 
 const ADE_BASE = 'https://edtweb.univ-cotedazur.fr';
-const CALENDAR_FILE = new File(Paths.document, 'calendar.json');
 const ONGOING_THRESHOLD_MS = 15 * 60 * 1000;
 const ADE_PROJECT_OVERRIDE_KEY = 'adeProjectOverride';
+
+export const EDT_FETCH_TIMEOUT_MS = 5000;
 
 function getAcademicYearDateRange(projectName?: string): string {
   const match = projectName?.match(/(\d{4})-(\d{4})/);
@@ -95,15 +101,6 @@ async function disconnectSession(sessionId: string): Promise<void> {
   }
 }
 
-async function getCalendarFromCache(): Promise<CalendarEvent[]> {
-  try {
-    const json = await CALENDAR_FILE.text();
-    return JSON.parse(json) as CalendarEvent[];
-  } catch {
-    return [];
-  }
-}
-
 export class EDT {
   private ADE_PROJECT: string | null = null;
   private isOverridden = false;
@@ -164,17 +161,33 @@ export class EDT {
   }
 
   async fetchEDT(adeid: string): Promise<string | null> {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<null>((resolve) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        resolve(null);
+      }, EDT_FETCH_TIMEOUT_MS); // ajout d'un timeout parce que ade c'est de la merde
+    });
+    try {
+      return await Promise.race([this.fetchEDTRequest(adeid, controller.signal), timeout]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private async fetchEDTRequest(adeid: string, signal: AbortSignal): Promise<string | null> {
     await this.waitUntilReady();
-    if (!this.ADE_PROJECT) return null;
+    if (signal.aborted || !this.ADE_PROJECT) return null;
     try {
       const projectName = this.projects.find((p) => p.id === this.ADE_PROJECT)?.name;
       const dateRange = getAcademicYearDateRange(projectName);
       const url =
         `${ADE_BASE}/jsp/custom/modules/plannings/anonymous_cal.jsp` +
         `?code=${adeid}&projectId=${this.ADE_PROJECT}&calType=ical${dateRange}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal });
       if (!res.ok) return null;
-      return res.text();
+      return await res.text();
     } catch {
       return null;
     }
@@ -203,7 +216,7 @@ export class EDT {
       .sort((a, b) => a.start.getTime() - b.start.getTime());
 
     const next = sorted.find((e) => e.start >= windowStart);
-    if (!next) return { summary: 'Aucun cours', location: 'Profitez-en !' };
+    if (!next) return { summary: 'Aucun cours', location: 'La chance...' };
     return { summary: next.summary, location: next.location };
   }
 
@@ -228,20 +241,22 @@ export class EDT {
     }));
   }
 
-  async getEDT(adeid: string): Promise<CalendarEvent[]> {
-    if (!adeid || adeid === 'demo') return [];
+  // récupère l'edt si possible, sinon retourne l'edt en cache
+  async getEDT(adeid: string): Promise<EDTResult> {
+    if (!adeid || adeid === 'demo') return { events: [], offline: false };
 
     const icalData = await this.fetchEDT(adeid);
-    if (!icalData) return getCalendarFromCache();
+    if (!icalData) return { events: await getCalendarFromCache(), offline: true };
     const events = this.parseICal(icalData);
     const calEvents = this.convertToCalendarEvents(events);
-    try {
-      CALENDAR_FILE.write(JSON.stringify(calEvents));
-    } catch { }
-    return calEvents;
+    await saveCalendarToFile(calEvents);
+    return { events: calEvents, offline: false };
   }
 
+  // ---
   // Widget
+  // ---
+
   findNextTwoCourses(events: ICALEvent[]): WidgetClass[] {
     const now = new Date();
     const windowStart = new Date(now.getTime() - 15 * 60 * 1000);

@@ -22,13 +22,19 @@ import { handleURL } from '@/src/utils/api';
 import { haptics } from '@/src/utils/haptics';
 import { saveSecure } from '@/src/utils/storage';
 
-type Step = 'welcome' | 'edt' | 'pronote';
+type Step = 'welcome' | 'edt';
 
 export default function OOBEScreen() {
   const router = useRouter();
-  const { setAdeid } = useApp();
+  const { adeid, setAdeid, setOnboarding, setOobeCompleted } = useApp();
   const theme = useChoosenTheme();
   const insets = useSafeAreaInsets();
+  const [step, setStep] = useState<Step>('welcome');
+  const edtDone = !!adeid && adeid !== 'demo';
+
+  useEffect(() => {
+    setOnboarding(true);
+  }, [setOnboarding]);
 
   const rotation = useSharedValue(0);
   const rotateConfig = { damping: 2, stiffness: 15 };
@@ -43,13 +49,29 @@ export default function OOBEScreen() {
 
   const renderNoBackdrop = useCallback(() => null, []);
 
-  async function handleStart() {
+  async function handleWelcomeNext() {
     haptics('medium');
+    // second passage (bouton "Relancer" des paramètres) : on n'écrase pas un EDT déjà configuré
+    if (!edtDone) {
     await saveSecure('adeid', 'demo');
     setAdeid('demo');
-    router.replace('/home');
+    }
+    setStep('edt');
+  }
+
+  function configureEdt() {
+    haptics('medium');
     router.push('/edt-config');
   }
+
+  function skipEdt() {
+    haptics('light');
+    setOobeCompleted(true);
+    setOnboarding(false);
+    router.replace('/home');
+  }
+
+  const GREEN = '#2E7D32';
 
   const bgStyle = { backgroundColor: theme.colors.background };
   const handleStyle = { backgroundColor: theme.colors.onBackground };
@@ -70,7 +92,11 @@ export default function OOBEScreen() {
 
       <View style={{ flex: 1, alignSelf: 'center', height: 'auto', marginTop: insets.top * 2 }}>
         <Animated.View style={animatedStyleLogo}>
-          <Image source={require('../assets/color.png')} style={{ width: 200, height: 200 }} />
+          <Image         source={
+          theme.dark
+            ? require('../assets/white.png')
+            : require('../assets/color.png')
+        } style={{ width: 200, height: 200 }} />
         </Animated.View>
       </View>
 
@@ -81,7 +107,9 @@ export default function OOBEScreen() {
         handleIndicatorStyle={handleStyle}
         backdropComponent={renderNoBackdrop}
       >
-        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
+        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25, paddingBottom: insets.bottom }}>
+          {step === 'welcome' && (
+            <>
           <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">
             UniceNotes
           </Text>
@@ -98,7 +126,6 @@ export default function OOBEScreen() {
           <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
             <Tooltip title="Mentions légales">
               <IconButton
-                style={{ marginBottom: 4 }}
                 icon="license"
                 mode="contained"
                 onPress={() => handleURL('https://notes.metrixmedia.fr/credits')}
@@ -106,7 +133,6 @@ export default function OOBEScreen() {
             </Tooltip>
             <Tooltip title="Code source">
               <IconButton
-                style={{ marginBottom: 16 }}
                 icon="source-branch"
                 mode="contained"
                 onPress={() => handleURL('https://github.com/UniceApps/UniceNotes')}
@@ -114,13 +140,48 @@ export default function OOBEScreen() {
             </Tooltip>
             <Tooltip title="Paramètres">
               <IconButton
-                style={{ marginBottom: insets.bottom }}
                 icon="cog"
                 mode="contained"
                 onPress={() => router.push('/settings')}
               />
             </Tooltip>
           </View>
+            </>
+          )}
+
+          {step === 'edt' && (
+            <>
+              <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">
+                Configuration
+              </Text>
+              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleLarge">
+                &mdash; Emploi du temps
+              </Text>
+              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">
+                Configurez votre emploi du temps (via ADE) pour le retrouver directement à l&apos;accueil.
+              </Text>
+              {edtDone ? (
+                <Button
+                  style={{ marginBottom: 16 }}
+                  icon="check"
+                  mode="contained"
+                  buttonColor={GREEN}
+                  onPress={skipEdt}
+                >
+                  Suivant
+                </Button>
+              ) : (
+                <>
+                  <Button style={{ marginBottom: 8 }} icon="calendar-edit" mode="contained" onPress={configureEdt}>
+                    Configurer
+                  </Button>
+                  <Button style={{ marginBottom: 16 }} mode="outlined" onPress={skipEdt}>
+                    Plus tard
+                  </Button>
+                </>
+              )}
+            </>
+          )}
         </BottomSheetView>
       </BottomSheet>
     </View>

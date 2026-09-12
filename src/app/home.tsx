@@ -1,22 +1,10 @@
-import { APP_VERSION, RELEASE_NOTES } from '@/src/constants/config';
-import { useChoosenTheme } from '@/src/constants/theme';
-import { useApp } from '@/src/context/AppContext';
-import { edtService } from '@/src/services/edt';
-import type { NextEvent } from '@/src/types';
-import { handleURL } from '@/src/utils/api';
-import { haptics } from '@/src/utils/haptics';
-import { NextClassWidgetInstance } from '@/src/widgets/NextClassWidget';
-import BottomSheet, {
-  BottomSheetBackdrop,
-  BottomSheetBackdropProps,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
+
 import {
   ActivityIndicator,
   Avatar,
+  Badge,
   Button,
   Card,
   Chip,
@@ -26,8 +14,26 @@ import {
   Tooltip,
   TouchableRipple,
 } from 'react-native-paper';
+
+import { useRouter } from 'expo-router';
+
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetBackdropProps,
+  BottomSheetView,
+} from '@gorhom/bottom-sheet';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { saveAsync } from '../utils/storage';
+
+
+import { APP_VERSION, RELEASE_NOTES } from '@/src/constants/config';
+import { useChoosenTheme } from '@/src/constants/theme';
+import { useApp } from '@/src/context/AppContext';
+import { edtService } from '@/src/services/edt';
+import type { NextEvent } from '@/src/types';
+import { handleURL } from '@/src/utils/api';
+import { haptics } from '@/src/utils/haptics';
+import { NextClassWidgetInstance } from '@/src/widgets/NextClassWidget';
+import { getSecure, saveAsync } from '../utils/storage';
 
 const WELCOME_MESSAGES = [
   'Passe une excellente journée !',
@@ -46,19 +52,28 @@ function getRandomWelcomeMessage() {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { adeid, setCalendar, updateModalShown, setUpdateModalShown } = useApp();
+  const { 
+    adeid, setCalendar, setCalendarOffline, 
+    updateModalShown, setUpdateModalShown, 
+    setOnboarding 
+  } = useApp();
   const theme = useChoosenTheme();
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(false);
   const [selectable, setSelectable] = useState(true);
+
   const [nextEvent, setNextEvent] = useState<NextEvent>({
     summary: 'Chargement...',
     location: 'Chargement...',
   });
   const [nextEventLoaded, setNextEventLoaded] = useState(false);
+
   const [infoTitle, setInfoTitle] = useState('Informations');
   const [infoSubtitle, setInfoSubtitle] = useState('');
+
+  const isDemo = !adeid || adeid === 'demo';
+  
   const [welcomeMessage] = useState(getRandomWelcomeMessage);
 
   const bottomSheetInfoRef = useRef<BottomSheet>(null);
@@ -78,8 +93,13 @@ export default function HomeScreen() {
   );
 
   useEffect(() => {
+    setOnboarding(false);
+    if (!isDemo) {
     getNextEvent('normal');
     if (Platform.OS === 'ios') pushWidgetTimeline();
+    }
+
+    
 
     // check in app context if update modal has been shown, if not show it and set it to true
     if (!updateModalShown) {
@@ -98,6 +118,7 @@ export default function HomeScreen() {
   }
 
   async function getNextEvent(mode: 'normal' | 'force') {
+    if (isDemo) return;
     if (mode === 'force') {
       setNextEvent({ summary: 'Chargement...', location: 'Chargement...' });
     }
@@ -113,11 +134,14 @@ export default function HomeScreen() {
     setSelectable(false);
     setLoading(true);
 
-    const cal = await edtService.getEDT(adeid ?? 'demo');
-    setCalendar(cal);
+    const { events, offline } = await edtService.getEDT(adeid ?? 'demo');
+    setCalendar(events);
+    setCalendarOffline(offline);
     if (Platform.OS === 'ios') {
       try {
-        NextClassWidgetInstance.updateTimeline(edtService.buildWidgetTimeline(cal));
+        NextClassWidgetInstance.updateTimeline(
+          edtService.buildWidgetTimeline(events)
+        );
       } catch { }
     }
 
@@ -128,7 +152,7 @@ export default function HomeScreen() {
 
   async function pushWidgetTimeline() {
     try {
-      const events = await edtService.getEDT(adeid ?? 'demo');
+      const { events } = await edtService.getEDT(adeid ?? 'demo');
       const timeline = edtService.buildWidgetTimeline(events);
       NextClassWidgetInstance.updateTimeline(timeline);
     } catch {
@@ -180,17 +204,27 @@ export default function HomeScreen() {
           {welcomeMessage}
         </Text>
 
-        <Card style={{ marginBottom: 8 }} disabled={!selectable} onPress={getMyCal}>
-          <Card.Title title="Prochain Cours" />
+        <Card
+          style={{ marginBottom: 8 }}
+          disabled={!selectable}
+          onPress={isDemo ? () => router.push('/edt-config') : getMyCal}
+        >
+          <Card.Title title={isDemo ? 'Emploi du temps' : 'Prochain Cours'} />
           <Card.Content>
             <Text variant="titleLarge" numberOfLines={1}>
-              {nextEvent.summary}
+              {isDemo ? 'Non configuré' : nextEvent.summary}
             </Text>
             <Text variant="bodyMedium" numberOfLines={1}>
-              {nextEvent.location || "Salle non précisée"}
+              {isDemo ? "Appuyez pour choisir votre emploi du temps" : (nextEvent.location || "Salle non précisée")}
             </Text>
           </Card.Content>
           <Card.Actions>
+            {isDemo && (
+              <Chip disabled={!selectable} onPress={() => router.push('/edt-config')} icon="calendar-edit">
+                Configurer l&apos;EDT
+              </Chip>
+            )}
+            {!isDemo && (
             <Chip
               style={{ marginRight: 4 }}
               disabled={!selectable}
@@ -199,7 +233,9 @@ export default function HomeScreen() {
             >
               Rafraîchir
             </Chip>
-            {nextEvent.summary !== 'ADE Indisponible' ? (
+            )}
+            {!isDemo && (
+              nextEvent.summary !== 'ADE Indisponible' ? (
               <Chip disabled={!selectable} onPress={getMyCal} icon="calendar">
                 Emploi du temps
               </Chip>
@@ -207,6 +243,7 @@ export default function HomeScreen() {
               <Chip disabled={!selectable} onPress={getMyCal} icon="calendar-alert">
                 EDT (Hors-ligne)
               </Chip>
+              )
             )}
           </Card.Actions>
         </Card>

@@ -34,7 +34,7 @@ type InfoPrompt =
 
 export default function SplashScreen() {
   const router = useRouter();
-  const { adeid, setCalendar, isInitialized } = useApp();
+  const { setCalendar, setCalendarOffline, isInitialized, oobeCompleted } = useApp();
 
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
@@ -111,7 +111,7 @@ export default function SplashScreen() {
   }
 
   function enterApp() {
-    if (adeid != null && adeid !== 'demo') {
+    if (oobeCompleted) {
       router.replace('/home');
     } else {
       router.replace('/oobe');
@@ -122,6 +122,7 @@ export default function SplashScreen() {
     bottomSheetErrorRef.current?.close();
     const cal = await getCalendarFromCache();
     setCalendar(cal);
+    setCalendarOffline(true);
     router.replace('/home');
   }
 
