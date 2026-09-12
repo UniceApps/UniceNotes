@@ -25,7 +25,7 @@ export default function EDTConfigScreen() {
   const router = useRouter();
   const theme = useChoosenTheme();
 
-  const { adeid, setAdeid } = useApp();
+  const { adeid, setAdeid, onboarding } = useApp();
   const [tempAde, setTempAde] = useState('');
 
   const [mode, setMode] = useState(adeid?.includes('-VET') ? '1' : '0');
@@ -91,7 +91,8 @@ export default function EDTConfigScreen() {
     setAdeid(newAdeid);
     saveSecure('adeid', newAdeid);
     haptics('heavy');
-    router.replace('/home');
+    if (onboarding) router.back();
+    else router.replace('/home');
   }
 
   return (

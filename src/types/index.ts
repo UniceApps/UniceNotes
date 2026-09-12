@@ -8,6 +8,12 @@ export interface CalendarEvent {
   color: string;
 }
 
+export interface EDTResult {
+  events: CalendarEvent[];
+  // true si les événements proviennent du cache
+  offline: boolean;
+}
+
 export interface SearchResult {
   id: string;
   text: string;

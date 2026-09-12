@@ -1,5 +1,9 @@
 import React from 'react';
 import { View, ScrollView, Alert } from 'react-native';
+
+import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
+
 import {
   Text,
   Button,
@@ -9,8 +13,7 @@ import {
   Divider,
   Tooltip,
 } from 'react-native-paper';
-import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
+
 import { useApp } from '@/src/context/AppContext';
 import { useChoosenTheme } from '@/src/constants/theme';
 import { APP_VERSION, IS_BETA } from '@/src/constants/config';
@@ -20,7 +23,7 @@ import { handleURL } from '@/src/utils/api';
 
 export default function ShowSettingsScreen() {
   const router = useRouter();
-  const { hapticsOn, setHapticsOn, clearAllData } = useApp();
+  const { hapticsOn, setHapticsOn, clearAllData, setOobeCompleted } = useApp();
   const theme = useChoosenTheme();
 
   const hash = Constants.expoConfig?.extra?.github_hash as string | undefined;
@@ -40,6 +43,12 @@ export default function ShowSettingsScreen() {
     setHapticsOn(value);
     saveAsync('haptics', value.toString());
     haptics('error');
+  }
+
+  function restartOobe() {
+    haptics('medium');
+    setOobeCompleted(false);
+    router.dismissTo('/oobe');
   }
 
   function deleteAllData() {
@@ -85,11 +94,11 @@ export default function ShowSettingsScreen() {
 
         <Button
           style={{ marginTop: 8 }}
-          icon="calendar-edit"
+          icon="replay"
           mode="contained-tonal"
-          onPress={() => router.push('/edt-config')}
+          onPress={restartOobe}
         >
-          Configurer l&apos;emploi du temps
+          Relancer la configuration initiale
         </Button>
 
         <Divider style={{ marginTop: 16 }} />
