@@ -1,5 +1,5 @@
 <p align="center">
-      <img alt="UniceNotes" height="200" src="https://raw.githubusercontent.com/UniceApps/UniceNotes/main/.docs/assets/logo.png">
+      <img alt="UniceNotes" height="200" src="https://raw.githubusercontent.com/UniceApps/UniceNotes/main/src/assets/ios/default.png">
   <h2 align="center">UniceNotes</h2>
 
 <p align="center">
