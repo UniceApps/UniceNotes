@@ -114,10 +114,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setHapticsOn,
         calendar,
         setCalendar,
+        calendarOffline,
+        setCalendarOffline,
         clearAllData,
         isInitialized,
         updateModalShown,
         setUpdateModalShown,
+        onboarding,
+        setOnboarding,
+        oobeCompleted,
+        setOobeCompleted,
       }}
     >
       {children}
