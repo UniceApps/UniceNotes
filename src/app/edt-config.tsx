@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, ScrollView, Alert, Platform } from 'react-native';
+
+import { useRouter } from 'expo-router';
+
 import {
   Text,
   Appbar,
@@ -12,7 +15,9 @@ import {
   Button,
   RadioButton,
 } from 'react-native-paper';
-import { useRouter } from 'expo-router';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { useApp } from '@/src/context/AppContext';
 import { useChoosenTheme } from '@/src/constants/theme';
 import { haptics } from '@/src/utils/haptics';
@@ -24,6 +29,7 @@ import type { AdeProject, SearchResult } from '@/src/types';
 export default function EDTConfigScreen() {
   const router = useRouter();
   const theme = useChoosenTheme();
+  const insets = useSafeAreaInsets();
 
   const { adeid, setAdeid, onboarding } = useApp();
   const [tempAde, setTempAde] = useState('');
@@ -96,7 +102,7 @@ export default function EDTConfigScreen() {
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated statusBarHeight={Platform.OS === 'ios' ? 0 : undefined}>
         <Tooltip title="Retour">
           <Appbar.BackAction onPress={() => router.back()} />
@@ -104,156 +110,163 @@ export default function EDTConfigScreen() {
         <Appbar.Content title="Config. EDT" />
       </Appbar.Header>
 
-      <Text style={{ marginLeft: 25, marginRight: 25, marginTop: 16, textAlign: 'left' }} variant="titleMedium">
-        EDT affiché : {adeid ?? 'Non configuré'} / {adeProjects.find((p) => p.id === selectedProjectId)?.name ?? 'Non configuré'}
-      </Text>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom }}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <Text style={{ marginLeft: 25, marginRight: 25, marginTop: 16, textAlign: 'left' }} variant="titleMedium">
+          EDT affiché : {adeid ?? 'Non configuré'} / {adeProjects.find((p) => p.id === selectedProjectId)?.name ?? 'Non configuré'}
+        </Text>
 
-      <Card style={{ backgroundColor: theme.colors.surface, marginTop: 16, marginLeft: 25, marginRight: 25 }}>
-        <Card.Title
-          left={(props) => <Avatar.Icon {...props} icon="calendar" />}
-          title="Année scolaire (projet ADE)"
-        />
-
-        <Card.Content>
-          <SegmentedButtons
-            style={{ marginBottom: 8, width: '100%' }}
-            value={projectMode}
-            onValueChange={selectProjectMode}
-            buttons={[
-              { value: '0', label: 'Auto', icon: 'auto-fix', showSelectedCheck: true },
-              { value: '1', label: 'Manuel', icon: 'tune', showSelectedCheck: true },
-            ]}
+        <Card style={{ backgroundColor: theme.colors.surface, marginTop: 16, marginLeft: 25, marginRight: 25 }}>
+          <Card.Title
+            left={(props) => <Avatar.Icon {...props} icon="calendar" />}
+            title="Année scolaire (projet ADE)"
           />
 
-          {projectMode === '1' && (
-            adeProjects.length === 0 ? (
-              <Text style={{ marginTop: 8, textAlign: 'left' }} variant="bodyMedium">
-                Chargement des projets...
-              </Text>
-            ) : (
-              <RadioButton.Group
-                value={selectedProjectId ?? ''}
-                onValueChange={(id) => {
-                  const project = adeProjects.find((p) => p.id === id);
-                  if (project) selectAdeProject(project);
-                }}
-              >
-                {adeProjects.map((project) => (
-                  <RadioButton.Item
-                    key={project.id}
-                    label={project.name}
-                    value={project.id}
-                    style={{
-                      marginTop: 8,
-                      borderWidth: 1,
-                      borderColor: theme.colors.outline,
-                      borderRadius: 8,
-                    }}
-                  />
-                ))}
-              </RadioButton.Group>
-            )
-          )}
-        </Card.Content>
-      </Card>
+          <Card.Content>
+            <SegmentedButtons
+              style={{ marginBottom: 8, width: '100%' }}
+              value={projectMode}
+              onValueChange={selectProjectMode}
+              buttons={[
+                { value: '0', label: 'Auto', icon: 'auto-fix', showSelectedCheck: true },
+                { value: '1', label: 'Manuel', icon: 'tune', showSelectedCheck: true },
+              ]}
+            />
 
-      <Card style={{ backgroundColor: theme.colors.surface, marginTop: 16, marginBottom: 16, marginLeft: 25, marginRight: 25 }}>
-        <Card.Title
-          left={(props) => <Avatar.Icon {...props} icon="account" />}
-          title="Identifiant ADE"
-        />
-        
-        <Card.Content>
-          <SegmentedButtons
-            style={{ marginBottom: 8, width: '100%' }}
-            value={mode}
-            onValueChange={setMode}
-            buttons={[
-              { value: '0', label: 'Individuel', icon: 'account', showSelectedCheck: true },
-              { value: '1', label: 'Cursus', icon: 'account-group', showSelectedCheck: true },
-            ]}
-          />
-
-          {mode === '0' ? (
-            <>
-              <Text style={{ textAlign: 'left', marginTop: 8 }} variant="labelLarge">
-                Entrez votre numéro étudiant pour configurer l&apos;emploi du temps affiché :
-              </Text>
-              <TextInput
-                style={{ marginTop: 8 }}
-                mode="outlined"
-                keyboardType="number-pad"
-                maxLength={12}
-                label="Numéro étudiant"
-                value={tempAde}
-                onChangeText={setTempAde}
-              />
-              <Button
-                mode="contained-tonal"
-                icon="content-save"
-                onPress={() => selectCursus(tempAde, true)}
-                style={{ marginTop: 16 }}>
-                Sauvegarder
-              </Button>
-              <Card style={{ marginTop: 16 }}>
-                <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} title />
-                <Card.Content>
-                  <Text style={{ textAlign: 'left' }} variant="bodyMedium">
-                    Votre numéro étudiant est celui indiqué sur votre carte étudiant.
-                  </Text>
-                  <Text style={{ marginTop: 8, textAlign: 'left' }} variant="bodyMedium">
-                    L&apos;emploi du temps individuel comprend les cours de votre cursus ainsi que
-                    les cours de groupes dont vous faites partie.
-                  </Text>
-                </Card.Content>
-              </Card>
-            </>
-          ) : (
-            <>
-              {searchResults.length > 1 ? (
-                <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">
-                  Sélectionnez un cursus pour changer l&apos;emploi du temps affiché :
+            {projectMode === '1' && (
+              adeProjects.length === 0 ? (
+                <Text style={{ marginTop: 8, textAlign: 'left' }} variant="bodyMedium">
+                  Chargement des projets...
                 </Text>
-              ) :
-                <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">
-                  Tapez au moins 2 caractères pour rechercher un cursus.
-                </Text>
-              }
-              <Searchbar
-                autoCorrect={false}
-                autoCapitalize="none"
-                placeholder="Rechercher un cursus"
-                value={searchValue}
-                style={{ marginTop: 8, marginBottom: 16, width: '100%' }}
-                onChangeText={searchCursus}
-                loading={loading}
-                maxLength={32}
-              />
-              {searchResults.map((item, index) => (
-                <View key={index} style={{ marginBottom: 8 }}>
-                  <Card style={{ marginBottom: 8 }} onPress={() => selectCursus(item.id, false)}>
-                    <Card.Cover
-                      style={{ marginBottom: 8, height: 10, backgroundColor: stringToColour(item.text) }}
+              ) : (
+                <RadioButton.Group
+                  value={selectedProjectId ?? ''}
+                  onValueChange={(id) => {
+                    const project = adeProjects.find((p) => p.id === id);
+                    if (project) selectAdeProject(project);
+                  }}
+                >
+                  {adeProjects.map((project) => (
+                    <RadioButton.Item
+                      key={project.id}
+                      label={project.name}
+                      value={project.id}
+                      style={{
+                        marginTop: 8,
+                        borderWidth: 1,
+                        borderColor: theme.colors.outline,
+                        borderRadius: 8,
+                      }}
                     />
-                    <Card.Content>
-                      <Text variant="titleMedium">{item.text}</Text>
-                    </Card.Content>
-                  </Card>
-                </View>
-              ))}
-              <Card>
-                <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} title />
-                <Card.Content>
-                  <Text style={{ textAlign: 'left' }} variant="bodyMedium">
-                    L&apos;emploi du temps par cursus comprend les cours du cursus sélectionné ainsi
-                    que tous les cours de groupes, y compris ceux dont vous ne faites pas partie.
+                  ))}
+                </RadioButton.Group>
+              )
+            )}
+          </Card.Content>
+        </Card>
+
+        <Card style={{ backgroundColor: theme.colors.surface, marginTop: 16, marginBottom: 16, marginLeft: 25, marginRight: 25 }}>
+          <Card.Title
+            left={(props) => <Avatar.Icon {...props} icon="account" />}
+            title="Identifiant ADE"
+          />
+        
+          <Card.Content>
+            <SegmentedButtons
+              style={{ marginBottom: 8, width: '100%' }}
+              value={mode}
+              onValueChange={setMode}
+              buttons={[
+                { value: '0', label: 'Individuel', icon: 'account', showSelectedCheck: true },
+                { value: '1', label: 'Cursus', icon: 'account-group', showSelectedCheck: true },
+              ]}
+            />
+
+            {mode === '0' ? (
+              <>
+                <Text style={{ textAlign: 'left', marginTop: 8 }} variant="labelLarge">
+                  Entrez votre numéro étudiant pour configurer l&apos;emploi du temps affiché :
+                </Text>
+                <TextInput
+                  style={{ marginTop: 8 }}
+                  mode="outlined"
+                  keyboardType="number-pad"
+                  maxLength={12}
+                  label="Numéro étudiant"
+                  value={tempAde}
+                  onChangeText={setTempAde}
+                />
+                <Button
+                  mode="contained-tonal"
+                  icon="content-save"
+                  onPress={() => selectCursus(tempAde, true)}
+                  style={{ marginTop: 16 }}>
+                  Sauvegarder
+                </Button>
+                <Card style={{ marginTop: 16 }}>
+                  <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} title />
+                  <Card.Content>
+                    <Text style={{ textAlign: 'left' }} variant="bodyMedium">
+                      Votre numéro étudiant est celui indiqué sur votre carte étudiant.
+                    </Text>
+                    <Text style={{ marginTop: 8, textAlign: 'left' }} variant="bodyMedium">
+                      L&apos;emploi du temps individuel comprend les cours de votre cursus ainsi que
+                      les cours de groupes dont vous faites partie.
+                    </Text>
+                  </Card.Content>
+                </Card>
+              </>
+            ) : (
+              <>
+                {searchResults.length > 1 ? (
+                  <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">
+                    Sélectionnez un cursus pour changer l&apos;emploi du temps affiché :
                   </Text>
-                </Card.Content>
-              </Card>
-            </>
-          )}
-        </Card.Content>
-      </Card>
-    </ScrollView>
+                ) :
+                  <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">
+                    Tapez au moins 2 caractères pour rechercher un cursus.
+                  </Text>
+                }
+                <Searchbar
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  placeholder="Rechercher un cursus"
+                  value={searchValue}
+                  style={{ marginTop: 8, marginBottom: 16, width: '100%' }}
+                  onChangeText={searchCursus}
+                  loading={loading}
+                  maxLength={32}
+                />
+                {searchResults.map((item, index) => (
+                  <View key={index} style={{ marginBottom: 8 }}>
+                    <Card style={{ marginBottom: 8 }} onPress={() => selectCursus(item.id, false)}>
+                      <Card.Cover
+                        style={{ marginBottom: 8, height: 10, backgroundColor: stringToColour(item.text) }}
+                      />
+                      <Card.Content>
+                        <Text variant="titleMedium">{item.text}</Text>
+                      </Card.Content>
+                    </Card>
+                  </View>
+                ))}
+                <Card>
+                  <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} title />
+                  <Card.Content>
+                    <Text style={{ textAlign: 'left' }} variant="bodyMedium">
+                      L&apos;emploi du temps par cursus comprend les cours du cursus sélectionné ainsi
+                      que tous les cours de groupes, y compris ceux dont vous ne faites pas partie.
+                    </Text>
+                  </Card.Content>
+                </Card>
+              </>
+            )}
+          </Card.Content>
+        </Card>
+      </ScrollView>
+    </View>
   );
 }

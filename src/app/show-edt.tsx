@@ -1,29 +1,29 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import {
-  Text,
-  Button,
   Appbar,
+  Button,
   Divider,
   Icon,
   Menu,
+  Text,
   Tooltip,
 } from 'react-native-paper';
 
-import { CalendarBody, CalendarContainer, CalendarHeader } from '@howljs/calendar-kit';
 import BottomSheet, {
-  BottomSheetView,
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
+  BottomSheetView,
 } from '@gorhom/bottom-sheet';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CalendarBody, CalendarContainer, CalendarHeader } from '@howljs/calendar-kit';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { getCalendarTheme, useChoosenTheme } from '@/src/constants/theme';
 import { useApp } from '@/src/context/AppContext';
-import { useChoosenTheme, getCalendarTheme } from '@/src/constants/theme';
-import { haptics } from '@/src/utils/haptics';
 import { getCalendarFromCache } from '@/src/utils/calendar';
+import { haptics } from '@/src/utils/haptics';
 
 const MONTHS = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -126,10 +126,13 @@ export default function ShowEDTScreen() {
     const durationMs = eventItem._internal.duration * 60 * 1000;
     const durationTime = new Date(durationMs);
 
+    console.log(eventItem.subtitle.length)
+
     const res =
-      eventItem.subtitle +
-      '\n\nSalle : ' +
-      eventItem.description +
+      (eventItem.subtitle.length > 512
+        ? eventItem.subtitle.slice(0, 509) + "..."
+        : eventItem.subtitle) +
+      (eventItem.description ? '\n\n' + eventItem.description : '') +
       '\n' +
       startTime.getHours() +
       ':' +
