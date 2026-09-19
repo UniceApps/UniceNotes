@@ -24,7 +24,7 @@
         "tinted": "./src/assets/ios/tinteddark.png"
       },
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Connectez-vous sur l'application grâce à l'authentification biométrique.",
+        "NSFaceIDUsageDescription": "Connecte-toi sur l'application grâce à l'authentification biométrique.",
         "NSNotificationsUsageDescription": "Recevez des notifications pour être informé de diverses choses.",
         "CFBundleLocalizations": [
           "fr"
@@ -62,6 +62,7 @@
       "expo-font",
       "expo-secure-store",
       "expo-web-browser",
+      "expo-quick-actions",
       [
         "expo-alternate-app-icons",
         [
@@ -208,6 +209,9 @@
       [
         "expo-build-properties",
         {
+          "ios": { //remove in expo sdk 58
+            "enableSceneSupport": true
+          },
           "android": {
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true

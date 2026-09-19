@@ -54,7 +54,7 @@ export default function ShowSettingsScreen() {
   function deleteAllData() {
     Alert.alert(
       'Supprimer mes données',
-      'Êtes-vous sûr de vouloir supprimer toutes vos données de l\'application ? Cette action est irréversible.',
+      'Es-tu sûr de vouloir supprimer toutes tes données de l\'application ? Cette action est irréversible.',
       [
         {
           text: 'Annuler',
@@ -106,7 +106,7 @@ export default function ShowSettingsScreen() {
         <Card style={{ marginTop: 16 }}>
           <Card.Title
             title="Sélection de l'icône"
-            subtitle="Changez l'icône de l'application"
+            subtitle="Change l'icône de l'application"
             left={(props) => <Avatar.Icon {...props} icon="shape-square-rounded-plus" />}
           />
           <Card.Actions>
@@ -151,7 +151,7 @@ export default function ShowSettingsScreen() {
           UniceNotes
         </Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">
-          Votre ENT. Dans votre poche.
+          Ton ENT. Dans ta poche.
         </Text>
         <Text style={{ textAlign: 'left' }} variant="titleSmall">
           © {new Date().getFullYear()} - MetrixMedia / hugofnm

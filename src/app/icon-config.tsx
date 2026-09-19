@@ -38,7 +38,7 @@ export default function IconConfigScreen() {
 
       <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
         <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">
-          Choisissez votre icône :
+          Choisis ton icône :
         </Text>
 
         <Chip style={{ height: 36, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }} disabled>
@@ -160,7 +160,7 @@ export default function IconConfigScreen() {
           <Card.Title left={(props) => <Avatar.Icon {...props} icon="flower" />} title="" />
           <Card.Content>
             <Text style={{ textAlign: 'left' }} variant="bodyMedium">
-              Vous trouvez pas &quot;l&apos;icône&quot; qu&apos;il vous faut ? Envoyez-nous vos oeuvres d&apos;art à l&apos;adresse :{' '}
+              Tu trouves pas &quot;l&apos;icône&quot; qu&apos;il te faut ? Envoie-nous tes oeuvres d&apos;art à l&apos;adresse :{' '}
               <Text
                 style={{ color: theme.colors.primary }}
                 onPress={() => Linking.openURL('mailto://app+icons@metrixmedia.fr')}

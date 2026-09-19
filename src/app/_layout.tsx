@@ -6,6 +6,7 @@ import * as Font from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider } from '@/src/context/AppContext';
+import { DeepLinkHandler } from '@/src/context/DeepLinkHandler';
 import { useChoosenTheme, updateFontConfig } from '@/src/constants/theme';
 import 'react-native-reanimated';
 
@@ -32,6 +33,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <PaperProvider theme={theme}>
           <AppProvider>
+            <DeepLinkHandler />
             <Stack screenOptions={{ headerShown: false, gestureEnabled: false }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="splash" />

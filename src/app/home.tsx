@@ -25,7 +25,7 @@ import BottomSheet, {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
-import { APP_VERSION, RELEASE_NOTES } from '@/src/constants/config';
+import { APP_VERSION, PRONOTE_URL, RELEASE_NOTES } from '@/src/constants/config';
 import { useChoosenTheme } from '@/src/constants/theme';
 import { useApp } from '@/src/context/AppContext';
 import { edtService } from '@/src/services/edt';
@@ -111,7 +111,7 @@ export default function HomeScreen() {
     if (action === 'info') {
       setInfoTitle('Informations');
       setInfoSubtitle(
-        "Ce n'est pas votre emploi du temps ? Vous pouvez changer l'EDT sélectionné en cliquant sur l'icône de calendrier en haut à droite de l'écran d'accueil.",
+        "Ce n'est pas ton emploi du temps ? Tu peux changer l'EDT sélectionné en cliquant sur l'icône de calendrier en haut à droite de l'écran d'accueil.",
       );
     }
     bottomSheetInfoRef.current?.expand();
@@ -215,7 +215,7 @@ export default function HomeScreen() {
               {isDemo ? 'Non configuré' : nextEvent.summary}
             </Text>
             <Text variant="bodyMedium" numberOfLines={1}>
-              {isDemo ? "Appuyez pour choisir votre emploi du temps" : (nextEvent.location || "Salle non précisée")}
+              {isDemo ? "Appuies pour choisir ton emploi du temps" : (nextEvent.location || "Salle non précisée")}
             </Text>
           </Card.Content>
           <Card.Actions>
@@ -253,7 +253,7 @@ export default function HomeScreen() {
           textStyle={{ paddingVertical: 8 }}
           disabled={!selectable}
           icon="calculator-variant-outline"
-          onPress={() => handleURL('https://sco.polytech.unice.fr/1/mobile.etudiant')}
+          onPress={() => handleURL(PRONOTE_URL)}
         >
           PronoteCampus
         </Chip>

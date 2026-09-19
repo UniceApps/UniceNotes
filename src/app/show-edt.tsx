@@ -7,6 +7,7 @@ import {
   Divider,
   Icon,
   Menu,
+  ProgressBar,
   Text,
   Tooltip,
 } from 'react-native-paper';
@@ -17,12 +18,15 @@ import BottomSheet, {
   BottomSheetView,
 } from '@gorhom/bottom-sheet';
 import { CalendarBody, CalendarContainer, CalendarHeader } from '@howljs/calendar-kit';
-import { useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getCalendarTheme, useChoosenTheme } from '@/src/constants/theme';
 import { useApp } from '@/src/context/AppContext';
+import { edtService } from '@/src/services/edt';
+import type { CalendarEvent } from '@/src/types';
 import { getCalendarFromCache } from '@/src/utils/calendar';
+import { isValidEdtCode } from '@/src/utils/deeplink';
 import { haptics } from '@/src/utils/haptics';
 
 const MONTHS = [
@@ -32,9 +36,13 @@ const MONTHS = [
 
 export default function ShowEDTScreen() {
   const router = useRouter();
-  const { calendar, setCalendar, calendarOffline, adeid } = useApp();
+  const { code, fresh } = useLocalSearchParams<{ code?: string; fresh?: string }>();
+  const { calendar, setCalendar, calendarOffline, setCalendarOffline, adeid } = useApp();
   const theme = useChoosenTheme();
   const insets = useSafeAreaInsets();
+
+  const tempCode = isValidEdtCode(code) ? code : null;
+  const invalidCode = code !== undefined && tempCode === null;
 
   const [view, setView] = useState(3);
   const [viewIcon, setViewIcon] = useState('magnify-minus');
@@ -43,6 +51,9 @@ export default function ShowEDTScreen() {
   const [infoSubtitle, setInfoSubtitle] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth()]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [tempEvents, setTempEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(tempCode !== null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const calendarRef = useRef<React.ComponentRef<typeof CalendarContainer>>(null);
   const bottomSheetInfoRef = useRef<BottomSheet>(null);
@@ -66,11 +77,41 @@ export default function ShowEDTScreen() {
       const cal = await getCalendarFromCache();
       setCalendar(cal);
     }
-    if (!calendar || calendar.length === 0) {
+    if (invalidCode) return;
+    if (tempCode) {
+      loadTemp(tempCode);
+    } else if (fresh === '1') {
+      refreshOwn();
+    } else if (!calendar || calendar.length === 0) {
       loadCache();
     }
     setTimeout(() => goToToday(), 500);
   }, []);
+
+  async function loadTemp(target: string) {
+    setLoading(true);
+    setLoadFailed(false);
+    const events = await edtService.getTemporaryEDT(target);
+    if (events) setTempEvents(events);
+    else setLoadFailed(true);
+    setLoading(false);
+  }
+
+  // ouvert par un raccourci : le calendrier en mémoire peut dater
+  async function refreshOwn() {
+    if (!adeid || adeid === 'demo') return;
+    setLoading(true);
+    const { events, offline } = await edtService.getEDT(adeid);
+    setCalendar(events);
+    setCalendarOffline(offline);
+    setLoading(false);
+  }
+
+  // premier écran de la pile si l'app a été ouverte directement ici
+  function goBack() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/home');
+  }
 
   function cleanOutputString(input: string) {
     return input
@@ -154,16 +195,27 @@ export default function ShowEDTScreen() {
     bottomSheetInfoRef.current?.expand();
   }
 
+  // code invalide : on ne charge ni n'affiche rien
+  if (invalidCode) return <Redirect href="/home" />;
+
   const calTheme = getCalendarTheme(theme);
 
   const offlineBannerBg = theme.dark ? theme.colors.errorContainer : theme.colors.error;
   const offlineBannerFg = theme.dark ? theme.colors.onErrorContainer : theme.colors.onError;
 
+  const tempBannerBg = loadFailed ? offlineBannerBg : theme.colors.tertiaryContainer;
+  const tempBannerFg = loadFailed ? offlineBannerFg : theme.colors.onTertiaryContainer;
+  const tempLabel = loadFailed
+    ? 'ADE indisponible'
+    : !loading && tempEvents.length === 0
+      ? 'Aucun cours trouvé'
+      : 'EDT temporaire';
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated>
         <Tooltip title="Accueil">
-          <Appbar.BackAction onPress={() => router.back()} />
+          <Appbar.BackAction onPress={goBack} />
         </Tooltip>
         <Appbar.Content title="Emploi du temps" />
         <Menu
@@ -171,7 +223,7 @@ export default function ShowEDTScreen() {
           onDismiss={toggleMenu}
           anchor={<Appbar.Action icon="dots-vertical" onPress={toggleMenu} />}
         >
-          <Menu.Item title={adeid ?? ''} />
+          <Menu.Item title={tempCode ?? adeid ?? ''} />
           <Menu.Item
             leadingIcon="magnify"
             onPress={() => { toggleMenu(); router.push('/edt-config'); }}
@@ -189,7 +241,38 @@ export default function ShowEDTScreen() {
         </Menu>
       </Appbar.Header>
 
-      {calendarOffline && (
+      {loading && <ProgressBar indeterminate />}
+
+      {tempCode && (
+        <View
+          accessibilityRole={loadFailed ? 'alert' : undefined}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingVertical: 8,
+            paddingHorizontal: 16,
+            backgroundColor: tempBannerBg,
+          }}
+        >
+          <Icon
+            source={loadFailed ? 'alert-circle-outline' : 'eye-outline'}
+            size={18}
+            color={tempBannerFg}
+          />
+          <Text variant="labelLarge" style={{ color: tempBannerFg, flexShrink: 1 }}>
+            {tempLabel} · {tempCode}
+          </Text>
+          {loadFailed && (
+            <Button compact textColor={tempBannerFg} onPress={() => loadTemp(tempCode)}>
+              Réessayer
+            </Button>
+          )}
+        </View>
+      )}
+
+      {!tempCode && calendarOffline && (
         <View
           accessibilityRole="alert"
           style={{
@@ -215,7 +298,7 @@ export default function ShowEDTScreen() {
       </Text>
 
       <CalendarContainer
-        events={calendar}
+        events={tempCode ? tempEvents : calendar}
         theme={calTheme}
         ref={calendarRef}
         onPressEvent={(eventItem: unknown) => showInfos(eventItem as Parameters<typeof showInfos>[0])}

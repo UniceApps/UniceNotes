@@ -114,10 +114,10 @@ export default function OOBEScreen() {
             UniceNotes
           </Text>
               <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleLarge">
-                Délaissez les vieux intranets et retrouvez vos notes et votre emploi du temps directement dans l&apos;application.
+                Délaisse les vieux intranets et retrouve tes notes et ton emploi du temps directement dans l&apos;application.
           </Text>
               <Text style={{ textAlign: 'center', marginBottom: 8 }} variant="titleSmall">
-                En continuant, vous acceptez les conditions{'\n'}
+                En continuant, tu acceptes les conditions{'\n'}
                 d&apos;utilisation ainsi que la politique de confidentialité.
           </Text>
               <Button style={{ marginBottom: 8 }} icon="skip-next" mode="contained" onPress={handleWelcomeNext}>
@@ -158,7 +158,7 @@ export default function OOBEScreen() {
                 &mdash; Emploi du temps
               </Text>
               <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">
-                Configurez votre emploi du temps (via ADE) pour le retrouver directement à l&apos;accueil.
+                Configure ton emploi du temps (via ADE) pour le retrouver directement à l&apos;accueil.
               </Text>
               {edtDone ? (
                 <Button

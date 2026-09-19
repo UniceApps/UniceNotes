@@ -7,6 +7,7 @@ import type {
 
 import { getCalendarFromCache, saveCalendarToFile } from '../utils/calendar';
 import { stringToColour } from '../utils/color';
+import { isValidEdtCode } from '../utils/deeplink';
 import { getAsync, removeAsync, saveAsync } from '../utils/storage';
 
 interface ICALComponent {
@@ -184,7 +185,7 @@ export class EDT {
       const dateRange = getAcademicYearDateRange(projectName);
       const url =
         `${ADE_BASE}/jsp/custom/modules/plannings/anonymous_cal.jsp` +
-        `?code=${adeid}&projectId=${this.ADE_PROJECT}&calType=ical${dateRange}`;
+        `?code=${encodeURIComponent(adeid)}&projectId=${this.ADE_PROJECT}&calType=ical${dateRange}`;
       const res = await fetch(url, { signal });
       if (!res.ok) return null;
       return await res.text();
@@ -251,6 +252,15 @@ export class EDT {
     const calEvents = this.convertToCalendarEvents(events);
     await saveCalendarToFile(calEvents);
     return { events: calEvents, offline: false };
+  }
+
+  // edt d'un autre code ADE pour un affichage temporaire : n'écrit rien (cache, réglages, widget)
+  // et pas de repli sur le cache, qui contient l'edt de l'utilisateur et non celui demandé
+  async getTemporaryEDT(code: string): Promise<CalendarEvent[] | null> {
+    if (!isValidEdtCode(code)) return null;
+    const icalData = await this.fetchEDT(code);
+    if (!icalData) return null;
+    return this.convertToCalendarEvents(this.parseICal(icalData));
   }
 
   // ---

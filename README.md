@@ -3,7 +3,7 @@
   <h2 align="center">UniceNotes</h2>
 
 <p align="center">
-  <b>UniceNotes</b> est un client mobile non-officiel donnant accès à de multiples ressources provenant de l'Espace Numérique de Travail de l'Université Côte d'Azur. Utilisant React Native, il est compatible avec la grande majorité des dispositifs mobiles (<b>iOS et Android</b>). <b>Votre ENT. Dans votre poche.</b>
+  <b>UniceNotes</b> est un client mobile non-officiel donnant accès à de multiples ressources provenant de l'Espace Numérique de Travail de l'Université Côte d'Azur. Utilisant React Native, il est compatible avec la grande majorité des dispositifs mobiles (<b>iOS et Android</b>). <b>Ton ENT. Dans ta poche.</b>
 </p>
 
 ## ⚡️ Téléchargement
@@ -26,7 +26,7 @@
 
 ## ⚙️ Contribution
 
-Merci pour votre intérêt pour le projet ! Si vous souhaitez contribuer, contactez-nous grâce à l'email suivant : [app at metrixmedia.fr](mailto://app@metrixmedia.fr) ou en créant une issue / pull request sur GitHub.
+Merci pour ton intérêt pour le projet ! Si tu souhaites contribuer, contacte-nous grâce à l'email suivant : [app at metrixmedia.fr](mailto://app@metrixmedia.fr) ou en créant une issue / pull request sur GitHub.
 
 ## 📜 Licence
 
@@ -45,7 +45,7 @@ L'application UniceNotes utilise :
 - Le nom d'utilisateur / numéro étudiant
 - L'emploi du temps
 
-avec votre consentement (en vous connectant sur l'application et en acceptant les conditions d'utilisation) afin de vous fournir une expérience utilisateur optimale.
+avec ton consentement (en te connectant sur l'application et en acceptant les conditions d'utilisation) afin de te fournir une expérience utilisateur optimale.
 \
 Les données critiques sont stockées dans un format **crypté** dans la Keychain d'Apple / Keystore d'Android et ne peuvent être déchiffrées que par l'utilisateur lorsqu'il s'identifie grâce à un code ou grâce à une option de connxion biométrique. [Voir l'API SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
 \

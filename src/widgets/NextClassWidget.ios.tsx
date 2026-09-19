@@ -10,7 +10,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
 
   const EMPTY: WidgetClass = {
     title: 'Aucun cours',
-    room: 'Profitez-en !',
+    room: 'Profites-en !',
     startTime: '',
     endTime: '',
   };
@@ -36,7 +36,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
           {LogoHeader}
           <Spacer />
           <Text modifiers={[font({ size: 11 }), foregroundStyle('secondary')]}>
-            Configurez votre EDT dans l'app
+            Configure ton EDT dans l'app
           </Text>
         </VStack>
       );
@@ -49,7 +49,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
           <Text modifiers={[font({ size: 11 }), foregroundStyle('secondary')]}>prochains cours</Text>
         </HStack>
         <Text modifiers={[font({ size: 15 }), foregroundStyle('secondary')]}>
-          Ouvrez UniceNotes et configurez votre EDT pour voir vos prochains cours ici.
+          Ouvre UniceNotes et configure ton EDT pour voir tes prochains cours ici.
         </Text>
       </VStack>
     );
@@ -63,7 +63,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
           {LogoHeader}
           <Spacer />
           <Text modifiers={[font({ size: 11 }), foregroundStyle('secondary')]}>
-            Relancez UniceNotes pour mettre à jour
+            Relance UniceNotes pour mettre à jour
           </Text>
         </VStack>
       );
@@ -76,7 +76,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
           <Text modifiers={[font({ size: 11 }), foregroundStyle('secondary')]}>prochains cours</Text>
         </HStack>
         <Text modifiers={[font({ size: 15 }), foregroundStyle('secondary')]}>
-          Relancez UniceNotes pour mettre à jour l'emploi du temps.
+          Ouvre UniceNotes et relance-le pour mettre à jour l'emploi du temps.
         </Text>
       </VStack>
     );

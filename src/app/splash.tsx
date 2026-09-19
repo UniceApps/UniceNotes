@@ -70,7 +70,7 @@ export default function SplashScreen() {
     if (!netState.isInternetReachable) {
       setLoading(false);
       setTitleError('Internet indisponible');
-      setSubtitleError("Vous n'êtes pas connecté à Internet ! EC=0xT");
+      setSubtitleError("Tu n'es pas connecté à Internet ! EC=0xT");
       setTimeout(() => bottomSheetErrorRef.current?.expand(), 500);
       return;
     }
@@ -144,7 +144,7 @@ export default function SplashScreen() {
     
   const infoSubtitle =
     infoPrompt?.kind === 'update'
-      ? `Une nouvelle version de UniceNotes (${infoPrompt.latestVersion}) est disponible. Mettez à jour l'application pour profiter des dernières nouveautés et corrections.`
+      ? `Une nouvelle version de UniceNotes (${infoPrompt.latestVersion}) est disponible. Mets à jour l'application pour profiter des dernières nouveautés et corrections.`
       : (infoPrompt?.alert.message ?? '');
 
   return (

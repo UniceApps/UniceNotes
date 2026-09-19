@@ -82,7 +82,7 @@ export default function EDTConfigScreen() {
           setSearchResults([]);
         }
       } catch {
-        setSearchResults([{ id: 'demo', text: 'Erreur, veuillez vérifier votre connexion.' }]);
+        setSearchResults([{ id: 'demo', text: 'Erreur, vérifie ta connexion.' }]);
       }
     }
     setLoading(false);
@@ -189,7 +189,7 @@ export default function EDTConfigScreen() {
             {mode === '0' ? (
               <>
                 <Text style={{ textAlign: 'left', marginTop: 8 }} variant="labelLarge">
-                  Entrez votre numéro étudiant pour configurer l&apos;emploi du temps affiché :
+                  Entre ton numéro étudiant pour configurer l&apos;emploi du temps affiché :
                 </Text>
                 <TextInput
                   style={{ marginTop: 8 }}
@@ -211,11 +211,11 @@ export default function EDTConfigScreen() {
                   <Card.Title left={(props) => <Avatar.Icon {...props} icon="information" />} title />
                   <Card.Content>
                     <Text style={{ textAlign: 'left' }} variant="bodyMedium">
-                      Votre numéro étudiant est celui indiqué sur votre carte étudiant.
+                      Ton numéro étudiant est celui indiqué sur ta carte étudiant.
                     </Text>
                     <Text style={{ marginTop: 8, textAlign: 'left' }} variant="bodyMedium">
-                      L&apos;emploi du temps individuel comprend les cours de votre cursus ainsi que
-                      les cours de groupes dont vous faites partie.
+                      L&apos;emploi du temps individuel comprend les cours de ton cursus ainsi que
+                      les cours de groupes dont tu fais partie.
                     </Text>
                   </Card.Content>
                 </Card>
@@ -224,11 +224,11 @@ export default function EDTConfigScreen() {
               <>
                 {searchResults.length > 1 ? (
                   <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">
-                    Sélectionnez un cursus pour changer l&apos;emploi du temps affiché :
+                    Sélectionne un cursus pour changer l&apos;emploi du temps affiché :
                   </Text>
                 ) :
                   <Text style={{ marginTop: 8, textAlign: 'left' }} variant="titleSmall">
-                    Tapez au moins 2 caractères pour rechercher un cursus.
+                    Tape au moins 2 caractères pour rechercher un cursus.
                   </Text>
                 }
                 <Searchbar
@@ -258,7 +258,7 @@ export default function EDTConfigScreen() {
                   <Card.Content>
                     <Text style={{ textAlign: 'left' }} variant="bodyMedium">
                       L&apos;emploi du temps par cursus comprend les cours du cursus sélectionné ainsi
-                      que tous les cours de groupes, y compris ceux dont vous ne faites pas partie.
+                      que tous les cours de groupes, y compris ceux dont tu ne fais pas partie.
                     </Text>
                   </Card.Content>
                 </Card>
