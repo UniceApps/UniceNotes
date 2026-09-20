@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "3.1.4",
+    "version": "3.2.0",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -25,7 +25,7 @@
       },
       "infoPlist": {
         "NSFaceIDUsageDescription": "Connecte-toi sur l'application grâce à l'authentification biométrique.",
-        "NSNotificationsUsageDescription": "Recevez des notifications pour être informé de diverses choses.",
+        "NSNotificationsUsageDescription": "Reçois des notifications pour être informé de diverses choses.",
         "CFBundleLocalizations": [
           "fr"
         ],

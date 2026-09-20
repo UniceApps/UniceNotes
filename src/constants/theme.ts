@@ -113,6 +113,13 @@ export function useChoosenTheme(): AppTheme {
   return _fonts ? { ...base, fonts: _fonts } : base;
 }
 
+// pastilles des salles libres (vert / orange / rouge) : le thème Material n'a ni vert ni orange
+export function getRoomStatusColors(theme: AppTheme): Record<'free' | 'tight' | 'busy', string> {
+  return theme.dark
+    ? { free: '#5BC98A', tight: '#F5B041', busy: '#FF7B72' }
+    : { free: '#1E8E4E', tight: '#D97706', busy: '#D93025' };
+}
+
 export function getCalendarTheme(theme: AppTheme) {
   return {
     colors: {

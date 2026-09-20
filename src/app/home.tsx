@@ -52,10 +52,10 @@ function getRandomWelcomeMessage() {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { 
-    adeid, setCalendar, setCalendarOffline, 
-    updateModalShown, setUpdateModalShown, 
-    setOnboarding 
+  const {
+    adeid, setCalendar, setCalendarOffline,
+    updateModalShown, setUpdateModalShown,
+    setOnboarding
   } = useApp();
   const theme = useChoosenTheme();
   const insets = useSafeAreaInsets();
@@ -73,7 +73,7 @@ export default function HomeScreen() {
   const [infoSubtitle, setInfoSubtitle] = useState('');
 
   const isDemo = !adeid || adeid === 'demo';
-  
+
   const [welcomeMessage] = useState(getRandomWelcomeMessage);
 
   const bottomSheetInfoRef = useRef<BottomSheet>(null);
@@ -95,27 +95,17 @@ export default function HomeScreen() {
   useEffect(() => {
     setOnboarding(false);
     if (!isDemo) {
-    getNextEvent('normal');
-    if (Platform.OS === 'ios') pushWidgetTimeline();
+      getNextEvent('normal');
+      if (Platform.OS === 'ios') pushWidgetTimeline();
     }
 
-    
+
 
     // check in app context if update modal has been shown, if not show it and set it to true
     if (!updateModalShown) {
       showUpdateModal();
     }
   }, []);
-
-  function showInfo(action: string) {
-    if (action === 'info') {
-      setInfoTitle('Informations');
-      setInfoSubtitle(
-        "Ce n'est pas ton emploi du temps ? Tu peux changer l'EDT sélectionné en cliquant sur l'icône de calendrier en haut à droite de l'écran d'accueil.",
-      );
-    }
-    bottomSheetInfoRef.current?.expand();
-  }
 
   async function getNextEvent(mode: 'normal' | 'force') {
     if (isDemo) return;
@@ -174,24 +164,24 @@ export default function HomeScreen() {
     <View
       style={{ flex: 1, backgroundColor: theme.colors.background, paddingLeft: 25, paddingRight: 25 }}
     >
-      <SafeAreaView>
+      <SafeAreaView style={{ flex: 1 }}>
         <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-start' }}>
           <Avatar.Image
-            style={{ marginTop: insets.top * 1.5, marginBottom: 16 }}
+            style={{ marginTop: insets.top, marginBottom: 16 }}
             size={96}
             source={require('../assets/white.png')}
           />
           <TouchableRipple
             onPress={() => router.push('/edt-config')}
             rippleColor="rgba(0, 0, 0, 0)"
-            style={{ marginLeft: 'auto', marginTop: insets.top * 1.5, marginBottom: 50 }}
+            style={{ marginLeft: 'auto', marginTop: insets.top, marginBottom: 32 }}
           >
             <Avatar.Icon size={48} icon="calendar-edit" />
           </TouchableRipple>
           <TouchableRipple
             onPress={() => router.push('/settings')}
             rippleColor="rgba(0, 0, 0, 0)"
-            style={{ marginLeft: 8, marginTop: insets.top * 1.5, marginBottom: 50 }}
+            style={{ marginLeft: 8, marginTop: insets.top, marginBottom: 32 }}
           >
             <Avatar.Icon size={48} icon="cog" />
           </TouchableRipple>
@@ -225,29 +215,39 @@ export default function HomeScreen() {
               </Chip>
             )}
             {!isDemo && (
-            <Chip
-              style={{ marginRight: 4 }}
-              disabled={!selectable}
-              onPress={() => getNextEvent('force')}
-              icon="refresh"
-            >
-              Rafraîchir
-            </Chip>
+              <Chip
+                style={{ marginRight: 4 }}
+                disabled={!selectable}
+                onPress={() => getNextEvent('force')}
+                icon="refresh"
+              >
+                Rafraîchir
+              </Chip>
             )}
             {!isDemo && (
               nextEvent.summary !== 'ADE Indisponible' ? (
-              <Chip disabled={!selectable} onPress={getMyCal} icon="calendar">
-                Emploi du temps
-              </Chip>
-            ) : (
-              <Chip disabled={!selectable} onPress={getMyCal} icon="calendar-alert">
-                EDT (Hors-ligne)
-              </Chip>
+                <Chip disabled={!selectable} onPress={getMyCal} icon="calendar">
+                  Emploi du temps
+                </Chip>
+              ) : (
+                <Chip disabled={!selectable} onPress={getMyCal} icon="calendar-alert">
+                  EDT (Hors-ligne)
+                </Chip>
               )
             )}
           </Card.Actions>
         </Card>
 
+        <Divider style={{ marginBottom: 8 }} />
+        <Chip
+          style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row' }}
+          textStyle={{ paddingVertical: 8 }}
+          disabled={!selectable}
+          onPress={() => router.push('/free-rooms')}
+          icon="door-open"
+        >
+          Salles libres
+        </Chip>
         <Chip
           style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row' }}
           textStyle={{ paddingVertical: 8 }}
@@ -258,7 +258,7 @@ export default function HomeScreen() {
           PronoteCampus
         </Chip>
         <Chip
-          style={{ height: 48, marginBottom: 16, justifyContent: 'center', flexDirection: 'row' }}
+          style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row' }}
           textStyle={{ paddingVertical: 8 }}
           disabled={!selectable}
           onPress={() => router.push('/show-ent')}
@@ -267,25 +267,7 @@ export default function HomeScreen() {
           Intranet Étudiant (ENT)
         </Chip>
 
-        <Divider style={{ marginBottom: 8 }} />
-        <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-          <Tooltip title="Informations">
-            <IconButton
-              style={{ marginBottom: 4 }}
-              icon="information"
-              mode="contained"
-              onPress={() => showInfo('info')}
-            />
-          </Tooltip>
-          <Tooltip title="Code source">
-            <IconButton
-              style={{ marginBottom: 16 }}
-              icon="source-branch"
-              mode="contained"
-              onPress={() => handleURL('https://github.com/UniceApps/UniceNotes')}
-            />
-          </Tooltip>
-        </View>
+        <Divider style={{ marginBottom: 16 }} />
 
         <Text style={{ textAlign: 'center' }} variant="titleSmall">
           {adeid ? `Connecté en tant que ${adeid}` : "Non connecté"}

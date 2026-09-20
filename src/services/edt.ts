@@ -23,7 +23,7 @@ interface ICALEvent {
   endDate: { toJSDate: () => Date };
 }
 
-const ADE_BASE = 'https://edtweb.univ-cotedazur.fr';
+export const ADE_BASE = 'https://edtweb.univ-cotedazur.fr';
 const ONGOING_THRESHOLD_MS = 15 * 60 * 1000;
 const ADE_PROJECT_OVERRIDE_KEY = 'adeProjectOverride';
 
@@ -50,7 +50,7 @@ function getCurrentAcademicYearString(): string {
   return `${startYear}-${startYear + 1}`;
 }
 
-async function fetchSessionId(): Promise<string | null> {
+export async function fetchSessionId(): Promise<string | null> {
   try {
     // nouveau mode d'authentification de l'API ADE
     // header Basic avec un token codé en base64
@@ -94,7 +94,7 @@ function pickAutoProjectId(projects: AdeProject[]): string | null {
   return match?.id ?? null;
 }
 
-async function disconnectSession(sessionId: string): Promise<void> {
+export async function disconnectSession(sessionId: string): Promise<void> {
   try {
     await fetch(`${ADE_BASE}/jsp/webapi?function=disconnect&sessionId=${sessionId}`);
   } catch {
@@ -106,7 +106,7 @@ export class EDT {
   private ADE_PROJECT: string | null = null;
   private isOverridden = false;
   private projects: AdeProject[] = [];
-  private readonly _ready: Promise<void>;
+  private _ready: Promise<void>;
 
   constructor() {
     this._ready = this.resolveProject();
@@ -136,6 +136,16 @@ export class EDT {
 
   private waitUntilReady(): Promise<void> {
     return this._ready;
+  }
+
+  // projet ADE en cours d'utilisation
+  async ensureProject(): Promise<string | null> {
+    await this.waitUntilReady();
+    if (!this.ADE_PROJECT) {
+      this._ready = this.resolveProject();
+      await this._ready;
+    }
+    return this.ADE_PROJECT;
   }
 
   async getProjectSelection(): Promise<{
