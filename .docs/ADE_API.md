@@ -1,4 +1,4 @@
-# Documentation officielle de l'API ADE
+# Documentation non-officielle de l'API ADE
 
 À l'aide de l'API d'ADE, il est possible de récupérer les créneaux pour une journée, mais aussi pour une promotion voulue.
 
@@ -150,3 +150,35 @@ Le paramètre détail permet de spécifier le niveau de détail de la trame xml 
 16 or 0: & resource costs
 17: & events of the activity
 ```
+
+
+# Module « Salles libres »
+
+Le module (`src/services/rooms.ts`, `src/utils/ade-xml.ts`, `src/utils/rooms.ts`) enchaîne `connect` → `setProject` → `getResources` → `getEvents` → `disconnect`, avec la même session anonyme et le même projet que l'emploi du temps. `getResources` et `getEvents` ne répondent qu'après `setProject`.
+
+## Arbre des salles
+
+`https://adresse-ade/jsp/webapi?sessionId=xxxxxxxxxxxxx&function=getResources&category=classroom&detail=4`
+
+```
+category → classroom (ou room : même résultat, ADE renvoie <rooms> contenant des <room category="classroom">)
+detail → 4 : ajoute isGroup, indispensable (voir ci-dessous)
+```
+
+- ADE renvoie aussi les **dossiers** (campus, bâtiments) comme des `<room>`. Seul `isGroup="true"` (à partir de `detail=4`) les distingue des vraies salles. Les paramètres `leaves` / `folders` sont ignorés par ce serveur.
+- `path` est l'arbre séparé par des points, avec un point final, sans le nom de la salle : `path="INSPE.Liégeard."` donne INSPE → Liégeard. Un campus a `path=""`. Les segments peuvent contenir des espaces parasites (`Bâtiment. Fizeau.`) : ils sont nettoyés.
+- L'arbre contient des entrées qui ne sont pas des salles (corbeille, « Salles Virtuelles », « Cours en ligne », « Salle réserve », « Extérieur », dossier « 00 Santé (Test) »…) : elles sont masquées par `NOT_A_ROOM` dans `src/utils/ade-xml.ts`.
+
+## Réservations d'un jour
+
+`https://adresse-ade/jsp/webapi?sessionId=xxxxxxxxxxxxx&function=getEvents&date=09/21/2026&detail=8`
+
+```
+date → mm/dd/yyyy dans la requête, mais dd/mm/yyyy dans l'attribut date des événements renvoyés
+detail → 8 : nécessaire pour avoir les <resources> de chaque événement (une salle = category="classroom")
+```
+
+- `startHour` / `endHour` sont au format `HH:MM`, dans le fuseau du campus (Europe/Paris).
+- Une journée entière pèse environ 2,3 Mo (~2 s) et ADE **ne compresse pas** ses réponses.
+- Filtrer avec `resources=id1%7Cid2…` ne réduit presque rien au total (le poids vient des listes de groupes d'étudiants). Le `|` doit être encodé (`%7C`), sinon HTTP 400, et l'URL est limitée à environ 4 Ko (HTTP 414 au-delà d'environ 500 identifiants).
+- À fort niveau de détail, ADE renvoie parfois des `<event/>` vides : le parseur lève une erreur plutôt que d'afficher toutes les salles libres.
