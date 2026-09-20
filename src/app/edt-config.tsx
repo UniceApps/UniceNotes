@@ -122,59 +122,10 @@ export default function EDTConfigScreen() {
 
         <Card style={{ backgroundColor: theme.colors.surface, marginTop: 16, marginLeft: 25, marginRight: 25 }}>
           <Card.Title
-            left={(props) => <Avatar.Icon {...props} icon="calendar" />}
-            title="Année scolaire (projet ADE)"
-          />
-
-          <Card.Content>
-            <SegmentedButtons
-              style={{ marginBottom: 8, width: '100%' }}
-              value={projectMode}
-              onValueChange={selectProjectMode}
-              buttons={[
-                { value: '0', label: 'Auto', icon: 'auto-fix', showSelectedCheck: true },
-                { value: '1', label: 'Manuel', icon: 'tune', showSelectedCheck: true },
-              ]}
-            />
-
-            {projectMode === '1' && (
-              adeProjects.length === 0 ? (
-                <Text style={{ marginTop: 8, textAlign: 'left' }} variant="bodyMedium">
-                  Chargement des projets...
-                </Text>
-              ) : (
-                <RadioButton.Group
-                  value={selectedProjectId ?? ''}
-                  onValueChange={(id) => {
-                    const project = adeProjects.find((p) => p.id === id);
-                    if (project) selectAdeProject(project);
-                  }}
-                >
-                  {adeProjects.map((project) => (
-                    <RadioButton.Item
-                      key={project.id}
-                      label={project.name}
-                      value={project.id}
-                      style={{
-                        marginTop: 8,
-                        borderWidth: 1,
-                        borderColor: theme.colors.outline,
-                        borderRadius: 8,
-                      }}
-                    />
-                  ))}
-                </RadioButton.Group>
-              )
-            )}
-          </Card.Content>
-        </Card>
-
-        <Card style={{ backgroundColor: theme.colors.surface, marginTop: 16, marginBottom: 16, marginLeft: 25, marginRight: 25 }}>
-          <Card.Title
             left={(props) => <Avatar.Icon {...props} icon="account" />}
             title="Identifiant ADE"
           />
-        
+
           <Card.Content>
             <SegmentedButtons
               style={{ marginBottom: 8, width: '100%' }}
@@ -263,6 +214,55 @@ export default function EDTConfigScreen() {
                   </Card.Content>
                 </Card>
               </>
+            )}
+          </Card.Content>
+        </Card>
+
+        <Card style={{ backgroundColor: theme.colors.surface, marginTop: 16, marginLeft: 25, marginRight: 25 }}>
+          <Card.Title
+            left={(props) => <Avatar.Icon {...props} icon="calendar" />}
+            title="Année scolaire (projet ADE)"
+          />
+
+          <Card.Content>
+            <SegmentedButtons
+              style={{ marginBottom: 8, width: '100%' }}
+              value={projectMode}
+              onValueChange={selectProjectMode}
+              buttons={[
+                { value: '0', label: 'Auto', icon: 'auto-fix', showSelectedCheck: true },
+                { value: '1', label: 'Manuel', icon: 'tune', showSelectedCheck: true },
+              ]}
+            />
+
+            {projectMode === '1' && (
+              adeProjects.length === 0 ? (
+                <Text style={{ marginTop: 8, textAlign: 'left' }} variant="bodyMedium">
+                  Chargement des projets...
+                </Text>
+              ) : (
+                <RadioButton.Group
+                  value={selectedProjectId ?? ''}
+                  onValueChange={(id) => {
+                    const project = adeProjects.find((p) => p.id === id);
+                    if (project) selectAdeProject(project);
+                  }}
+                >
+                  {adeProjects.map((project) => (
+                    <RadioButton.Item
+                      key={project.id}
+                      label={project.name}
+                      value={project.id}
+                      style={{
+                        marginTop: 8,
+                        borderWidth: 1,
+                        borderColor: theme.colors.outline,
+                        borderRadius: 8,
+                      }}
+                    />
+                  ))}
+                </RadioButton.Group>
+              )
             )}
           </Card.Content>
         </Card>
