@@ -1,5 +1,5 @@
 import { HStack, Image, Spacer, Text, VStack } from '@expo/ui/swift-ui';
-import { font, foregroundStyle, frame } from '@expo/ui/swift-ui/modifiers';
+import { font, foregroundStyle, frame, widgetURL } from '@expo/ui/swift-ui/modifiers';
 import { createWidget } from 'expo-widgets';
 import type { NextClassWidgetProps, WidgetClass } from '../types';
 
@@ -7,6 +7,9 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
   'widget';
   const isSmall = env?.widgetFamily === 'systemSmall';
   const blue = env?.colorScheme === 'dark' ? 'rgb(155, 203, 255)' : 'rgb(0, 98, 159)';
+
+  // toucher le widget ouvre l'EDT (lien profond unicenotes://edt, voir utils/deeplink.ts)
+  const openEdt = [widgetURL('unicenotes://edt')];
 
   const EMPTY: WidgetClass = {
     title: 'Aucun cours',
@@ -32,7 +35,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
   if (props?.configured === false) {
     if (isSmall) {
       return (
-        <VStack alignment="leading" spacing={4}>
+        <VStack alignment="leading" spacing={4} modifiers={openEdt}>
           {LogoHeader}
           <Spacer />
           <Text modifiers={[font({ size: 11 }), foregroundStyle('secondary')]}>
@@ -42,7 +45,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
       );
     }
     return (
-      <VStack alignment="leading" spacing={10}>
+      <VStack alignment="leading" spacing={10} modifiers={openEdt}>
         <HStack alignment="center">
           {LogoHeader}
           <Spacer />
@@ -59,7 +62,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
   if (props?.configured === undefined) {
     if (isSmall) {
       return (
-        <VStack alignment="leading" spacing={4}>
+        <VStack alignment="leading" spacing={4} modifiers={openEdt}>
           {LogoHeader}
           <Spacer />
           <Text modifiers={[font({ size: 11 }), foregroundStyle('secondary')]}>
@@ -69,7 +72,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
       );
     }
     return (
-      <VStack alignment="leading" spacing={10}>
+      <VStack alignment="leading" spacing={10} modifiers={openEdt}>
         <HStack alignment="center">
           {LogoHeader}
           <Spacer />
@@ -88,7 +91,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
 
   if (isSmall) {
     return (
-      <VStack alignment="leading" spacing={4}>
+      <VStack alignment="leading" spacing={4} modifiers={openEdt}>
         {LogoHeader}
         <Spacer />
         {c1.startTime ? (
@@ -106,7 +109,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
 
   // systemMedium / systemLarge
   return (
-    <VStack alignment="leading" spacing={10}>
+    <VStack alignment="leading" spacing={10} modifiers={openEdt}>
       <HStack alignment="center">
         {LogoHeader}
         <Spacer />
