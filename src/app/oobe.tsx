@@ -84,8 +84,8 @@ export default function OOBEScreen() {
         resizeMode="cover"
         source={
           theme.dark
-            ? require('../assets/lottie/background_login_dark')
-            : require('../assets/lottie/background_login_light')
+            ? require('../assets/themes/lottie/background_login_dark')
+            : require('../assets/themes/lottie/background_login_light')
         }
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />

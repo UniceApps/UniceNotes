@@ -10,14 +10,14 @@ const apps = [
     label: 'Outlook',
     subtitle: 'Emails',
     icon: 'email-outline',
-    image: require('../assets/ent/outlook.png'),
+    image: require('../assets/images/ent/outlook.png'),
     url: 'https://outlook.office.com/owa/?realm=etu.univ-cotedazur.fr&exsvurl=1&ll-cc=1036&modurl=0',
   },
   {
     label: 'Moodle',
     subtitle: 'Portail LMS',
     icon: 'book-open-variant',
-    image: require('../assets/ent/moodle.png'),
+    image: require('../assets/images/ent/moodle.png'),
     url: 'https://portail-lms.univ-cotedazur.fr',
   },
   {
@@ -66,7 +66,7 @@ const apps = [
     label: 'Izly',
     subtitle: 'Mon espace',
     icon: 'cash-multiple',
-    image: require('../assets/ent/izly.png'),
+    image: require('../assets/images/ent/izly.png'),
     url: 'https://mon-espace.izly.fr',
   },
 ];
