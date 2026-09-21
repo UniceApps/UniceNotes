@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { View, ScrollView, Platform } from 'react-native';
+import { useChoosenTheme } from '@/src/constants/theme';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Platform, ScrollView, View } from 'react-native';
 import {
-  Text,
-  Button,
   Appbar,
+  Button,
   Chip,
+  Text,
   Tooltip,
 } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useChoosenTheme } from '@/src/constants/theme';
 
 export default function ServerConfigScreen() {
   const router = useRouter();

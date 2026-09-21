@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Provider as PaperProvider } from 'react-native-paper';
-import { Stack } from 'expo-router';
-import * as Font from 'expo-font';
-import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { loadThemePreference, updateFontConfig, useChoosenTheme } from '@/src/constants/theme';
 import { AppProvider } from '@/src/context/AppContext';
 import { DeepLinkHandler } from '@/src/context/DeepLinkHandler';
-import { useChoosenTheme, updateFontConfig } from '@/src/constants/theme';
+import * as Font from 'expo-font';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Provider as PaperProvider } from 'react-native-paper';
 import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
@@ -16,9 +16,12 @@ export default function RootLayout() {
 
   useEffect(() => {
     async function loadFonts() {
-      await Font.loadAsync({
-        Bahnschrift: require('../assets/bahnschrift.ttf'),
-      });
+      await Promise.all([
+        Font.loadAsync({
+          Bahnschrift: require('../assets/bahnschrift.ttf'),
+        }),
+        loadThemePreference(),
+      ]);
       updateFontConfig();
       setIsReady(true);
     }
@@ -39,9 +42,9 @@ export default function RootLayout() {
               <Stack.Screen name="splash" />
               <Stack.Screen name="oobe" />
               <Stack.Screen name="home" />
-              <Stack.Screen name="show-edt" />
+              <Stack.Screen name="timetable" />
               <Stack.Screen
-                name="show-ent"
+                name="ent"
                 options={{ presentation: 'modal', gestureEnabled: true }}
               />
               <Stack.Screen
@@ -53,11 +56,11 @@ export default function RootLayout() {
                 options={{ gestureEnabled: true }}
               />
               <Stack.Screen
-                name="icon-config"
+                name="appearance"
                 options={{ presentation: 'modal', gestureEnabled: true }}
               />
               <Stack.Screen
-                name="server-config"
+                name="servers"
                 options={{ presentation: 'modal', gestureEnabled: true }}
               />
               <Stack.Screen

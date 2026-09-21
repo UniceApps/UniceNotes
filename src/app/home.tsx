@@ -4,15 +4,12 @@ import { Platform, StyleSheet, View } from 'react-native';
 import {
   ActivityIndicator,
   Avatar,
-  Badge,
   Button,
   Card,
   Chip,
   Divider,
-  IconButton,
   Text,
-  Tooltip,
-  TouchableRipple,
+  TouchableRipple
 } from 'react-native-paper';
 
 import { useRouter } from 'expo-router';
@@ -33,7 +30,7 @@ import type { NextEvent } from '@/src/types';
 import { handleURL } from '@/src/utils/api';
 import { haptics } from '@/src/utils/haptics';
 import { NextClassWidgetInstance } from '@/src/widgets/NextClassWidget';
-import { getSecure, saveAsync } from '../utils/storage';
+import { saveAsync } from '../utils/storage';
 
 const WELCOME_MESSAGES = [
   'Passe une excellente journée !',
@@ -137,7 +134,7 @@ export default function HomeScreen() {
 
     setSelectable(true);
     setLoading(false);
-    router.push('/show-edt');
+    router.push('/timetable');
   }
 
   async function pushWidgetTimeline() {
@@ -261,7 +258,7 @@ export default function HomeScreen() {
           style={{ height: 48, marginBottom: 8, justifyContent: 'center', flexDirection: 'row' }}
           textStyle={{ paddingVertical: 8 }}
           disabled={!selectable}
-          onPress={() => router.push('/show-ent')}
+          onPress={() => router.push('/ent')}
           icon="briefcase-variant"
         >
           Intranet Étudiant (ENT)

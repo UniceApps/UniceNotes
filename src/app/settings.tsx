@@ -1,25 +1,24 @@
-import React from 'react';
-import { View, ScrollView, Alert } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 
 import {
-  Text,
-  Button,
   Appbar,
-  Card,
   Avatar,
+  Button,
+  Card,
   Divider,
+  Text,
   Tooltip,
 } from 'react-native-paper';
 
-import { useApp } from '@/src/context/AppContext';
-import { useChoosenTheme } from '@/src/constants/theme';
 import { APP_VERSION, IS_BETA } from '@/src/constants/config';
+import { useChoosenTheme } from '@/src/constants/theme';
+import { useApp } from '@/src/context/AppContext';
+import { handleURL } from '@/src/utils/api';
 import { haptics } from '@/src/utils/haptics';
 import { saveAsync } from '@/src/utils/storage';
-import { handleURL } from '@/src/utils/api';
 
 export default function ShowSettingsScreen() {
   const router = useRouter();
@@ -105,12 +104,12 @@ export default function ShowSettingsScreen() {
 
         <Card style={{ marginTop: 16 }}>
           <Card.Title
-            title="Sélection de l'icône"
-            subtitle="Change l'icône de l'application"
-            left={(props) => <Avatar.Icon {...props} icon="shape-square-rounded-plus" />}
+            title="Apparence"
+            subtitle="Thème et icône de l'application"
+            left={(props) => <Avatar.Icon {...props} icon="palette" />}
           />
           <Card.Actions>
-            <Button mode="contained-tonal" onPress={() => router.push('/icon-config')}>
+            <Button mode="contained-tonal" onPress={() => router.push('/appearance')}>
               Choisir
             </Button>
           </Card.Actions>
@@ -139,7 +138,7 @@ export default function ShowSettingsScreen() {
             left={(props) => <Avatar.Icon {...props} icon="server-network" />}
           />
           <Card.Actions>
-            <Button mode="contained-tonal" onPress={() => router.push('/server-config')}>
+            <Button mode="contained-tonal" onPress={() => router.push('/servers')}>
               Accéder
             </Button>
           </Card.Actions>

@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 
 import { APP_VERSION } from '../constants/config';
+import { resetTheme } from '../constants/theme';
 import type { CalendarEvent } from '../types';
 import { setHapticsEnabled } from '../utils/haptics';
 import { clearAsync, deleteSecure, getAsync, getSecure, removeAsync, saveAsync } from '../utils/storage';
@@ -102,6 +103,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCalendarOffline(false);
     setUpdateModalShown(false);
     setOobeCompletedState(false);
+    resetTheme();
     router.replace('/oobe'); // redirect to onboarding after data wipe
   }
 

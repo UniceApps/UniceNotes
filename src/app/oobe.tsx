@@ -16,13 +16,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import LottieView from 'lottie-react-native';
 
+import { IconPicker, ThemePicker } from '@/src/components/AppearancePickers';
 import { useChoosenTheme } from '@/src/constants/theme';
 import { useApp } from '@/src/context/AppContext';
 import { handleURL } from '@/src/utils/api';
 import { haptics } from '@/src/utils/haptics';
 import { saveSecure } from '@/src/utils/storage';
 
-type Step = 'welcome' | 'edt';
+type Step = 'welcome' | 'edt' | 'appearance';
 
 export default function OOBEScreen() {
   const router = useRouter();
@@ -64,8 +65,13 @@ export default function OOBEScreen() {
     router.push('/edt-config');
   }
 
-  function skipEdt() {
+  function goToAppearance() {
     haptics('light');
+    setStep('appearance');
+  }
+
+  function finishOobe() {
+    haptics('success');
     setOobeCompleted(true);
     setOnboarding(false);
     router.replace('/home');
@@ -90,7 +96,7 @@ export default function OOBEScreen() {
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
 
-      <View style={{ flex: 1, alignSelf: 'center', height: 'auto', marginTop: insets.top * 2 }}>
+      <View style={{ flex: 1, alignSelf: 'center', height: 'auto', marginTop: insets.top }}>
         <Animated.View style={animatedStyleLogo}>
           <Image         source={
           theme.dark
@@ -155,7 +161,7 @@ export default function OOBEScreen() {
                 Configuration
               </Text>
               <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleLarge">
-                &mdash; Emploi du temps
+                (1/2) &mdash; Emploi du temps
               </Text>
               <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">
                 Configure ton emploi du temps (via ADE) pour le retrouver directement à l&apos;accueil.
@@ -166,7 +172,7 @@ export default function OOBEScreen() {
                   icon="check"
                   mode="contained"
                   buttonColor={GREEN}
-                  onPress={skipEdt}
+                  onPress={goToAppearance}
                 >
                   Suivant
                 </Button>
@@ -175,11 +181,39 @@ export default function OOBEScreen() {
                   <Button style={{ marginBottom: 8 }} icon="calendar-edit" mode="contained" onPress={configureEdt}>
                     Configurer
                   </Button>
-                  <Button style={{ marginBottom: 16 }} mode="outlined" onPress={skipEdt}>
+                  <Button style={{ marginBottom: 16 }} mode="outlined" onPress={goToAppearance}>
                     Plus tard
                   </Button>
                 </>
               )}
+            </>
+          )}
+
+          {step === 'appearance' && (
+            <>
+              <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">
+                Personnalisation
+              </Text>
+              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleLarge">
+                (2/2) &mdash; UniceNotes de ton style
+              </Text>
+              <Text style={{ textAlign: 'left', marginBottom: 8 }} variant="titleMedium">
+                Thème
+              </Text>
+              <ThemePicker />
+              <Text style={{ textAlign: 'left', marginTop: 16 }} variant="titleMedium">
+                Icône
+              </Text>
+              <IconPicker compact />
+              <Text
+                style={{ textAlign: 'center', marginTop: 4, marginBottom: 8, color: theme.colors.onSurfaceVariant }}
+                variant="bodySmall"
+              >
+                Tu pourras changer d&apos;avis à tout moment dans Paramètres › Apparence.
+              </Text>
+              <Button style={{ marginBottom: 16 }} icon="check" mode="contained" buttonColor={GREEN} onPress={finishOobe}>
+                C&apos;est parti !
+              </Button>
             </>
           )}
         </BottomSheetView>

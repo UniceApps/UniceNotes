@@ -1,104 +1,131 @@
+import { useSyncExternalStore } from 'react';
 import { useColorScheme } from 'react-native';
 import { configureFonts, MD3Theme } from 'react-native-paper';
 
-export const lightTheme = {
-  dark: false,
-  version: 3 as const,
-  colors: {
-    primary: 'rgb(0, 98, 159)',
-    onPrimary: 'rgb(255, 255, 255)',
-    primaryContainer: 'rgb(208, 228, 255)',
-    onPrimaryContainer: 'rgb(0, 29, 52)',
-    secondary: 'rgb(82, 96, 112)',
-    onSecondary: 'rgb(255, 255, 255)',
-    secondaryContainer: 'rgb(214, 228, 247)',
-    onSecondaryContainer: 'rgb(15, 29, 42)',
-    tertiary: 'rgb(105, 87, 121)',
-    onTertiary: 'rgb(255, 255, 255)',
-    tertiaryContainer: 'rgb(240, 219, 255)',
-    onTertiaryContainer: 'rgb(36, 21, 50)',
-    error: 'rgb(186, 26, 26)',
-    onError: 'rgb(255, 255, 255)',
-    errorContainer: 'rgb(255, 218, 214)',
-    onErrorContainer: 'rgb(65, 0, 2)',
-    background: 'rgb(252, 252, 255)',
-    onBackground: 'rgb(26, 28, 30)',
-    surface: 'rgb(252, 252, 255)',
-    onSurface: 'rgb(26, 28, 30)',
-    surfaceVariant: 'rgb(222, 227, 235)',
-    onSurfaceVariant: 'rgb(66, 71, 78)',
-    outline: 'rgb(115, 119, 127)',
-    outlineVariant: 'rgb(194, 199, 207)',
-    shadow: 'rgb(0, 0, 0)',
-    scrim: 'rgb(0, 0, 0)',
-    inverseSurface: 'rgb(47, 48, 51)',
-    inverseOnSurface: 'rgb(241, 240, 244)',
-    inversePrimary: 'rgb(155, 203, 255)',
-    elevation: {
-      level0: 'transparent',
-      level1: 'rgb(239, 244, 250)',
-      level2: 'rgb(232, 240, 247)',
-      level3: 'rgb(224, 235, 244)',
-      level4: 'rgb(222, 234, 244)',
-      level5: 'rgb(217, 230, 242)',
-    },
-    surfaceDisabled: 'rgba(26, 28, 30, 0.12)',
-    onSurfaceDisabled: 'rgba(26, 28, 30, 0.38)',
-    backdrop: 'rgba(44, 49, 55, 0.4)',
-  },
-};
+import { getAsync, saveAsync } from '../utils/storage';
 
-export const darkTheme = {
-  dark: true,
-  version: 3 as const,
-  mode: 'adaptive' as const,
-  colors: {
-    primary: 'rgb(155, 203, 255)',
-    onPrimary: 'rgb(0, 51, 86)',
-    primaryContainer: 'rgb(0, 74, 121)',
-    onPrimaryContainer: 'rgb(208, 228, 255)',
-    secondary: 'rgb(186, 200, 219)',
-    onSecondary: 'rgb(36, 50, 64)',
-    secondaryContainer: 'rgb(59, 72, 87)',
-    onSecondaryContainer: 'rgb(214, 228, 247)',
-    tertiary: 'rgb(213, 190, 229)',
-    onTertiary: 'rgb(58, 42, 72)',
-    tertiaryContainer: 'rgb(81, 64, 96)',
-    onTertiaryContainer: 'rgb(240, 219, 255)',
-    error: 'rgb(255, 180, 171)',
-    onError: 'rgb(105, 0, 5)',
-    errorContainer: 'rgb(147, 0, 10)',
-    onErrorContainer: 'rgb(255, 180, 171)',
-    background: 'rgb(26, 28, 30)',
-    onBackground: 'rgb(226, 226, 230)',
-    surface: 'rgb(26, 28, 30)',
-    onSurface: 'rgb(226, 226, 230)',
-    surfaceVariant: 'rgb(66, 71, 78)',
-    onSurfaceVariant: 'rgb(194, 199, 207)',
-    outline: 'rgb(140, 145, 153)',
-    outlineVariant: 'rgb(66, 71, 78)',
-    shadow: 'rgb(0, 0, 0)',
-    scrim: 'rgb(0, 0, 0)',
-    inverseSurface: 'rgb(226, 226, 230)',
-    inverseOnSurface: 'rgb(47, 48, 51)',
-    inversePrimary: 'rgb(0, 98, 159)',
-    elevation: {
-      level0: 'transparent',
-      level1: 'rgb(32, 37, 41)',
-      level2: 'rgb(36, 42, 48)',
-      level3: 'rgb(40, 47, 55)',
-      level4: 'rgb(42, 49, 57)',
-      level5: 'rgb(44, 53, 62)',
-    },
-    surfaceDisabled: 'rgba(226, 226, 230, 0.12)',
-    onSurfaceDisabled: 'rgba(226, 226, 230, 0.38)',
-    backdrop: 'rgba(44, 49, 55, 0.4)',
-  },
-};
+import azurJson from '../assets/themes/palettes/azur.json';
+import mentheJson from '../assets/themes/palettes/menthe.json';
+import lavandeJson from '../assets/themes/palettes/lavande.json';
+import ambreJson from '../assets/themes/palettes/ambre.json';
 
-export type AppTheme = (typeof lightTheme | typeof darkTheme) & {
+// Chaque palette est un fichier JSON dans assets/themes/palettes
+// suivant MD3 voir doc https://oss.callstack.com/react-native-paper/docs/guides/theming :)
+const PALETTE_FILES: unknown[] = [azurJson, mentheJson, lavandeJson, ambreJson];
+
+export type ThemeColors = typeof azurJson.light;
+
+export type AppTheme = {
+  dark: boolean;
+  version: 3;
+  mode?: 'adaptive';
+  colors: ThemeColors;
   fonts?: MD3Theme['fonts'];
 };
+
+export interface ThemeDefinition {
+  id: string;
+  label: string;
+  description: string;
+  light: AppTheme;
+  dark: AppTheme;
+}
+
+// ---------------------------------------------------------------------------
+// Chargement des palettes JSON
+// ---------------------------------------------------------------------------
+
+// azur sert de référence : une palette doit définir exactement les mêmes clés
+function isValidColors(value: unknown, reference: Record<string, unknown> = azurJson.light): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const obj = value as Record<string, unknown>;
+  return Object.entries(reference).every(([key, ref]) =>
+    typeof ref === 'object' ? isValidColors(obj[key], ref as Record<string, unknown>) : typeof obj[key] === 'string',
+  );
+}
+
+/** Transforme un JSON de palette en thème Paper ; renvoie null si le JSON est invalide. */
+export function loadTheme(json: unknown): ThemeDefinition | null {
+  if (typeof json !== 'object' || json === null) return null;
+  const { id, label, description, light, dark } = json as Record<string, unknown>;
+  if (typeof id !== 'string' || typeof label !== 'string') return null;
+  if (!isValidColors(light) || !isValidColors(dark)) return null;
+
+  return {
+    id,
+    label,
+    description: typeof description === 'string' ? description : '',
+    light: { dark: false, version: 3, colors: light as ThemeColors },
+    dark: { dark: true, version: 3, mode: 'adaptive', colors: dark as ThemeColors },
+  };
+}
+
+export const themes: Record<string, ThemeDefinition> = {};
+for (const file of PALETTE_FILES) {
+  const theme = loadTheme(file);
+  if (theme) themes[theme.id] = theme;
+  else console.warn('[theme] palette JSON invalide ignorée', (file as { id?: unknown })?.id);
+}
+
+export const DEFAULT_THEME_ID = 'azur';
+
+export const themeOptions = Object.values(themes).map((t) => ({
+  id: t.id,
+  label: t.label,
+  description: t.description,
+  swatchLight: t.light.colors.primary,
+  swatchDark: t.dark.colors.primary,
+}));
+
+export function isThemeId(value: unknown): value is string {
+  return typeof value === 'string' && value in themes;
+}
+
+// return la variante clair/sombre d'un thème
+export function getTheme(id: string | null | undefined, isDark: boolean): AppTheme {
+  const entry = isThemeId(id) ? themes[id] : themes[DEFAULT_THEME_ID];
+  return isDark ? entry.dark : entry.light;
+}
+
+export const lightTheme = themes[DEFAULT_THEME_ID].light;
+export const darkTheme = themes[DEFAULT_THEME_ID].dark;
+
+// ---------------------------------------------------------------------------
+// Thème sélectionné
+// ---------------------------------------------------------------------------
+
+let _themeId: string = DEFAULT_THEME_ID;
+const _listeners = new Set<() => void>();
+
+function emitThemeChange(id: string): void {
+  _themeId = id;
+  _listeners.forEach((l) => l());
+}
+
+function subscribeTheme(listener: () => void): () => void {
+  _listeners.add(listener);
+  return () => _listeners.delete(listener);
+}
+
+export async function loadThemePreference(): Promise<void> {
+  const stored = await getAsync('theme');
+  emitThemeChange(isThemeId(stored) ? stored : DEFAULT_THEME_ID);
+}
+
+export async function setThemeId(id: string): Promise<void> {
+  if (!isThemeId(id)) return;
+  emitThemeChange(id);
+  await saveAsync('theme', id);
+}
+
+// Remet le thème par défaut en mémoire
+export function resetTheme(): void {
+  emitThemeChange(DEFAULT_THEME_ID);
+}
+
+export function useThemeId(): string {
+  return useSyncExternalStore(subscribeTheme, () => _themeId);
+}
 
 let _fonts: MD3Theme['fonts'] | null = null;
 
@@ -106,10 +133,11 @@ export function updateFontConfig(): void {
   _fonts = configureFonts({ config: { fontFamily: 'Bahnschrift' } });
 }
 
-// hook: re-renders the component when the system switches between light and dark
+// hook: re-renders the component when the system switches between light and dark or the theme changes
 export function useChoosenTheme(): AppTheme {
   const scheme = useColorScheme();
-  const base = scheme === 'dark' ? darkTheme : lightTheme;
+  const themeId = useThemeId();
+  const base = getTheme(themeId, scheme === 'dark');
   return _fonts ? { ...base, fonts: _fonts } : base;
 }
 
