@@ -47,11 +47,17 @@ export default function ShowEDTScreen() {
   const [view, setView] = useState(3);
   const [viewIcon, setViewIcon] = useState('magnify-minus');
   const [menuVisible, setMenuVisible] = useState(false);
+
   const [infoTitle, setInfoTitle] = useState('Infos');
   const [infoSubtitle, setInfoSubtitle] = useState('');
+  const [infoRoom, setInfoRoom] = useState('');
+  const [infoTime, setInfoTime] = useState('');
+
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth()]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
   const [tempEvents, setTempEvents] = useState<CalendarEvent[]>([]);
+
   const [loading, setLoading] = useState(tempCode !== null);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -167,14 +173,14 @@ export default function ShowEDTScreen() {
     const durationMs = eventItem._internal.duration * 60 * 1000;
     const durationTime = new Date(durationMs);
 
-    console.log(eventItem.subtitle.length)
-
     const res =
-      (eventItem.subtitle.length > 512
-        ? eventItem.subtitle.slice(0, 509) + "..."
-        : eventItem.subtitle) +
-      (eventItem.description ? '\n\n' + eventItem.description : '') +
-      '\n' +
+      (eventItem.subtitle.length > 384
+        ? eventItem.subtitle.slice(0, 380) + "..."
+        : eventItem.subtitle);
+
+    setInfoTitle(eventItem.title);
+    setInfoRoom(eventItem.description ?? 'N/A');
+    setInfoTime(
       startTime.getHours() +
       ':' +
       String(startTime.getMinutes()).padStart(2, '0') +
@@ -185,9 +191,9 @@ export default function ShowEDTScreen() {
       ' (' +
       durationTime.getUTCHours() +
       'h' +
-      durationTime.getMinutes() +
-      ')';
-    setInfoTitle(eventItem.title);
+      String(durationTime.getMinutes()).padStart(2, '0') +
+      ')'
+    );
 
     let cleanRes: string = cleanOutputString(res);
     setInfoSubtitle(cleanRes);
@@ -345,8 +351,16 @@ export default function ShowEDTScreen() {
           <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">
             {infoTitle}
           </Text>
-          <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">
+          <Text style={{ textAlign: 'left' }} variant="bodyLarge">
             {infoSubtitle}
+          </Text>
+          {infoRoom &&
+            <Text style={{ textAlign: 'center', marginTop: 16, marginBottom: 4 }} variant="titleLarge">
+              {infoRoom}
+            </Text>
+          }
+          <Text style={{ textAlign: 'center', marginBottom: 16 }} variant="titleLarge">
+            {infoTime}
           </Text>
           <Button
             style={{ marginBottom: 16 }}

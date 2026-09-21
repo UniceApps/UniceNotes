@@ -39,10 +39,7 @@ export default function RootLayout() {
               <Stack.Screen name="splash" />
               <Stack.Screen name="oobe" />
               <Stack.Screen name="home" />
-              <Stack.Screen
-                name="show-edt"
-                options={{ gestureEnabled: true }}
-              />
+              <Stack.Screen name="show-edt" />
               <Stack.Screen
                 name="show-ent"
                 options={{ presentation: 'modal', gestureEnabled: true }}
