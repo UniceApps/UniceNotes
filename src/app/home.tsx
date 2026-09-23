@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import {
   ActivityIndicator,
@@ -26,10 +26,10 @@ import { APP_VERSION, PRONOTE_URL, RELEASE_NOTES } from '@/src/constants/config'
 import { useChoosenTheme } from '@/src/constants/theme';
 import { useApp } from '@/src/context/AppContext';
 import { edtService } from '@/src/services/edt';
+import { updateWidgets, WIDGETS_SUPPORTED } from '@/src/services/widgets';
 import type { NextEvent } from '@/src/types';
 import { handleURL } from '@/src/utils/api';
 import { haptics } from '@/src/utils/haptics';
-import { NextClassWidgetInstance } from '@/src/widgets/NextClassWidget';
 import { saveAsync } from '../utils/storage';
 
 const WELCOME_MESSAGES = [
@@ -93,7 +93,7 @@ export default function HomeScreen() {
     setOnboarding(false);
     if (!isDemo) {
       getNextEvent('normal');
-      if (Platform.OS === 'ios') pushWidgetTimeline();
+      if (WIDGETS_SUPPORTED) pushWidgetTimeline();
     }
 
 
@@ -124,13 +124,7 @@ export default function HomeScreen() {
     const { events, offline } = await edtService.getEDT(adeid ?? 'demo');
     setCalendar(events);
     setCalendarOffline(offline);
-    if (Platform.OS === 'ios') {
-      try {
-        NextClassWidgetInstance.updateTimeline(
-          edtService.buildWidgetTimeline(events)
-        );
-      } catch { }
-    }
+    updateWidgets(events);
 
     setSelectable(true);
     setLoading(false);
@@ -138,13 +132,8 @@ export default function HomeScreen() {
   }
 
   async function pushWidgetTimeline() {
-    try {
-      const { events } = await edtService.getEDT(adeid ?? 'demo');
-      const timeline = edtService.buildWidgetTimeline(events);
-      NextClassWidgetInstance.updateTimeline(timeline);
-    } catch {
-      // widget non configuré ou ADE indisponible
-    }
+    const { events } = await edtService.getEDT(adeid ?? 'demo');
+    updateWidgets(events);
   }
 
   async function showUpdateModal() {

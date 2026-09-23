@@ -1,9 +1,6 @@
 import ICAL from 'ical.js';
 
-import type { 
-  AdeProject, CalendarEvent, EDTResult, 
-  NextClassWidgetProps, NextEvent, WidgetClass 
-} from '../types';
+import type { AdeProject, CalendarEvent, EDTResult, NextEvent } from '../types';
 
 import { getCalendarFromCache, saveCalendarToFile } from '../utils/calendar';
 import { stringToColour } from '../utils/color';
@@ -264,107 +261,12 @@ export class EDT {
     return { events: calEvents, offline: false };
   }
 
-  // edt d'un autre code ADE pour un affichage temporaire : n'écrit rien (cache, réglages, widget)
-  // et pas de repli sur le cache, qui contient l'edt de l'utilisateur et non celui demandé
+  // edt d'un autre code ADE pour un affichage temporaire
   async getTemporaryEDT(code: string): Promise<CalendarEvent[] | null> {
     if (!isValidEdtCode(code)) return null;
     const icalData = await this.fetchEDT(code);
     if (!icalData) return null;
     return this.convertToCalendarEvents(this.parseICal(icalData));
-  }
-
-  // ---
-  // Widget
-  // ---
-
-  findNextTwoCourses(events: ICALEvent[]): WidgetClass[] {
-    const now = new Date();
-    const windowStart = new Date(now.getTime() - 15 * 60 * 1000);
-
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const fmt = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-    return events
-      .map((e) => ({
-        start: e.startDate.toJSDate(),
-        end: e.endDate.toJSDate(),
-        title: e.summary ?? 'Cours inconnu',
-        room: e.location ?? '',
-      }))
-      .filter((e) => e.start >= windowStart)
-      .sort((a, b) => a.start.getTime() - b.start.getTime())
-      .slice(0, 2)
-      .map((e) => ({
-        title: e.title,
-        room: e.room,
-        startTime: fmt(e.start),
-        endTime: fmt(e.end),
-      }));
-  }
-
-  async getNextTwoCourses(adeid: string): Promise<WidgetClass[]> {
-    const icalData = await this.fetchEDT(adeid);
-    if (!icalData) return [];
-    const events = this.parseICal(icalData);
-    return this.findNextTwoCourses(events);
-  }
-
-  buildWidgetTimeline(
-    events: CalendarEvent[],
-  ): Array<{ date: Date; props: NextClassWidgetProps }> {
-    if (events.length === 0) {
-      return [
-        {
-          date: new Date(),
-          props: { courses: [], configured: false },
-        },
-      ];
-    }
-
-    const now = new Date();
-    const cutoff = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 jours
-
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const fmt = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-    // Tous les cours futurs triés par heure de début
-    const allFuture = events
-      .filter((e) => new Date(e.end.dateTime) > now)
-      .sort(
-        (a, b) =>
-          new Date(a.start.dateTime).getTime() - new Date(b.start.dateTime).getTime(),
-      );
-
-    // Les 3 prochains cours non encore terminés à partir d'un instant donné (1 en avant, 2 à suivre)
-    const getCoursesAt = (from: Date): WidgetClass[] =>
-      allFuture
-        .filter((e) => new Date(e.end.dateTime) > from)
-        .slice(0, 3)
-        .map((e) => ({
-          title: e.title,
-          room: e.description, // description = location dans CalendarEvent
-          startTime: fmt(new Date(e.start.dateTime)),
-          endTime: fmt(new Date(e.end.dateTime)),
-          color: e.color,
-        }));
-
-    const seen = new Set<number>();
-    const timeline: Array<{ date: Date; props: NextClassWidgetProps }> = [];
-
-    seen.add(now.getTime());
-    timeline.push({ date: now, props: { courses: getCoursesAt(now), configured: true } });
-
-    // Une entrée à chaque fin de cours dans les 24h
-    for (const event of allFuture) {
-      const endDate = new Date(event.end.dateTime);
-      const ms = endDate.getTime();
-      if (endDate <= cutoff && !seen.has(ms)) {
-        seen.add(ms);
-        timeline.push({ date: endDate, props: { courses: getCoursesAt(endDate), configured: true } });
-      }
-    }
-
-    return timeline;
   }
 }
 
