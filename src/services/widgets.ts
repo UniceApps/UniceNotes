@@ -4,7 +4,7 @@ import type { CalendarEvent, NextClassWidgetProps, WidgetClass } from '../types'
 import { NextClassWidgetInstance } from '../widgets/NextClassWidget';
 
 // plateformes dont le widget est alimenté par l'app
-export const WIDGETS_SUPPORTED = Platform.OS === 'ios';
+export const WIDGETS_SUPPORTED = Platform.OS === 'ios' || Platform.OS === 'android';
 
 // la timeline couvre les 3 prochains jours
 const TIMELINE_SPAN_MS = 3 * 24 * 60 * 60 * 1000;
@@ -26,6 +26,7 @@ function toWidgetClass(event: CalendarEvent): WidgetClass {
     startTime: formatHour(new Date(event.start.dateTime)),
     endTime: formatHour(new Date(event.end.dateTime)),
     color: event.color,
+    endsAt: new Date(event.end.dateTime).getTime(),
   };
 }
 

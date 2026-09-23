@@ -35,6 +35,8 @@ export interface WidgetClass {
   startTime: string;
   endTime: string;
   color?: string;
+  // fin du cours en ms
+  endsAt?: number;
 }
 
 export interface NextClassWidgetProps {
