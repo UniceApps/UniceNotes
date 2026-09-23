@@ -1,18 +1,20 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { Appbar, Divider, ProgressBar, Text, Tooltip } from 'react-native-paper';
+import { Appbar, Divider, ProgressBar, Snackbar, Text, Tooltip } from 'react-native-paper';
 
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Banner } from '@/src/components/Banner';
+import { FavoriteRooms } from '@/src/components/rooms/FavoriteRooms';
 import { RoomFilters } from '@/src/components/rooms/RoomFilters';
 import type { RoomsViewContext } from '@/src/components/rooms/RoomRow';
 import { RoomTree } from '@/src/components/rooms/RoomTree';
 import { getRoomStatusColors, useChoosenTheme } from '@/src/constants/theme';
+import { MAX_FAVORITE_ROOMS, useFavoriteRooms } from '@/src/hooks/useFavoriteRooms';
 import { useRoomsSnapshot } from '@/src/hooks/useRoomsSnapshot';
-import type { RoomEntry } from '@/src/types';
+import type { RoomBooking, RoomEntry } from '@/src/types';
 import { haptics } from '@/src/utils/haptics';
 import {
   buildRoomTree,
@@ -20,12 +22,14 @@ import {
   formatDuration,
   formatTime,
   getParisClock,
+  getRoomAvailability,
   groupBookingsByRoom,
   keepFree,
 } from '@/src/utils/rooms';
 
 const DEFAULT_DURATION = 60;
 const NO_ROOMS: RoomEntry[] = [];
+const NO_BOOKINGS: RoomBooking[] = [];
 
 export default function FreeRoomsScreen() {
   const router = useRouter();
@@ -36,6 +40,8 @@ export default function FreeRoomsScreen() {
   const { snapshot, clock, loading, failed, reload } = useRoomsSnapshot();
   const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [onlyFree, setOnlyFree] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const favorites = useFavoriteRooms(snapshot?.rooms);
 
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
@@ -48,6 +54,16 @@ export default function FreeRoomsScreen() {
     const full = buildRoomView(tree, bookingsByRoom, clock.minutes, duration);
     return onlyFree ? keepFree(full) : full;
   }, [tree, bookingsByRoom, clock.minutes, duration, onlyFree]);
+
+  const favoriteEntries = useMemo(() => {
+    const rooms = snapshot?.rooms ?? [];
+    return favorites.ids.flatMap((id) => {
+      const room = rooms.find((r) => r.id === id);
+      if (!room) return [];
+      const availability = getRoomAvailability(bookingsByRoom.get(id) ?? NO_BOOKINGS, clock.minutes, duration);
+      return [{ room, availability }];
+    });
+  }, [snapshot, favorites.ids, bookingsByRoom, clock.minutes, duration]);
 
   function goBack() {
     haptics('medium');
@@ -63,6 +79,15 @@ export default function FreeRoomsScreen() {
   function selectDuration(minutes: number) {
     haptics('selection');
     setDuration(minutes);
+  }
+
+  function toggleFavorite(roomId: string) {
+    if (favorites.toggle(roomId)) {
+      haptics('selection');
+    } else {
+      haptics('warning');
+      setNotice(`${MAX_FAVORITE_ROOMS} salles favorites maximum`);
+    }
   }
 
   function toggleOnlyFree() {
@@ -83,8 +108,11 @@ export default function FreeRoomsScreen() {
     duration,
     colors,
     secondary: theme.colors.onSurfaceVariant,
+    accent: theme.colors.primary,
     highlight: theme.colors.secondaryContainer,
     onTreeChange: keepTreeInView,
+    isFavorite: (roomId) => favorites.ids.includes(roomId),
+    onToggleFavorite: toggleFavorite,
   };
 
   const errorBackground = theme.dark ? theme.colors.errorContainer : theme.colors.error;
@@ -142,6 +170,7 @@ export default function FreeRoomsScreen() {
 
         {snapshot && (
           <>
+            <FavoriteRooms entries={favoriteEntries} ctx={ctx} />
             <RoomFilters
               duration={duration}
               onSelectDuration={selectDuration}
@@ -169,6 +198,10 @@ export default function FreeRoomsScreen() {
           </>
         )}
       </ScrollView>
+
+      <Snackbar visible={notice !== null} onDismiss={() => setNotice(null)} duration={2500}>
+        {notice ?? ''}
+      </Snackbar>
     </View>
   );
 }
