@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "3.2.0",
+    "version": "3.2.1",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -185,7 +185,7 @@
             {
               "name": "NextClassWidget",
               "displayName": "Prochains Cours",
-              "description": "Affiche vos deux prochains cours UniceNotes",
+              "description": "Affiche vos prochains cours UniceNotes",
               "supportedFamilies": [
                 "systemSmall",
                 "systemMedium"

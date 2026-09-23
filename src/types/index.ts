@@ -34,6 +34,7 @@ export interface WidgetClass {
   room: string;
   startTime: string;
   endTime: string;
+  color?: string;
 }
 
 export interface NextClassWidgetProps {

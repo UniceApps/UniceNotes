@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 import * as QuickActions from 'expo-quick-actions';
 import { useQuickActionCallback } from 'expo-quick-actions/hooks';
-import { usePathname, useRouter } from 'expo-router';
+import { useGlobalSearchParams, usePathname, useRouter, type Href } from 'expo-router';
 
 import { PRONOTE_URL } from '@/src/constants/config';
 import { useApp } from '@/src/context/AppContext';
@@ -41,17 +41,16 @@ const QUICK_ACTIONS: QuickActions.Action[] = [
   },
 ];
 
-// useQuickActionCallback rejoue l'action initiale à chaque changement de callback
+// rejoue l'action à chaque changement de callback
 function onQuickAction(action: QuickActions.Action) {
   const link = parseDeepLink(action.params?.href);
   if (link) emitDeepLink(link);
 }
 
-// Ouvre les liens profonds (raccourcis d'icône et URL du système) une fois l'app prête.
-// Au démarrage à froid le splash finit par un router.replace('/home') : ouvrir avant serait écrasé.
 export function DeepLinkHandler() {
   const router = useRouter();
   const pathname = usePathname();
+  const { code: currentCode } = useGlobalSearchParams<{ code?: string }>();
   const { adeid, isInitialized, oobeCompleted } = useApp();
 
   const link = useSyncExternalStore(subscribeDeepLink, peekDeepLink);
@@ -71,25 +70,33 @@ export function DeepLinkHandler() {
     const target = takeDeepLink();
     if (!target) return;
 
+    // repart toujours de l'accueil
+    const open = (href: Href) => {
+      if (router.canDismiss()) router.dismissAll();
+      router.push(href);
+    };
+
     switch (target.kind) {
       case 'notes':
         handleURL(PRONOTE_URL);
         break;
       case 'ent':
-        router.push('/ent');
+        if (pathname !== '/ent') open('/ent');
         break;
       case 'edt':
         if (target.code) {
           // EDT temporaire : lecture seule, l'EDT enregistré n'est jamais modifié
-          router.push({ pathname: '/timetable', params: { code: target.code } });
+          if (pathname !== '/timetable' || currentCode !== target.code) {
+            open({ pathname: '/timetable', params: { code: target.code } });
+          }
         } else if (!adeid || adeid === 'demo') {
-          router.push('/edt-config');
-        } else {
-          router.push({ pathname: '/timetable', params: { fresh: '1' } });
+          if (pathname !== '/edt-config') open('/edt-config');
+        } else if (pathname !== '/timetable' || currentCode) {
+          open({ pathname: '/timetable', params: { fresh: '1' } });
         }
         break;
     }
-  }, [link, pathname, isInitialized, oobeCompleted, adeid, router]);
+  }, [link, pathname, currentCode, isInitialized, oobeCompleted, adeid, router]);
 
   return null;
 }

@@ -1,6 +1,4 @@
 // Liens profonds : unicenotes://notes, unicenotes://ent, unicenotes://edt et unicenotes://edt/{code}
-// Tout ce qui vient de l'extérieur (raccourcis d'icône, URL du système) est validé ici, sans requête réseau :
-// grammaire stricte, tout le reste est ignoré.
 
 export type DeepLink =
   | { kind: 'notes' }
@@ -9,7 +7,7 @@ export type DeepLink =
 
 export const EDT_CODE_MAX_LENGTH = 32;
 
-// codes ADE attendus : numéro étudiant (22209198) ou cursus (EIIN3-151-VET)
+// code ADE
 const EDT_CODE_PATTERN = new RegExp(`^[A-Za-z0-9_-]{1,${EDT_CODE_MAX_LENGTH}}$`);
 
 export function isValidEdtCode(code: unknown): code is string {
@@ -41,10 +39,6 @@ export function isDeepLinkUrl(url: unknown): boolean {
   return typeof url === 'string' && RESERVED_HOST_PATTERN.test(url);
 }
 
-// ---
-// Lien en attente, lu par le DeepLinkHandler via useSyncExternalStore
-// ---
-
 let pending: DeepLink | null = null;
 const subscribers = new Set<() => void>();
 
@@ -52,7 +46,7 @@ function notify(): void {
   subscribers.forEach((fn) => fn());
 }
 
-// le lien reste en attente tant que le handler ne l'a pas repris (démarrage à froid inclus), le dernier remplace le précédent
+// le lien reste en attente tant que le handler ne l'a pas repris
 export function emitDeepLink(link: DeepLink): void {
   pending = link;
   notify();

@@ -335,16 +335,17 @@ export class EDT {
           new Date(a.start.dateTime).getTime() - new Date(b.start.dateTime).getTime(),
       );
 
-    // Les 2 prochains cours non encore terminés à partir d'un instant donné
+    // Les 3 prochains cours non encore terminés à partir d'un instant donné (1 en avant, 2 à suivre)
     const getCoursesAt = (from: Date): WidgetClass[] =>
       allFuture
         .filter((e) => new Date(e.end.dateTime) > from)
-        .slice(0, 2)
+        .slice(0, 3)
         .map((e) => ({
           title: e.title,
           room: e.description, // description = location dans CalendarEvent
           startTime: fmt(new Date(e.start.dateTime)),
           endTime: fmt(new Date(e.end.dateTime)),
+          color: e.color,
         }));
 
     const seen = new Set<number>();
