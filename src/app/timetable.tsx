@@ -1,26 +1,21 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View } from 'react-native';
 
-import {
-  Appbar,
-  Button,
-  Divider,
-  Icon,
-  Menu,
-  ProgressBar,
-  Text,
-  Tooltip,
-} from 'react-native-paper';
+import { Appbar, Divider, ProgressBar, Text, Tooltip } from 'react-native-paper';
 
-import BottomSheet, {
-  BottomSheetBackdrop,
-  BottomSheetBackdropProps,
-  BottomSheetView,
-} from '@gorhom/bottom-sheet';
+import BottomSheet from '@gorhom/bottom-sheet';
 import { CalendarBody, CalendarContainer, CalendarHeader } from '@howljs/calendar-kit';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Banner } from '@/src/components/Banner';
+import { EventCard } from '@/src/components/timetable/EventCard';
+import {
+  describeEvent,
+  EventSheet,
+  type EventDetails,
+  type PressedEvent,
+} from '@/src/components/timetable/EventSheet';
+import { TimetableMenu } from '@/src/components/timetable/TimetableMenu';
 import { getCalendarTheme, useChoosenTheme } from '@/src/constants/theme';
 import { useApp } from '@/src/context/AppContext';
 import { edtService } from '@/src/services/edt';
@@ -39,7 +34,6 @@ export default function ShowEDTScreen() {
   const { code, fresh } = useLocalSearchParams<{ code?: string; fresh?: string }>();
   const { calendar, setCalendar, calendarOffline, setCalendarOffline, adeid } = useApp();
   const theme = useChoosenTheme();
-  const insets = useSafeAreaInsets();
 
   const tempCode = isValidEdtCode(code) ? code : null;
   const invalidCode = code !== undefined && tempCode === null;
@@ -48,10 +42,7 @@ export default function ShowEDTScreen() {
   const [viewIcon, setViewIcon] = useState('magnify-minus');
   const [menuVisible, setMenuVisible] = useState(false);
 
-  const [infoTitle, setInfoTitle] = useState('Infos');
-  const [infoSubtitle, setInfoSubtitle] = useState('');
-  const [infoRoom, setInfoRoom] = useState('');
-  const [infoTime, setInfoTime] = useState('');
+  const [details, setDetails] = useState<EventDetails>({ title: 'Infos', description: '', room: '', time: '' });
 
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth()]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -63,20 +54,6 @@ export default function ShowEDTScreen() {
 
   const calendarRef = useRef<React.ComponentRef<typeof CalendarContainer>>(null);
   const bottomSheetInfoRef = useRef<BottomSheet>(null);
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        opacity={0.5}
-        enableTouchThrough={false}
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        style={[{ backgroundColor: 'rgba(0, 0, 0, 1)' }, StyleSheet.absoluteFill]}
-      />
-    ),
-    [],
-  );
 
   useEffect(() => {
     async function loadCache() {
@@ -119,14 +96,6 @@ export default function ShowEDTScreen() {
     else router.replace('/home');
   }
 
-  function cleanOutputString(input: string) {
-    return input
-      .replace(/[ \t]+/g, ' ')
-      .replace(/^[ \t]+|[ \t]+$/gm, '')
-      .replace(/\n\s*\n+/g, '\n')
-      .trim();
-  }
-
   function toggleMenu() {
     haptics('medium');
     setMenuVisible(!menuVisible);
@@ -161,43 +130,9 @@ export default function ShowEDTScreen() {
     setSelectedYear(resDate.getFullYear());
   }
 
-  function showInfos(eventItem: {
-    title: string;
-    subtitle: string;
-    description: string;
-    _internal: { startUnix: number; endUnix: number; duration: number };
-  }) {
+  function showInfos(event: PressedEvent) {
     haptics('selection');
-    const startTime = new Date(eventItem._internal.startUnix);
-    const stopTime = new Date(eventItem._internal.endUnix);
-    const durationMs = eventItem._internal.duration * 60 * 1000;
-    const durationTime = new Date(durationMs);
-
-    const res =
-      (eventItem.subtitle.length > 384
-        ? eventItem.subtitle.slice(0, 380) + "..."
-        : eventItem.subtitle);
-
-    setInfoTitle(eventItem.title);
-    setInfoRoom(eventItem.description ?? 'N/A');
-    setInfoTime(
-      startTime.getHours() +
-      ':' +
-      String(startTime.getMinutes()).padStart(2, '0') +
-      ' → ' +
-      stopTime.getHours() +
-      ':' +
-      String(stopTime.getMinutes()).padStart(2, '0') +
-      ' (' +
-      durationTime.getUTCHours() +
-      'h' +
-      String(durationTime.getMinutes()).padStart(2, '0') +
-      ')'
-    );
-
-    let cleanRes: string = cleanOutputString(res);
-    setInfoSubtitle(cleanRes);
-
+    setDetails(describeEvent(event));
     bottomSheetInfoRef.current?.expand();
   }
 
@@ -224,78 +159,39 @@ export default function ShowEDTScreen() {
           <Appbar.BackAction onPress={goBack} />
         </Tooltip>
         <Appbar.Content title="Emploi du temps" />
-        <Menu
+        <TimetableMenu
           visible={menuVisible}
-          onDismiss={toggleMenu}
-          anchor={<Appbar.Action icon="dots-vertical" onPress={toggleMenu} />}
-        >
-          <Menu.Item title={tempCode ?? adeid ?? ''} />
-          <Menu.Item
-            leadingIcon="magnify"
-            onPress={() => { toggleMenu(); router.push('/edt-config'); }}
-            title="Voir un autre EDT"
-          />
-          <Divider />
-          <Menu.Item leadingIcon="update" onPress={() => goToToday(true)} title="Aujourd'hui" />
-          <Menu.Item leadingIcon={viewIcon} onPress={changeView} title="Changer la vue" />
-          <Divider />
-          <Menu.Item
-            leadingIcon="cog"
-            onPress={() => { toggleMenu(); router.push('/settings'); }}
-            title="Paramètres"
-          />
-        </Menu>
+          onToggle={toggleMenu}
+          code={tempCode ?? adeid ?? ''}
+          zoomIcon={viewIcon}
+          onOtherEdt={() => { toggleMenu(); router.push('/edt-config'); }}
+          onToday={() => goToToday(true)}
+          onChangeView={changeView}
+          onSettings={() => { toggleMenu(); router.push('/settings'); }}
+        />
       </Appbar.Header>
 
       {loading && <ProgressBar indeterminate />}
 
       {tempCode && (
-        <View
-          accessibilityRole={loadFailed ? 'alert' : undefined}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            paddingVertical: 8,
-            paddingHorizontal: 16,
-            backgroundColor: tempBannerBg,
-          }}
-        >
-          <Icon
-            source={loadFailed ? 'alert-circle-outline' : 'eye-outline'}
-            size={18}
-            color={tempBannerFg}
-          />
-          <Text variant="labelLarge" style={{ color: tempBannerFg, flexShrink: 1 }}>
-            {tempLabel} · {tempCode}
-          </Text>
-          {loadFailed && (
-            <Button compact textColor={tempBannerFg} onPress={() => loadTemp(tempCode)}>
-              Réessayer
-            </Button>
-          )}
-        </View>
+        <Banner
+          alert={loadFailed}
+          icon={loadFailed ? 'alert-circle-outline' : 'eye-outline'}
+          text={`${tempLabel} · ${tempCode}`}
+          background={tempBannerBg}
+          foreground={tempBannerFg}
+          action={loadFailed ? { label: 'Réessayer', onPress: () => loadTemp(tempCode) } : undefined}
+        />
       )}
 
       {!tempCode && calendarOffline && (
-        <View
-          accessibilityRole="alert"
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            paddingVertical: 8,
-            paddingHorizontal: 16,
-            backgroundColor: offlineBannerBg,
-          }}
-        >
-          <Icon source="wifi-off" size={18} color={offlineBannerFg} />
-          <Text variant="labelLarge" style={{ color: offlineBannerFg, textAlign: 'center' }}>
-            Hors ligne
-          </Text>
-        </View>
+        <Banner
+          alert
+          icon="wifi-off"
+          text="Hors ligne"
+          background={offlineBannerBg}
+          foreground={offlineBannerFg}
+        />
       )}
 
       <Divider style={{ marginBottom: 8 }} />
@@ -307,7 +203,7 @@ export default function ShowEDTScreen() {
         events={tempCode ? tempEvents : calendar}
         theme={calTheme}
         ref={calendarRef}
-        onPressEvent={(eventItem: unknown) => showInfos(eventItem as Parameters<typeof showInfos>[0])}
+        onPressEvent={(eventItem: unknown) => showInfos(eventItem as PressedEvent)}
         onChange={(date: Date | string) => changeDate(date)}
         scrollToNow
         numberOfDays={view}
@@ -320,58 +216,10 @@ export default function ShowEDTScreen() {
         timeZone="Europe/Paris"
       >
         <CalendarHeader />
-        <CalendarBody
-          renderEvent={(event: any, _size: any) => {
-            const e = event && event.title !== undefined ? event : event?.event ?? {};
-            return (
-              <View style={{ padding: 8 }}>
-                <Text style={{ fontWeight: 'bold', color: 'black', marginBottom: 4 }}>
-                  {e.title ?? ''}
-                </Text>
-                <Text style={{ color: 'black' }}>{e.description ?? ''}</Text>
-              </View>
-            );
-          }}
-        />
+        <CalendarBody renderEvent={(event: any) => <EventCard event={event} />} />
       </CalendarContainer>
 
-      <BottomSheet
-        ref={bottomSheetInfoRef}
-        index={-1}
-        enableDynamicSizing
-        enablePanDownToClose
-        bottomInset={insets.bottom}
-        detached
-        style={{ marginHorizontal: 24 }}
-        backgroundStyle={{ backgroundColor: theme.colors.surfaceVariant }}
-        handleIndicatorStyle={{ backgroundColor: theme.colors.onSurfaceVariant }}
-        backdropComponent={renderBackdrop}
-      >
-        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25 }}>
-          <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="headlineSmall">
-            {infoTitle}
-          </Text>
-          <Text style={{ textAlign: 'left' }} variant="bodyLarge">
-            {infoSubtitle}
-          </Text>
-          {infoRoom &&
-            <Text style={{ textAlign: 'center', marginTop: 16, marginBottom: 4 }} variant="titleLarge">
-              {infoRoom}
-            </Text>
-          }
-          <Text style={{ textAlign: 'center', marginBottom: 16 }} variant="titleLarge">
-            {infoTime}
-          </Text>
-          <Button
-            style={{ marginBottom: 16 }}
-            icon="close"
-            mode="contained"
-            onPress={() => bottomSheetInfoRef.current?.close()}
-          >
-            Fermer
-          </Button>
-        </BottomSheetView>
-      </BottomSheet>
+      <EventSheet sheetRef={bottomSheetInfoRef} details={details} />
     </View>
   );
 }
