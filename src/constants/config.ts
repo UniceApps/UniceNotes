@@ -10,5 +10,5 @@ export const PRONOTE_URL = 'https://sco.polytech.unice.fr/1/mobile.etudiant';
 
 export const RELEASE_NOTES = {
     "info": "Tu as mis à jour l\'application ! 🎉",
-    "subtitle": "Nouveautés :\n- Ajoute tes salles favorites pour vérifier leur disponibilité\n- Correction de bugs\n\nMerci d'utiliser UniceNotes !"
+    "subtitle": "Nouveautés :\n- Les widgets sont maintenant disponibles pour Android !\n- Ajoute tes salles favorites pour vérifier leur disponibilité plus rapidement\n- Correction de bugs\n\nMerci d'utiliser UniceNotes !"
 }

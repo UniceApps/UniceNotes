@@ -2,7 +2,7 @@
   "expo": {
     "name": "UniceNotes",
     "slug": "unicenotes",
-    "version": "3.2.2",
+    "version": "3.3.0",
     "githubUrl": "https://github.com/UniceApps/UniceNotes",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -11,9 +11,7 @@
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "bundleIdentifier": "fr.hugofnm.unicenotes",
       "appStoreUrl": "https://apps.apple.com/fr/app/unicenotes/id1668992337",
@@ -26,9 +24,7 @@
       "infoPlist": {
         "NSFaceIDUsageDescription": "Connecte-toi sur l'application grâce à l'authentification biométrique.",
         "NSNotificationsUsageDescription": "Reçois des notifications pour être informé de diverses choses.",
-        "CFBundleLocalizations": [
-          "fr"
-        ],
+        "CFBundleLocalizations": ["fr"],
         "CFBundleDevelopmentRegion": "fr",
         "CADisableMinimumFrameDurationOnPhone": true
       },
@@ -47,9 +43,6 @@
     "extra": {
       "eas": {
         "projectId": "ec0ebd57-7227-4cd2-a71e-344e0a5fffe5"
-      },
-      "bugsnag": {
-        "apiKey": "$(BUGSNAG_API_KEY)"
       },
       "github_hash": "$(EAS_BUILD_GIT_COMMIT_HASH)"
     },
@@ -186,12 +179,34 @@
               "name": "NextClassWidget",
               "displayName": "Prochains Cours",
               "description": "Affiche vos prochains cours UniceNotes",
-              "supportedFamilies": [
-                "systemSmall",
-                "systemMedium"
-              ]
+              "supportedFamilies": ["systemSmall", "systemMedium"]
             }
           ]
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./src/assets/ios/default.png",
+          "dark": {
+            "image": "./src/assets/ios/dark.png",
+            "backgroundColor": "#232323"
+          },
+          "imageWidth": 200
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            //remove in expo sdk 58
+            "enableSceneSupport": true
+          },
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
         }
       ],
       [
@@ -221,30 +236,6 @@
               "updatePeriodMillis": 1800000
             }
           ]
-        }
-      ],
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#ffffff",
-          "image": "./src/assets/ios/default.png",
-          "dark": {
-            "image": "./src/assets/ios/dark.png",
-            "backgroundColor": "#232323"
-          },
-          "imageWidth": 200
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "ios": { //remove in expo sdk 58
-            "enableSceneSupport": true
-          },
-          "android": {
-            "enableMinifyInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
-          }
         }
       ]
     ],
