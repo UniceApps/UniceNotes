@@ -44,6 +44,17 @@ export interface NextClassWidgetProps {
   configured?: boolean;
 }
 
+export interface ClassActivityProps {
+  title: string;
+  room: string;
+  // début et fin en ms
+  start: number;
+  end: number;
+  color?: string;
+  // cours suivant le même jour
+  next?: { title: string; room: string; startTime: string };
+}
+
 // ---
 // Salles libres
 // ---

@@ -8,11 +8,12 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Measure, MeasureConfig } from '@measuresh/react-native';
 
 import { loadThemePreference, updateFontConfig, useChoosenTheme } from '@/src/constants/theme';
 import { AppProvider } from '@/src/context/AppContext';
 import { DeepLinkHandler } from '@/src/context/DeepLinkHandler';
+import { watchClassActivity } from '@/src/services/widgets';
+import { Measure, MeasureConfig } from '@measuresh/react-native';
 
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
@@ -34,6 +35,8 @@ export default function RootLayout() {
 
     prepare();
   }, []);
+
+  useEffect(() => watchClassActivity(), []);
 
   if (!isReady) return null;
 

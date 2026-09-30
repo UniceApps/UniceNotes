@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 
 import { APP_VERSION } from '../constants/config';
 import { resetTheme } from '../constants/theme';
+import { refreshClassActivity, setLiveActivitiesEnabled } from '../services/widgets';
 import type { CalendarEvent } from '../types';
 import { setHapticsEnabled } from '../utils/haptics';
 import { clearAsync, deleteSecure, getAsync, getSecure, removeAsync, saveAsync } from '../utils/storage';
@@ -15,6 +16,8 @@ interface AppContextValue {
   setAdeid: (v: string | null) => void;
   hapticsOn: boolean;
   setHapticsOn: (v: boolean) => void;
+  liveActivitiesOn: boolean;
+  setLiveActivitiesOn: (v: boolean) => void;
   calendar: CalendarEvent[];
   setCalendar: (v: CalendarEvent[]) => void;
   calendarOffline: boolean; // true si le calendrier affiché provient du cache local
@@ -34,6 +37,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [adeid, setAdeid] = useState<string | null>(null);
   const [hapticsOn, setHapticsOnState] = useState(true);
+  const [liveActivitiesOn, setLiveActivitiesOnState] = useState(true);
   const [calendar, setCalendar] = useState<CalendarEvent[]>([]);
   const [calendarOffline, setCalendarOffline] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -46,9 +50,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function loadPersistedData() {
-    const [storedAdeid, storedHaptics, releaseNotesVersion, storedOobeCompleted] = await Promise.all([
+    const [storedAdeid, storedHaptics, storedLiveActivities, releaseNotesVersion, storedOobeCompleted] = await Promise.all([
       getSecure('adeid'),
       getAsync('haptics'),
+      getAsync('liveActivities'),
       getAsync('releaseNotesVersion'),
       getAsync('oobeCompleted'),
     ]);
@@ -58,6 +63,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const h = storedHaptics === 'true';
       setHapticsOnState(h);
       setHapticsEnabled(h);
+    }
+    if (storedLiveActivities !== null) {
+      const l = storedLiveActivities === 'true';
+      setLiveActivitiesOnState(l);
+      setLiveActivitiesEnabled(l);
     }
 
     const edtConfigured = !!storedAdeid && storedAdeid !== 'demo';
@@ -76,6 +86,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setHapticsEnabled(v);
   }
 
+  function setLiveActivitiesOn(v: boolean) {
+    setLiveActivitiesOnState(v);
+    setLiveActivitiesEnabled(v);
+    refreshClassActivity();
+  }
+
   function setOobeCompleted(v: boolean) {
     setOobeCompletedState(v);
     if (v) saveAsync('oobeCompleted', 'true');
@@ -86,6 +102,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await Promise.all([
       deleteSecure('adeid'),
       removeAsync('haptics'),
+      removeAsync('liveActivities'),
       removeAsync('releaseNotesVersion'),
       removeAsync('oobeCompleted'),
     ]);
@@ -99,6 +116,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setAdeid(null);
     setHapticsOn(true);
+    setLiveActivitiesOn(true);
     setCalendar([]);
     setCalendarOffline(false);
     setUpdateModalShown(false);
@@ -114,6 +132,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAdeid,
         hapticsOn,
         setHapticsOn,
+        liveActivitiesOn,
+        setLiveActivitiesOn,
         calendar,
         setCalendar,
         calendarOffline,

@@ -234,6 +234,17 @@
               "targetCellHeight": 2,
               "resizeMode": "horizontal|vertical",
               "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "NextClassWidgetMini",
+              "label": "Prochain Cours (mini)",
+              "description": "Horaire et salle de ton prochain cours",
+              "minWidth": "110dp",
+              "minHeight": "40dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 1,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
             }
           ]
         }

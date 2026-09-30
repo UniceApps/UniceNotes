@@ -13,11 +13,13 @@ import {
 
 import type { NextClassWidgetProps, WidgetClass } from '../types';
 
-// 4x2 et 2x2 par défaut
-const WIDGET_NAMES = ['NextClassWidget', 'NextClassWidgetSmall'];
+// 4x2, 2x2 et 2x1 par défaut
+const WIDGET_NAMES = ['NextClassWidget', 'NextClassWidgetSmall', 'NextClassWidgetMini'];
 
 const TIMELINE_KEY = 'androidWidgetTimeline';
 const WIDE_MIN_DP = 230;
+// 1 ligne
+const STRIP_MAX_DP = 90;
 const EDT_URI = 'unicenotes://edt';
 
 interface StoredEntry {
@@ -91,11 +93,11 @@ function courseColor(c: WidgetClass): ColorProp {
   return c.color && /^#[0-9a-f]{6}$/i.test(c.color) ? (c.color as ColorProp) : '#9E9E9E';
 }
 
-function Header({ palette, compact }: { palette: Palette; compact: boolean }) {
+function Header({ palette }: { palette: Palette }) {
   return (
     <TextWidget
       text="UniceNotes"
-      style={{ fontSize: compact ? 11 : 12, color: palette.accent, fontWeight: '500' }}
+      style={{ fontSize: 12, color: palette.accent, fontWeight: '500' }}
     />
   );
 }
@@ -107,7 +109,7 @@ function MainCourse({ course, palette, compact }: { course: WidgetClass; palette
       <TextWidget
         text={time}
         maxLines={1}
-        style={{ fontSize: compact ? 11 : 12, color: palette.secondary, marginBottom: 3 }}
+        style={{ fontSize: 12, color: palette.secondary, marginBottom: 3 }}
       />
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', alignItems: 'center' }}>
         <FlexWidget
@@ -124,13 +126,13 @@ function MainCourse({ course, palette, compact }: { course: WidgetClass; palette
             text={course.title}
             maxLines={3}
             truncate="END"
-            style={{ fontSize: compact ? 14 : 16, fontWeight: '600', color: palette.text }}
+            style={{ fontSize: compact ? 15 : 16, fontWeight: '600', color: palette.text }}
           />
           <TextWidget
             text={course.room || 'Salle non précisée'}
             maxLines={compact ? 1 : 2}
             truncate="END"
-            style={{ fontSize: compact ? 11 : 12, color: palette.secondary }}
+            style={{ fontSize: 12, color: palette.secondary }}
           />
         </FlexWidget>
       </FlexWidget>
@@ -196,7 +198,7 @@ function NextClassWidget({
         clickActionData={{ uri: EDT_URI }}
         style={{ ...root, flexDirection: 'column', justifyContent: 'space-between' }}
       >
-        <Header palette={palette} compact={compact} />
+        <Header palette={palette} />
         <TextWidget text={text} maxLines={4} style={{ fontSize: compact ? 12 : 13, color: palette.secondary }} />
       </FlexWidget>
     );
@@ -204,34 +206,38 @@ function NextClassWidget({
 
   const [main, ...upNext] = props.courses;
 
-  const mainColumn = (
-    <FlexWidget style={{ flexDirection: 'column', justifyContent: 'space-between', flex: 1, height: 'match_parent' }}>
-      <Header palette={palette} compact={compact} />
-      {main ? (
-        <MainCourse course={main} palette={palette} compact={compact} />
-      ) : (
-        <FlexWidget style={{ flexDirection: 'column' }}>
-          <TextWidget
-            text="Aucun cours"
-            style={{ fontSize: compact ? 14 : 16, fontWeight: '600', color: palette.text }}
-          />
-          <TextWidget text="Profites-en !" style={{ fontSize: compact ? 11 : 12, color: palette.secondary }} />
-        </FlexWidget>
-      )}
+  const course = main ? (
+    <MainCourse course={main} palette={palette} compact={compact} />
+  ) : (
+    <FlexWidget style={{ flexDirection: 'column' }}>
+      <TextWidget
+        text="Aucun cours"
+        style={{ fontSize: compact ? 15 : 16, fontWeight: '600', color: palette.text }}
+      />
+      <TextWidget text="Profites-en !" style={{ fontSize: 12, color: palette.secondary }} />
     </FlexWidget>
   );
 
+  // compact : directement dans la racine, qui fait toute la largeur
   if (compact) {
     return (
       <FlexWidget
         clickAction="OPEN_URI"
         clickActionData={{ uri: EDT_URI }}
-        style={{ ...root, flexDirection: 'column' }}
+        style={{ ...root, flexDirection: 'column', justifyContent: 'space-between' }}
       >
-        {mainColumn}
+        <Header palette={palette} />
+        {course}
       </FlexWidget>
     );
   }
+
+  const mainColumn = (
+    <FlexWidget style={{ flexDirection: 'column', justifyContent: 'space-between', flex: 1, height: 'match_parent' }}>
+      <Header palette={palette} />
+      {course}
+    </FlexWidget>
+  );
 
   return (
     <FlexWidget
@@ -264,8 +270,61 @@ function NextClassWidget({
   );
 }
 
+// 1 ligne : horaire et salle, titre en dessous
+function StripWidget({ props, palette }: { props: NextClassWidgetProps; palette: Palette }) {
+  const course = props.configured === true ? props.courses[0] : undefined;
+  const message = props.configured !== true ? "Ouvre l'app pour mettre à jour" : 'Aucun cours';
+
+  return (
+    <FlexWidget
+      clickAction="OPEN_URI"
+      clickActionData={{ uri: EDT_URI }}
+      style={{
+        height: 'match_parent',
+        width: 'match_parent',
+        backgroundColor: palette.background,
+        borderRadius: 22,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+      }}
+    >
+      {course ? (
+        <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', width: 'match_parent' }}>
+          <FlexWidget
+            style={{ width: 3, height: 32, borderRadius: 2, backgroundColor: courseColor(course), marginRight: 8 }}
+          />
+          <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
+            <TextWidget
+              text={`${course.startTime} · ${course.room.replace(/^salle\s+/i, '') || 'Salle ?'}`}
+              maxLines={1}
+              truncate="END"
+              style={{ fontSize: 13, fontWeight: '700', color: palette.text }}
+            />
+            <TextWidget
+              text={course.title}
+              maxLines={1}
+              truncate="END"
+              style={{ fontSize: 11, color: palette.secondary }}
+            />
+          </FlexWidget>
+        </FlexWidget>
+      ) : (
+        <TextWidget text={message} maxLines={2} style={{ fontSize: 12, color: palette.secondary }} />
+      )}
+    </FlexWidget>
+  );
+}
+
 async function renderNextClassWidget(info: WidgetInfo): Promise<WidgetRepresentation> {
   const props = currentProps(await loadTimeline(), Date.now());
+  if (info.height < STRIP_MAX_DP) {
+    return {
+      light: <StripWidget props={props} palette={LIGHT} />,
+      dark: <StripWidget props={props} palette={DARK} />,
+    };
+  }
   const wide = info.width >= WIDE_MIN_DP;
   return {
     light: <NextClassWidget props={props} palette={LIGHT} wide={wide} />,

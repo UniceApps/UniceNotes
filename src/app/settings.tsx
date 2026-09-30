@@ -19,10 +19,14 @@ import { useApp } from '@/src/context/AppContext';
 import { handleURL } from '@/src/utils/api';
 import { haptics } from '@/src/utils/haptics';
 import { saveAsync } from '@/src/utils/storage';
+import { LIVE_ACTIVITIES_SUPPORTED } from '@/src/services/widgets';
 
 export default function ShowSettingsScreen() {
   const router = useRouter();
-  const { hapticsOn, setHapticsOn, clearAllData, setOobeCompleted } = useApp();
+  const { 
+    hapticsOn, setHapticsOn, liveActivitiesOn, 
+    setLiveActivitiesOn, clearAllData, setOobeCompleted 
+  } = useApp();
   const theme = useChoosenTheme();
 
   const hash = Constants.expoConfig?.extra?.github_hash as string | undefined;
@@ -41,6 +45,16 @@ export default function ShowSettingsScreen() {
   function setHapticsBool(value: boolean) {
     setHapticsOn(value);
     saveAsync('haptics', value.toString());
+    haptics('error');
+  }
+
+  function whatLiveActivitiesMode(value: 'ON' | 'OFF'): 'contained' | 'contained-tonal' {
+    return liveActivitiesOn === (value === 'ON') ? 'contained' : 'contained-tonal';
+  }
+
+  function setLiveActivitiesBool(value: boolean) {
+    setLiveActivitiesOn(value);
+    saveAsync('liveActivities', value.toString());
     haptics('error');
   }
 
@@ -130,6 +144,24 @@ export default function ShowSettingsScreen() {
             </Button>
           </Card.Actions>
         </Card>
+
+        {LIVE_ACTIVITIES_SUPPORTED && (
+          <Card style={{ marginTop: 16 }}>
+            <Card.Title
+              title="Live Activity"
+              subtitle="Ton cours sur l'écran verrouillé"
+              left={(props) => <Avatar.Icon {...props} icon="cellphone-information" />}
+            />
+            <Card.Actions>
+              <Button mode={whatLiveActivitiesMode('ON')} onPress={() => setLiveActivitiesBool(true)}>
+                Activer
+              </Button>
+              <Button mode={whatLiveActivitiesMode('OFF')} onPress={() => setLiveActivitiesBool(false)}>
+                Désactiver
+              </Button>
+            </Card.Actions>
+          </Card>
+        )}
 
         <Card style={{ marginTop: 16 }}>
           <Card.Title
