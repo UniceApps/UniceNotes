@@ -17,12 +17,11 @@ import { DeepLinkHandler } from '@/src/context/DeepLinkHandler';
 export default function RootLayout() {
   const [isReady, setIsReady] = useState(false);
   const theme = useChoosenTheme();
-  const config = new MeasureConfig({});
-
-  Measure.init({ config });
 
   useEffect(() => {
-    async function loadFonts() {
+    async function prepare() {
+      // a Measure failure must not block startup
+      await Measure.init({ config: new MeasureConfig({}) }).catch(console.warn);
       await Promise.all([
         Font.loadAsync({
           Bahnschrift: require('../assets/bahnschrift.ttf'),
@@ -33,7 +32,7 @@ export default function RootLayout() {
       setIsReady(true);
     }
 
-    loadFonts();
+    prepare();
   }, []);
 
   if (!isReady) return null;

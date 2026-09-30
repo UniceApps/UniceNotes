@@ -21,7 +21,6 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-
 import { APP_VERSION, PRONOTE_URL, RELEASE_NOTES } from '@/src/constants/config';
 import { useChoosenTheme } from '@/src/constants/theme';
 import { useApp } from '@/src/context/AppContext';
@@ -95,8 +94,6 @@ export default function HomeScreen() {
       getNextEvent('normal');
       if (WIDGETS_SUPPORTED) pushWidgetTimeline();
     }
-
-
 
     // check in app context if update modal has been shown, if not show it and set it to true
     if (!updateModalShown) {
