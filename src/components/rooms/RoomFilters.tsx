@@ -1,15 +1,12 @@
-import React from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { Chip, Text } from 'react-native-paper';
 
-import { DURATION_OPTIONS, formatDuration, ROOM_MARGIN_MIN } from '@/src/utils/rooms';
+import { SectionTitle } from '@/src/components/ui/SectionTitle';
+import { capitalize, formatDuration } from '@/src/utils/date';
+import { DURATION_OPTIONS, ROOM_MARGIN_MIN } from '@/src/utils/rooms';
 
 import { ROOM_STATUSES, STATUS_LABELS, StatusDot, type StatusColors } from './status';
-
-function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1);
-}
 
 interface RoomFiltersProps {
   duration: number;
@@ -18,7 +15,6 @@ interface RoomFiltersProps {
   onToggleOnlyFree: () => void;
   colors: StatusColors;
   secondary: string;
-  updatedAt: string | null;
 }
 
 // durée voulue, légende des statuts et filtre « libres uniquement »
@@ -29,15 +25,16 @@ export function RoomFilters({
   onToggleOnlyFree,
   colors,
   secondary,
-  updatedAt,
 }: RoomFiltersProps) {
   return (
-    <View style={{ paddingHorizontal: 25, paddingTop: 16, paddingBottom: 8 }}>
-      <Text variant="titleMedium">Pour combien de temps veux-tu la salle ?</Text>
+    <View>
+      <SectionTitle title="Pour combien de temps ?" />
+      {/* déborde de la marge de la page pour défiler jusqu'au bord de l'écran */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8, paddingVertical: 12 }}
+        style={{ marginHorizontal: -20 }}
+        contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
       >
         {DURATION_OPTIONS.map((minutes) => (
           <Chip
@@ -51,26 +48,30 @@ export function RoomFilters({
         ))}
       </ScrollView>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16,
+          marginTop: 16,
+          paddingHorizontal: 4,
+        }}
+      >
         {ROOM_STATUSES.map((status) => (
           <View key={status} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <StatusDot color={colors[status]} />
             <Text variant="labelLarge">{capitalize(STATUS_LABELS[status][0])}</Text>
           </View>
         ))}
-        <Chip
-          icon={onlyFree ? undefined : 'filter-variant'}
-          selected={onlyFree}
-          onPress={onToggleOnlyFree}
-        >
+        <Chip icon={onlyFree ? undefined : 'filter-variant'} selected={onlyFree} onPress={onToggleOnlyFree}>
           Libres uniquement
         </Chip>
       </View>
 
-      <Text variant="bodySmall" style={{ marginTop: 12, color: secondary }}>
-        Libre : disponible pendant {formatDuration(duration)}, avec {ROOM_MARGIN_MIN} min de
-        marge avant le cours suivant. Juste : libre, mais moins longtemps ou avec moins de
-        marge. Mis à jour à {updatedAt}.
+      <Text variant="bodySmall" style={{ marginTop: 12, paddingHorizontal: 4, color: secondary }}>
+        Libre : disponible pendant {formatDuration(duration)}, avec {ROOM_MARGIN_MIN} min de marge avant le cours
+        suivant. Juste : libre, mais moins longtemps ou avec moins de marge.
       </Text>
     </View>
   );

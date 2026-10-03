@@ -1,225 +1,196 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 
-import { Appbar, Divider, ProgressBar, Text, Tooltip } from 'react-native-paper';
-
-import BottomSheet from '@gorhom/bottom-sheet';
-import { CalendarBody, CalendarContainer, CalendarHeader } from '@howljs/calendar-kit';
-import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-
-import { Banner } from '@/src/components/Banner';
-import { EventCard } from '@/src/components/timetable/EventCard';
+import type BottomSheet from '@gorhom/bottom-sheet';
 import {
-  describeEvent,
-  EventSheet,
-  type EventDetails,
-  type PressedEvent,
-} from '@/src/components/timetable/EventSheet';
-import { TimetableMenu } from '@/src/components/timetable/TimetableMenu';
-import { getCalendarTheme, useChoosenTheme } from '@/src/constants/theme';
-import { useApp } from '@/src/context/AppContext';
-import { edtService } from '@/src/services/edt';
+  CalendarBody,
+  CalendarContainer,
+  CalendarHeader,
+  type CalendarKitHandle,
+  type OnEventResponse,
+  type PackedEvent,
+} from '@howljs/calendar-kit';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Divider, Menu } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { CALENDAR_LOCALES, getCalendarTheme } from '@/src/components/timetable/calendarTheme';
+import { EventCard } from '@/src/components/timetable/EventCard';
+import { EventSheet } from '@/src/components/timetable/EventSheet';
+import { Banner } from '@/src/components/ui/Banner';
+import { HeaderButton, ScreenHeader } from '@/src/components/ui/ScreenHeader';
+import { useCalendar } from '@/src/context/CalendarContext';
+import { useSettings } from '@/src/context/SettingsContext';
+import { useTemporaryCalendar } from '@/src/hooks/useTemporaryCalendar';
+import { useAppTheme, type Tone } from '@/src/theme';
 import type { CalendarEvent } from '@/src/types';
-import { getCalendarFromCache } from '@/src/utils/calendar';
+import { formatMonth, getIsoWeek } from '@/src/utils/date';
 import { isValidEdtCode } from '@/src/utils/deeplink';
 import { haptics } from '@/src/utils/haptics';
 
-const MONTHS = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+const VIEWS = [
+  { days: 1, label: 'Jour', icon: 'view-day-outline' },
+  { days: 3, label: '3 jours', icon: 'view-column-outline' },
+  { days: 5, label: 'Semaine', icon: 'view-week-outline' },
 ];
 
-export default function ShowEDTScreen() {
+// samedi et dimanche grisés (jours luxon : 1 = lundi)
+const WEEKEND = { 6: [{ start: 0, end: 24 * 60 }], 7: [{ start: 0, end: 24 * 60 }] };
+
+interface BannerState {
+  tone: Tone;
+  icon: string;
+  text: string;
+  action?: { label: string; onPress: () => void };
+}
+
+export default function TimetableScreen() {
   const router = useRouter();
-  const { code, fresh } = useLocalSearchParams<{ code?: string; fresh?: string }>();
-  const { calendar, setCalendar, calendarOffline, setCalendarOffline, adeid } = useApp();
-  const theme = useChoosenTheme();
+  const theme = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const { code } = useLocalSearchParams<{ code?: string }>();
+  const { adeid, haptics: hapticsOn } = useSettings();
+  const calendar = useCalendar();
 
+  // ?code=… : edt d'un autre code ADE, en lecture seule
   const tempCode = isValidEdtCode(code) ? code : null;
-  const invalidCode = code !== undefined && tempCode === null;
+  const temporary = useTemporaryCalendar(tempCode);
 
-  const [view, setView] = useState(3);
-  const [viewIcon, setViewIcon] = useState('magnify-minus');
+  const [days, setDays] = useState(3);
+  const [visibleDate, setVisibleDate] = useState(() => new Date());
   const [menuVisible, setMenuVisible] = useState(false);
+  const [selected, setSelected] = useState<CalendarEvent | null>(null);
+  const calendarRef = useRef<CalendarKitHandle>(null);
+  const sheetRef = useRef<BottomSheet>(null);
 
-  const [details, setDetails] = useState<EventDetails>({ title: 'Infos', description: '', room: '', time: '' });
+  const calendarTheme = useMemo(() => getCalendarTheme(theme), [theme]);
+  const renderEvent = useCallback((event: PackedEvent) => <EventCard event={event} />, []);
 
-  const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth()]);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  if (code !== undefined && !tempCode) return <Redirect href="/home" />;
 
-  const [tempEvents, setTempEvents] = useState<CalendarEvent[]>([]);
+  const events = tempCode ? temporary.events : calendar.events;
+  const loading = tempCode ? temporary.loading : calendar.loading;
+  const reload = tempCode ? temporary.retry : calendar.reload;
 
-  const [loading, setLoading] = useState(tempCode !== null);
-  const [loadFailed, setLoadFailed] = useState(false);
-
-  const calendarRef = useRef<React.ComponentRef<typeof CalendarContainer>>(null);
-  const bottomSheetInfoRef = useRef<BottomSheet>(null);
-
-  useEffect(() => {
-    async function loadCache() {
-      const cal = await getCalendarFromCache();
-      setCalendar(cal);
-    }
-    if (invalidCode) return;
-    if (tempCode) {
-      loadTemp(tempCode);
-    } else if (fresh === '1') {
-      refreshOwn();
-    } else if (!calendar || calendar.length === 0) {
-      loadCache();
-    }
-    setTimeout(() => goToToday(), 500);
-  }, []);
-
-  async function loadTemp(target: string) {
-    setLoading(true);
-    setLoadFailed(false);
-    const events = await edtService.getTemporaryEDT(target);
-    if (events) setTempEvents(events);
-    else setLoadFailed(true);
-    setLoading(false);
+  function openMenu() {
+    haptics('light');
+    setMenuVisible(true);
   }
 
-  // ouvert par un raccourci : le calendrier en mémoire peut dater
-  async function refreshOwn() {
-    if (!adeid || adeid === 'demo') return;
-    setLoading(true);
-    const { events, offline } = await edtService.getEDT(adeid);
-    setCalendar(events);
-    setCalendarOffline(offline);
-    setLoading(false);
+  function menuAction(action: () => void) {
+    setMenuVisible(false);
+    action();
   }
 
-  // premier écran de la pile si l'app a été ouverte directement ici
-  function goBack() {
-    if (router.canGoBack()) router.back();
-    else router.replace('/home');
+  function goToToday() {
+    haptics('light');
+    calendarRef.current?.goToDate({ date: new Date(), hourScroll: true, animatedDate: true, animatedHour: true });
   }
 
-  function toggleMenu() {
-    haptics('medium');
-    setMenuVisible(!menuVisible);
-  }
-
-  function goToToday(toggle = false) {
-    haptics('medium');
-    if (toggle) toggleMenu();
-    calendarRef.current?.goToDate({
-      date: new Date(),
-      hourScroll: true,
-      animatedDate: true,
-      animatedHour: true,
-    });
-  }
-
-  function changeView() {
-    haptics('medium');
-    toggleMenu();
-    if (view === 5) {
-      setView(3);
-      setViewIcon('magnify-minus');
-    } else {
-      setView(5);
-      setViewIcon('magnify-plus');
-    }
-  }
-
-  function changeDate(date: Date | string) {
-    const resDate = new Date(date.toString());
-    setSelectedMonth(MONTHS[resDate.getMonth()]);
-    setSelectedYear(resDate.getFullYear());
-  }
-
-  function showInfos(event: PressedEvent) {
+  function showEvent(pressed: OnEventResponse) {
+    const event = events.find((item) => item.id === pressed.id);
+    if (!event) return;
     haptics('selection');
-    setDetails(describeEvent(event));
-    bottomSheetInfoRef.current?.expand();
+    setSelected(event);
+    sheetRef.current?.expand();
   }
 
-  // code invalide : on ne charge ni n'affiche rien
-  if (invalidCode) return <Redirect href="/home" />;
-
-  const calTheme = getCalendarTheme(theme);
-
-  const offlineBannerBg = theme.dark ? theme.colors.errorContainer : theme.colors.error;
-  const offlineBannerFg = theme.dark ? theme.colors.onErrorContainer : theme.colors.onError;
-
-  const tempBannerBg = loadFailed ? offlineBannerBg : theme.colors.tertiaryContainer;
-  const tempBannerFg = loadFailed ? offlineBannerFg : theme.colors.onTertiaryContainer;
-  const tempLabel = loadFailed
-    ? 'ADE indisponible'
-    : !loading && tempEvents.length === 0
-      ? 'Aucun cours trouvé'
-      : 'EDT temporaire';
+  let banner: BannerState | null = null;
+  if (tempCode) {
+    banner = temporary.failed
+      ? {
+          tone: 'error',
+          icon: 'alert-circle-outline',
+          text: `ADE indisponible · ${tempCode}`,
+          action: { label: 'Réessayer', onPress: reload },
+        }
+      : {
+          tone: 'tertiary',
+          icon: 'eye-outline',
+          text: `${!loading && events.length === 0 ? 'Aucun cours trouvé' : 'EDT temporaire'} · ${tempCode}`,
+        };
+  } else if (calendar.offline) {
+    banner = {
+      tone: 'error',
+      icon: 'wifi-off',
+      text: loading ? 'Nouvelle tentative…' : 'Hors ligne · EDT en cache',
+      action: loading ? undefined : { label: 'Réessayer', onPress: reload },
+    };
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Appbar.Header elevated>
-        <Tooltip title="Accueil">
-          <Appbar.BackAction onPress={goBack} />
-        </Tooltip>
-        <Appbar.Content title="Emploi du temps" />
-        <TimetableMenu
-          visible={menuVisible}
-          onToggle={toggleMenu}
-          code={tempCode ?? adeid ?? ''}
-          zoomIcon={viewIcon}
-          onOtherEdt={() => { toggleMenu(); router.push('/edt-config'); }}
-          onToday={() => goToToday(true)}
-          onChangeView={changeView}
-          onSettings={() => { toggleMenu(); router.push('/settings'); }}
+    <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: theme.colors.background }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
+        <ScreenHeader
+          title={formatMonth(visibleDate)}
+          subtitle={`Semaine ${getIsoWeek(visibleDate)} · ${tempCode ? 'EDT temporaire' : `EDT ${adeid ?? 'non configuré'}`}`}
+          actions={
+            <>
+              <HeaderButton icon="calendar-today" label="Aujourd'hui" onPress={goToToday} />
+              <Menu
+                visible={menuVisible}
+                onDismiss={() => setMenuVisible(false)}
+                anchor={<HeaderButton icon="dots-vertical" label="Options" onPress={openMenu} />}
+              >
+                {VIEWS.map((view) => (
+                  <Menu.Item
+                    key={view.days}
+                    leadingIcon={view.icon}
+                    trailingIcon={view.days === days ? 'check' : undefined}
+                    title={view.label}
+                    onPress={() => menuAction(() => setDays(view.days))}
+                  />
+                ))}
+                <Divider />
+                <Menu.Item
+                  leadingIcon="refresh"
+                  title="Actualiser"
+                  disabled={loading}
+                  onPress={() => menuAction(reload)}
+                />
+                <Menu.Item
+                  leadingIcon="calendar-edit"
+                  title="Changer d'EDT"
+                  onPress={() => menuAction(() => router.push('/edt-config'))}
+                />
+                <Menu.Item
+                  leadingIcon="cog-outline"
+                  title="Paramètres"
+                  onPress={() => menuAction(() => router.push('/settings'))}
+                />
+              </Menu>
+            </>
+          }
         />
-      </Appbar.Header>
-
-      {loading && <ProgressBar indeterminate />}
-
-      {tempCode && (
-        <Banner
-          alert={loadFailed}
-          icon={loadFailed ? 'alert-circle-outline' : 'eye-outline'}
-          text={`${tempLabel} · ${tempCode}`}
-          background={tempBannerBg}
-          foreground={tempBannerFg}
-          action={loadFailed ? { label: 'Réessayer', onPress: () => loadTemp(tempCode) } : undefined}
-        />
-      )}
-
-      {!tempCode && calendarOffline && (
-        <Banner
-          alert
-          icon="wifi-off"
-          text="Hors ligne"
-          background={offlineBannerBg}
-          foreground={offlineBannerFg}
-        />
-      )}
-
-      <Divider style={{ marginBottom: 8 }} />
-      <Text style={{ marginBottom: 8, textAlign: 'center' }} variant="titleMedium">
-        {selectedMonth} {selectedYear}
-      </Text>
+        {banner && <Banner {...banner} />}
+      </View>
 
       <CalendarContainer
-        events={tempCode ? tempEvents : calendar}
-        theme={calTheme}
         ref={calendarRef}
-        onPressEvent={(eventItem: unknown) => showInfos(eventItem as PressedEvent)}
-        onChange={(date: Date | string) => changeDate(date)}
-        scrollToNow
-        numberOfDays={view}
-        allowPinchToZoom
-        start={420}
-        end={1200}
-        useHaptic
-        showWeekNumber
-        unavailableHours={{ 6: [{ start: 0, end: 24 * 60 }], 7: [{ start: 0, end: 24 * 60 }] }}
+        events={events}
+        theme={calendarTheme}
+        initialLocales={CALENDAR_LOCALES}
+        locale="fr"
         timeZone="Europe/Paris"
+        numberOfDays={days}
+        scrollByDay={days < 5}
+        start={7 * 60}
+        end={20 * 60}
+        unavailableHours={WEEKEND}
+        isLoading={loading}
+        scrollToNow
+        showWeekNumber
+        allowPinchToZoom
+        useHaptic={hapticsOn}
+        spaceFromBottom={insets.bottom}
+        onChange={(date) => setVisibleDate(new Date(date))}
+        onPressEvent={showEvent}
       >
         <CalendarHeader />
-        <CalendarBody renderEvent={(event: any) => <EventCard event={event} />} />
+        <CalendarBody renderEvent={renderEvent} />
       </CalendarContainer>
 
-      <EventSheet sheetRef={bottomSheetInfoRef} details={details} />
+      <EventSheet sheetRef={sheetRef} event={selected} />
     </View>
   );
 }

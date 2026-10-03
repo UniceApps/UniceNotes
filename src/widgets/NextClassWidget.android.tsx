@@ -1,6 +1,5 @@
 import React from 'react';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   FlexWidget,
   registerWidgetTaskHandler,
@@ -11,12 +10,12 @@ import {
   type WidgetRepresentation,
 } from 'react-native-android-widget';
 
-import type { NextClassWidgetProps, WidgetClass } from '../types';
+import type { NextClassWidgetProps, WidgetClass, WidgetTimelineEntry } from '@/src/types';
+import { storage } from '@/src/utils/storage';
 
 // 4x2, 2x2 et 2x1 par défaut
 const WIDGET_NAMES = ['NextClassWidget', 'NextClassWidgetSmall', 'NextClassWidgetMini'];
 
-const TIMELINE_KEY = 'androidWidgetTimeline';
 const WIDE_MIN_DP = 230;
 // 1 ligne
 const STRIP_MAX_DP = 90;
@@ -51,20 +50,15 @@ const DARK: Palette = {
   accent: '#9BCBFF',
 };
 
-// ---
-// Stockage
-// ---
-
-type Entry = { date: Date; props: NextClassWidgetProps };
-
-async function saveTimeline(entries: Entry[]): Promise<void> {
+// Android n'a pas de timeline : elle est stockée et relue à chaque rafraîchissement du widget
+async function saveTimeline(entries: WidgetTimelineEntry[]): Promise<void> {
   const stored: StoredEntry[] = entries.map((e) => ({ date: e.date.getTime(), props: e.props }));
-  await AsyncStorage.setItem(TIMELINE_KEY, JSON.stringify(stored));
+  await storage.set('androidWidgetTimeline', JSON.stringify(stored));
 }
 
 async function loadTimeline(): Promise<StoredEntry[] | null> {
   try {
-    const raw = await AsyncStorage.getItem(TIMELINE_KEY);
+    const raw = await storage.get('androidWidgetTimeline');
     const value: unknown = raw ? JSON.parse(raw) : null;
     return Array.isArray(value) && value.length > 0 ? (value as StoredEntry[]) : null;
   } catch {
@@ -85,32 +79,19 @@ function currentProps(timeline: StoredEntry[] | null, now: number): NextClassWid
   return { courses, configured: true };
 }
 
-// ---
-// Rendu
-// ---
-
 function courseColor(c: WidgetClass): ColorProp {
   return c.color && /^#[0-9a-f]{6}$/i.test(c.color) ? (c.color as ColorProp) : '#9E9E9E';
 }
 
 function Header({ palette }: { palette: Palette }) {
-  return (
-    <TextWidget
-      text="UniceNotes"
-      style={{ fontSize: 12, color: palette.accent, fontWeight: '500' }}
-    />
-  );
+  return <TextWidget text="UniceNotes" style={{ fontSize: 12, color: palette.accent, fontWeight: '500' }} />;
 }
 
 function MainCourse({ course, palette, compact }: { course: WidgetClass; palette: Palette; compact: boolean }) {
   const time = compact ? `${course.startTime}–${course.endTime}` : `${course.startTime} – ${course.endTime}`;
   return (
     <FlexWidget style={{ flexDirection: 'column', width: 'match_parent' }}>
-      <TextWidget
-        text={time}
-        maxLines={1}
-        style={{ fontSize: 12, color: palette.secondary, marginBottom: 3 }}
-      />
+      <TextWidget text={time} maxLines={1} style={{ fontSize: 12, color: palette.secondary, marginBottom: 3 }} />
       <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', alignItems: 'center' }}>
         <FlexWidget
           style={{
@@ -164,15 +145,7 @@ function NextCourse({ course, palette }: { course: WidgetClass; palette: Palette
   );
 }
 
-function NextClassWidget({
-  props,
-  palette,
-  wide,
-}: {
-  props: NextClassWidgetProps;
-  palette: Palette;
-  wide: boolean;
-}) {
+function NextClassWidget({ props, palette, wide }: { props: NextClassWidgetProps; palette: Palette; wide: boolean }) {
   const compact = !wide;
   const root = {
     height: 'match_parent',
@@ -182,7 +155,7 @@ function NextClassWidget({
     padding: compact ? 12 : 14,
   } as const;
 
-  // EDT non configuré ou timeline expirée
+  // edt non configuré ou timeline expirée
   if (props.configured !== true) {
     const text =
       props.configured === false
@@ -210,10 +183,7 @@ function NextClassWidget({
     <MainCourse course={main} palette={palette} compact={compact} />
   ) : (
     <FlexWidget style={{ flexDirection: 'column' }}>
-      <TextWidget
-        text="Aucun cours"
-        style={{ fontSize: compact ? 15 : 16, fontWeight: '600', color: palette.text }}
-      />
+      <TextWidget text="Aucun cours" style={{ fontSize: compact ? 15 : 16, fontWeight: '600', color: palette.text }} />
       <TextWidget text="Profites-en !" style={{ fontSize: 12, color: palette.secondary }} />
     </FlexWidget>
   );
@@ -260,10 +230,7 @@ function NextClassWidget({
         {upNext.length > 0 ? (
           upNext.slice(0, 2).map((c, i) => <NextCourse key={i} course={c} palette={palette} />)
         ) : (
-          <TextWidget
-            text="Rien d'autre de prévu"
-            style={{ fontSize: 11, color: palette.secondary, marginTop: 8 }}
-          />
+          <TextWidget text="Rien d'autre de prévu" style={{ fontSize: 11, color: palette.secondary, marginTop: 8 }} />
         )}
       </FlexWidget>
     </FlexWidget>
@@ -338,10 +305,7 @@ function redrawAll(): Promise<void[]> {
   );
 }
 
-// ---
-// Tâches de fond
-// ---
-
+// rafraîchissement périodique par Android, enregistré au démarrage (voir index.ts)
 registerWidgetTaskHandler(async ({ widgetInfo, widgetAction, renderWidget }) => {
   if (!WIDGET_NAMES.includes(widgetInfo.widgetName)) return;
   if (widgetAction === 'WIDGET_DELETED' || widgetAction === 'WIDGET_CLICK') return;
@@ -350,16 +314,9 @@ registerWidgetTaskHandler(async ({ widgetInfo, widgetAction, renderWidget }) => 
 
 // même interface que le widget iOS
 export const NextClassWidgetInstance = {
-  updateTimeline: (entries: Entry[]) => {
+  updateTimeline: (entries: WidgetTimelineEntry[]) => {
     saveTimeline(entries)
       .then(redrawAll)
       .catch(() => {});
-  },
-  updateSnapshot: (props: NextClassWidgetProps) => {
-    NextClassWidgetInstance.updateTimeline([{ date: new Date(), props }]);
-  },
-  getTimeline: () => Promise.resolve([] as Entry[]),
-  reload: () => {
-    redrawAll().catch(() => {});
   },
 };

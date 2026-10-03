@@ -1,28 +1,30 @@
+// emploi du temps
+
+// start / end au format attendu par calendar-kit
 export interface CalendarEvent {
   id: string;
+  title: string;
+  room: string;
+  // description ADE : groupes, enseignants…
+  notes: string;
+  color: string;
   start: { dateTime: string };
   end: { dateTime: string };
-  title: string;
-  subtitle: string;
-  description: string;
-  color: string;
 }
 
-export interface EDTResult {
-  events: CalendarEvent[];
-  // true si les événements proviennent du cache
-  offline: boolean;
-}
-
-export interface SearchResult {
-  id: string;
-  text: string;
-}
-
+// projet ADE, un par année scolaire
 export interface AdeProject {
   id: string;
   name: string;
 }
+
+// cursus trouvé par la recherche ADE
+export interface AdeProgram {
+  id: string;
+  name: string;
+}
+
+// widgets et Live Activity
 
 export interface WidgetClass {
   title: string;
@@ -39,6 +41,11 @@ export interface NextClassWidgetProps {
   configured?: boolean;
 }
 
+export interface WidgetTimelineEntry {
+  date: Date;
+  props: NextClassWidgetProps;
+}
+
 export interface ClassActivityProps {
   title: string;
   room: string;
@@ -50,9 +57,7 @@ export interface ClassActivityProps {
   next?: { title: string; room: string; startTime: string };
 }
 
-// ---
-// Salles libres
-// ---
+// salles libres
 
 export interface AdeRoom {
   id: string;
@@ -96,11 +101,7 @@ export interface RoomAvailability {
   freeUntil: number | null;
 }
 
-export interface RoomStatusCounts {
-  free: number;
-  tight: number;
-  busy: number;
-}
+export type RoomStatusCounts = Record<RoomStatus, number>;
 
 export interface RoomEntry {
   room: AdeRoom;
@@ -114,12 +115,3 @@ export interface RoomNodeView {
   children: RoomNodeView[];
   rooms: RoomEntry[];
 }
-
-export type HapticIntensity =
-  | 'light'
-  | 'medium'
-  | 'heavy'
-  | 'error'
-  | 'success'
-  | 'warning'
-  | 'selection';

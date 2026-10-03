@@ -1,4 +1,3 @@
-import React from 'react';
 import { View } from 'react-native';
 
 import { IconButton, Text } from 'react-native-paper';
@@ -25,17 +24,15 @@ export interface RoomsViewContext {
   onToggleFavorite: (roomId: string) => void;
 }
 
-export function RoomRow({
-  entry,
-  depth,
-  ctx,
-  showPath = false,
-}: {
+interface RoomRowProps {
   entry: RoomEntry;
   depth: number;
   ctx: RoomsViewContext;
+  // affiche le campus et le bâtiment (favoris)
   showPath?: boolean;
-}) {
+}
+
+export function RoomRow({ entry, depth, ctx, showPath = false }: RoomRowProps) {
   const { headline, detail } = describeAvailability(entry.availability, ctx.now, ctx.duration);
   const favorite = ctx.isFavorite(entry.room.id);
   const path = showPath ? entry.room.path.join(' · ') : '';
@@ -46,8 +43,8 @@ export function RoomRow({
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 8,
-        paddingLeft: 25 + depth * ROOM_INDENT,
-        paddingRight: 13,
+        paddingLeft: 16 + depth * ROOM_INDENT,
+        paddingRight: 4,
       }}
     >
       <View
@@ -59,7 +56,7 @@ export function RoomRow({
           <StatusDot color={ctx.colors[entry.availability.status]} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text variant="bodyLarge">{entry.room.name}</Text>
+          <Text variant="titleSmall">{entry.room.name}</Text>
           {path ? (
             <Text variant="bodySmall" style={{ color: ctx.secondary }} numberOfLines={1}>
               {path}
@@ -79,8 +76,9 @@ export function RoomRow({
         icon={favorite ? 'star' : 'star-outline'}
         iconColor={favorite ? ctx.accent : ctx.secondary}
         size={22}
-        style={{ margin: 0 }}
-        accessibilityLabel={favorite ? `Retirer ${entry.room.name} des favoris` : `Ajouter ${entry.room.name} aux favoris`}
+        accessibilityLabel={
+          favorite ? `Retirer ${entry.room.name} des favoris` : `Ajouter ${entry.room.name} aux favoris`
+        }
         onPress={() => ctx.onToggleFavorite(entry.room.id)}
       />
     </View>

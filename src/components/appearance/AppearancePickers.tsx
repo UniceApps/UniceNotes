@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { Image } from 'expo-image';
 import { getAppIconName, resetAppIcon, setAlternateAppIcon, supportsAlternateIcons } from 'expo-alternate-app-icons';
-
+import { Image } from 'expo-image';
 import { Icon, Text } from 'react-native-paper';
 
 import { allAppIcons, appIconGroups, type AppIconOption } from '@/src/constants/icons';
-import { getTheme, setThemeId, themeOptions, useChoosenTheme, useThemeId, type AppTheme } from '@/src/constants/theme';
+import { setThemeId, themeOptions, useAppTheme, useThemeId, type AppTheme } from '@/src/theme';
 import { haptics } from '@/src/utils/haptics';
 
 function CheckBadge() {
-  const theme = useChoosenTheme();
+  const theme = useAppTheme();
   return (
     <View style={[styles.badge, { backgroundColor: theme.colors.primary, borderColor: theme.colors.background }]}>
       <Icon source="check" size={12} color={theme.colors.onPrimary} />
@@ -19,38 +18,35 @@ function CheckBadge() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Thèmes
-// ---------------------------------------------------------------------------
-
-// aperçu miniature d'un écran de l'app avec les couleurs du thème
+// aperçu miniature de l'accueil avec les couleurs du thème
 function ThemePreview({ preview }: { preview: AppTheme }) {
   const c = preview.colors;
   return (
     <View style={[styles.preview, { backgroundColor: c.background, borderColor: c.outlineVariant }]}>
-      <View style={[styles.previewBar, { backgroundColor: c.elevation.level2 }]}>
-        <View style={[styles.previewLine, { width: '45%', backgroundColor: c.onSurface }]} />
+      <View style={[styles.previewLine, { width: '40%', marginTop: 10, backgroundColor: c.primary }]} />
+      <View style={[styles.previewLine, { width: '65%', height: 7, marginTop: 5, backgroundColor: c.onBackground }]} />
+      <View style={[styles.previewCard, { height: 34, backgroundColor: c.primaryContainer }]}>
+        <View style={[styles.previewLine, { width: '60%', backgroundColor: c.onPrimaryContainer }]} />
       </View>
-      <View style={styles.previewBody}>
-        <View style={[styles.previewCard, { backgroundColor: c.primaryContainer }]}>
-          <View style={[styles.previewLine, { width: '70%', backgroundColor: c.onPrimaryContainer }]} />
+      <View style={styles.previewTiles}>
+        <View style={[styles.previewTile, { backgroundColor: c.elevation.level2 }]}>
+          <View style={[styles.previewDot, { backgroundColor: c.tertiaryContainer }]} />
         </View>
-        <View style={[styles.previewCard, { backgroundColor: c.secondaryContainer }]}>
-          <View style={[styles.previewLine, { width: '50%', backgroundColor: c.onSecondaryContainer }]} />
+        <View style={[styles.previewTile, { backgroundColor: c.elevation.level2 }]}>
+          <View style={[styles.previewDot, { backgroundColor: c.secondaryContainer }]} />
         </View>
       </View>
-      <View style={[styles.previewFab, { backgroundColor: c.primary }]} />
     </View>
   );
 }
 
 export function ThemePicker() {
-  const theme = useChoosenTheme();
+  const theme = useAppTheme();
   const themeId = useThemeId();
 
   function select(id: string) {
     if (id === themeId) return;
-    haptics('medium');
+    haptics('selection');
     setThemeId(id);
   }
 
@@ -68,7 +64,7 @@ export function ThemePicker() {
             accessibilityLabel={`${option.label}, ${option.description}`}
           >
             <View style={[styles.ring, { borderColor: selected ? theme.colors.primary : 'transparent' }]}>
-              <ThemePreview preview={getTheme(option.id, theme.dark)} />
+              <ThemePreview preview={theme.dark ? option.dark : option.light} />
               {selected && <CheckBadge />}
             </View>
             <Text
@@ -84,27 +80,20 @@ export function ThemePicker() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Icônes
-// ---------------------------------------------------------------------------
-
 function currentIconName(): string | null {
   const name = getAppIconName();
   return name === 'UniceNotes' ? null : name;
 }
 
-function IconTile({
-  icon,
-  selected,
-  width,
-  onPress,
-}: {
+interface IconTileProps {
   icon: AppIconOption;
   selected: boolean;
   width: number | `${number}%`;
   onPress: () => void;
-}) {
-  const theme = useChoosenTheme();
+}
+
+function IconTile({ icon, selected, width, onPress }: IconTileProps) {
+  const theme = useAppTheme();
   return (
     <Pressable
       style={[styles.iconTile, { width }]}
@@ -133,8 +122,9 @@ function IconTile({
   );
 }
 
-export function IconPicker({ compact = false }: { compact?: boolean }) {
-  const theme = useChoosenTheme();
+// compact : une ligne défilante qui déborde de `bleed` px de chaque côté (marge du conteneur)
+export function IconPicker({ compact = false, bleed = 0 }: { compact?: boolean; bleed?: number }) {
+  const theme = useAppTheme();
   const [current, setCurrent] = useState<string | null>(() => (supportsAlternateIcons ? currentIconName() : null));
 
   if (!supportsAlternateIcons) {
@@ -147,14 +137,14 @@ export function IconPicker({ compact = false }: { compact?: boolean }) {
 
   async function select(name: string | null) {
     if (name === current) return;
-    haptics('medium');
+    haptics('selection');
     const previous = current;
     setCurrent(name);
     try {
       if (name === null) await resetAppIcon();
       else await setAlternateAppIcon(name);
     } catch (e) {
-      console.error('Error changing app icon:', e);
+      console.warn("[icons] impossible de changer l'icône", e);
       setCurrent(previous);
       haptics('error');
     }
@@ -175,8 +165,8 @@ export function IconPicker({ compact = false }: { compact?: boolean }) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={{ marginHorizontal: -25 }}
-        contentContainerStyle={{ paddingHorizontal: 21 }}
+        style={{ marginHorizontal: -bleed }}
+        contentContainerStyle={{ paddingHorizontal: bleed - 4 }}
       >
         {allAppIcons.map(tile)}
       </ScrollView>
@@ -184,29 +174,35 @@ export function IconPicker({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <>
+    <View style={{ gap: 12 }}>
       {appIconGroups.map((group) => (
-        <View key={group.title} style={{ marginTop: 8 }}>
+        <View key={group.title}>
           <Text variant="labelLarge" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 4 }}>
             {group.title}
           </Text>
           <View style={styles.iconGrid}>{group.icons.map(tile)}</View>
         </View>
       ))}
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   themeRow: { flexDirection: 'row', gap: 8 },
   themeItem: { flex: 1, alignItems: 'center' },
-  ring: { width: '100%', borderWidth: 2.5, borderRadius: 18, padding: 3 },
-  preview: { height: 112, borderRadius: 13, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
-  previewBar: { height: 20, justifyContent: 'center', paddingHorizontal: 8 },
-  previewBody: { padding: 6, gap: 5 },
-  previewCard: { height: 22, borderRadius: 6, justifyContent: 'center', paddingHorizontal: 6 },
-  previewLine: { height: 4, borderRadius: 2, opacity: 0.8 },
-  previewFab: { position: 'absolute', right: 7, bottom: 7, width: 18, height: 18, borderRadius: 6 },
+  ring: { width: '100%', borderWidth: 2.5, borderRadius: 20, padding: 3 },
+  preview: {
+    height: 120,
+    borderRadius: 15,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+    paddingHorizontal: 7,
+  },
+  previewLine: { height: 4, borderRadius: 2, opacity: 0.85 },
+  previewCard: { marginTop: 8, borderRadius: 8, justifyContent: 'center', paddingHorizontal: 6 },
+  previewTiles: { flexDirection: 'row', gap: 5, marginTop: 5 },
+  previewTile: { flex: 1, height: 26, borderRadius: 7, padding: 5 },
+  previewDot: { width: 10, height: 10, borderRadius: 3 },
 
   iconGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 },
   iconTile: { alignItems: 'center', paddingHorizontal: 4, paddingVertical: 6 },

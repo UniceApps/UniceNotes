@@ -1,6 +1,6 @@
+import type { WidgetTimelineEntry } from '@/src/types';
+
+// pas de widget hors iOS et Android
 export const NextClassWidgetInstance = {
-  updateSnapshot: (_props: unknown) => {},
-  updateTimeline: (_entries: unknown[]) => {},
-  getTimeline: () => Promise.resolve([]),
-  reload: () => {},
+  updateTimeline: (_entries: WidgetTimelineEntry[]) => {},
 };

@@ -1,23 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { Image } from 'expo-image';
-
 import { Button, Icon, Text } from 'react-native-paper';
-import Animated, {
-  cancelAnimation,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { useChoosenTheme } from '@/src/constants/theme';
+import { IconBadge } from '@/src/components/ui/IconBadge';
+import { InfoLine } from '@/src/components/ui/InfoLine';
+import { PressableScale } from '@/src/components/ui/PressableScale';
+import { Bone, Skeleton } from '@/src/components/ui/Skeleton';
+import { Watermark } from '@/src/components/ui/Watermark';
 import type { AgendaState } from '@/src/hooks/useAgenda';
+import { usePulse } from '@/src/hooks/usePulse';
+import { getToneColors, useAppTheme } from '@/src/theme';
 import { formatSchedule, getClassStatus, type AgendaClass } from '@/src/utils/agenda';
 import { withAlpha } from '@/src/utils/color';
-
-import { PressableScale } from './PressableScale';
 
 interface NextClassCardProps {
   agenda: AgendaState;
@@ -41,11 +37,11 @@ export function NextClassCard({ agenda, onOpen, onSetup, onRetry }: NextClassCar
   }
 
   if (agenda.classes.length === 0) {
-    if (agenda.fetching) return <LoadingCard />;
+    if (agenda.loading) return <LoadingCard />;
     if (agenda.offline) {
       return (
         <MessageCard
-          tone="error"
+          error
           icon="wifi-off"
           title="ADE indisponible"
           text="Impossible de récupérer ton emploi du temps pour le moment."
@@ -71,7 +67,7 @@ export function NextClassCard({ agenda, onOpen, onSetup, onRetry }: NextClassCar
 }
 
 function ClassCard({ item, now, onPress }: { item: AgendaClass; now: Date; onPress: () => void }) {
-  const theme = useChoosenTheme();
+  const theme = useAppTheme();
   const c = theme.colors;
   const status = getClassStatus(item, now);
   const room = item.room || 'Salle non précisée';
@@ -108,11 +104,7 @@ function ClassCard({ item, now, onPress }: { item: AgendaClass; now: Date; onPre
 
       {status.ongoing && (
         <View style={[styles.row, { marginTop: 18, gap: 12 }]}>
-          <ProgressTrack
-            progress={status.progress}
-            color={c.primary}
-            track={withAlpha(c.onPrimaryContainer, 0.16)}
-          />
+          <ProgressTrack progress={status.progress} color={c.primary} track={withAlpha(c.onPrimaryContainer, 0.16)} />
           <Text variant="labelLarge" style={{ color: c.onPrimaryContainer }}>
             {status.remaining}
           </Text>
@@ -126,34 +118,28 @@ interface MessageCardProps {
   icon: string;
   title: string;
   text: string;
-  tone?: 'primary' | 'error';
+  error?: boolean;
   action?: { label: string; icon: string; onPress: () => void };
   onPress?: () => void;
 }
 
-function MessageCard({ icon, title, text, tone = 'primary', action, onPress }: MessageCardProps) {
-  const theme = useChoosenTheme();
-  const c = theme.colors;
-  const [background, foreground, accent, onAccent] =
-    tone === 'error'
-      ? [c.errorContainer, c.onErrorContainer, c.error, c.onError]
-      : [c.primaryContainer, c.onPrimaryContainer, c.primary, c.onPrimary];
+function MessageCard({ icon, title, text, error, action, onPress }: MessageCardProps) {
+  const theme = useAppTheme();
+  const { container, onContainer, accent, onAccent } = getToneColors(theme, error ? 'error' : 'primary');
 
   return (
     <PressableScale
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      style={[styles.card, { backgroundColor: background }]}
+      style={[styles.card, { backgroundColor: container }]}
       onPress={onPress}
     >
-      <Watermark color={foreground} />
-      <View style={[styles.badge, { backgroundColor: accent }]}>
-        <Icon source={icon} size={24} color={onAccent} />
-      </View>
-      <Text variant="headlineSmall" style={{ color: foreground, marginTop: 16 }}>
+      <Watermark color={onContainer} />
+      <IconBadge icon={icon} tone={error ? 'error' : 'primary'} size={48} filled />
+      <Text variant="headlineSmall" style={{ color: onContainer, marginTop: 16 }}>
         {title}
       </Text>
-      <Text variant="bodyLarge" style={{ color: foreground, marginTop: 4, opacity: 0.85 }}>
+      <Text variant="bodyLarge" style={{ color: onContainer, marginTop: 4, opacity: 0.85 }}>
         {text}
       </Text>
       {action && (
@@ -175,36 +161,18 @@ function MessageCard({ icon, title, text, tone = 'primary', action, onPress }: M
 
 // squelette pendant le premier téléchargement
 function LoadingCard() {
-  const theme = useChoosenTheme();
-  const pulse = usePulse(0.4, 800);
-  const bone = { backgroundColor: withAlpha(theme.colors.onPrimaryContainer, 0.12) };
+  const theme = useAppTheme();
+  const color = theme.colors.onPrimaryContainer;
 
   return (
-    <View
-      accessible
-      accessibilityLabel="Chargement du prochain cours"
-      style={[styles.card, { backgroundColor: theme.colors.primaryContainer }]}
-    >
-      <Animated.View style={pulse}>
-        <View style={[styles.bone, bone, { width: 110, height: 32, borderRadius: 16 }]} />
-        <View style={[styles.bone, bone, { width: '85%', height: 26, marginTop: 18 }]} />
-        <View style={[styles.bone, bone, { width: '55%', height: 26, marginTop: 8 }]} />
-        <View style={[styles.bone, bone, { width: '45%', marginTop: 18 }]} />
-        <View style={[styles.bone, bone, { width: '60%', marginTop: 10 }]} />
-      </Animated.View>
-    </View>
-  );
-}
-
-function InfoLine({ icon, text, color }: { icon: string; text: string; color: string }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 8 }}>
-      <View style={{ marginTop: 3 }}>
-        <Icon source={icon} size={18} color={color} />
-      </View>
-      <Text variant="titleMedium" numberOfLines={2} style={{ color, flexShrink: 1 }}>
-        {text}
-      </Text>
+    <View style={[styles.card, { backgroundColor: theme.colors.primaryContainer }]}>
+      <Skeleton label="Chargement du prochain cours">
+        <Bone width={110} height={32} radius={16} color={color} />
+        <Bone width="85%" height={26} color={color} marginTop={18} />
+        <Bone width="55%" height={26} color={color} marginTop={8} />
+        <Bone width="45%" color={color} marginTop={18} />
+        <Bone width="60%" color={color} marginTop={10} />
+      </Skeleton>
     </View>
   );
 }
@@ -236,23 +204,6 @@ function LiveDot({ color }: { color: string }) {
   return <Animated.View style={[styles.dot, { backgroundColor: color }, pulse]} />;
 }
 
-// logo en filigrane dans le coin
-function Watermark({ color }: { color: string }) {
-  return <Image source={require('../../assets/white.png')} tintColor={color} style={styles.watermark} />;
-}
-
-// opacité qui pulse en boucle
-function usePulse(min: number, duration: number) {
-  const opacity = useSharedValue(1);
-
-  useEffect(() => {
-    opacity.set(withRepeat(withTiming(min, { duration }), -1, true));
-    return () => cancelAnimation(opacity);
-  }, [opacity, min, duration]);
-
-  return useAnimatedStyle(() => ({ opacity: opacity.value }));
-}
-
 const styles = StyleSheet.create({
   card: { borderRadius: 28, padding: 20, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -265,9 +216,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  badge: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  watermark: { position: 'absolute', right: -40, bottom: -40, width: 170, height: 170, opacity: 0.07 },
   track: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 4 },
-  bone: { height: 18, borderRadius: 8 },
 });

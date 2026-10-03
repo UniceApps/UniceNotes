@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-
-import { Button, IconButton, Text, Tooltip } from 'react-native-paper';
+import LottieView from 'lottie-react-native';
+import { Button, Icon, IconButton, Text } from 'react-native-paper';
 import Animated, {
+  cancelAnimation,
+  FadeInRight,
+  FadeOutLeft,
+  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -13,74 +17,42 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
-import LottieView from 'lottie-react-native';
 
-import { IconPicker, ThemePicker } from '@/src/components/AppearancePickers';
-import { useChoosenTheme } from '@/src/constants/theme';
-import { useApp } from '@/src/context/AppContext';
-import { handleURL } from '@/src/utils/api';
+import darkBackground from '@/src/assets/lottie/background_login_dark.json';
+import lightBackground from '@/src/assets/lottie/background_login_light.json';
+import { IconPicker, ThemePicker } from '@/src/components/appearance/AppearancePickers';
+import { APP_VERSION, LINKS } from '@/src/constants/config';
+import { useSettings } from '@/src/context/SettingsContext';
+import { useAppTheme } from '@/src/theme';
+import { openURL } from '@/src/utils/browser';
 import { haptics } from '@/src/utils/haptics';
-import { saveSecure } from '@/src/utils/storage';
+import { storage } from '@/src/utils/storage';
 
-type Step = 'welcome' | 'edt' | 'appearance';
+const STEPS = ['welcome', 'edt', 'appearance'] as const;
+type Step = (typeof STEPS)[number];
 
-export default function OOBEScreen() {
+// marge intérieure du panneau, que le sélecteur d'icônes déborde
+const PANEL_PADDING = 24;
+
+export default function OobeScreen() {
   const router = useRouter();
-  const { adeid, setAdeid, setOnboarding, setOobeCompleted } = useApp();
-  const theme = useChoosenTheme();
+  const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const { adeid, setOobeCompleted } = useSettings();
   const [step, setStep] = useState<Step>('welcome');
-  const edtDone = !!adeid && adeid !== 'demo';
 
-  useEffect(() => {
-    setOnboarding(true);
-  }, [setOnboarding]);
-
-  const rotation = useSharedValue(0);
-  const rotateConfig = { damping: 2, stiffness: 15 };
-  rotation.value = withRepeat(
-    withSequence(withSpring(0, rotateConfig), withSpring(360, rotateConfig)),
-    -1,
-    false,
-  );
-  const animatedStyleLogo = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
-
-  const renderNoBackdrop = useCallback(() => null, []);
-
-  async function handleWelcomeNext() {
-    haptics('medium');
-    // second passage (bouton "Relancer" des paramètres) : on n'écrase pas un EDT déjà configuré
-    if (!edtDone) {
-    await saveSecure('adeid', 'demo');
-    setAdeid('demo');
-    }
-    setStep('edt');
-  }
-
-  function configureEdt() {
-    haptics('medium');
-    router.push('/edt-config');
-  }
-
-  function goToAppearance() {
+  function goTo(next: Step) {
     haptics('light');
-    setStep('appearance');
+    setStep(next);
   }
 
-  function finishOobe() {
+  async function finish() {
+    // un nouvel utilisateur n'a pas besoin des nouveautés de cette version
+    await storage.set('releaseNotesVersion', APP_VERSION);
     haptics('success');
     setOobeCompleted(true);
-    setOnboarding(false);
     router.replace('/home');
   }
-
-  const GREEN = '#2E7D32';
-
-  const bgStyle = { backgroundColor: theme.colors.background };
-  const handleStyle = { backgroundColor: theme.colors.onBackground };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -88,136 +60,207 @@ export default function OOBEScreen() {
         autoPlay
         loop
         resizeMode="cover"
-        source={
-          theme.dark
-            ? require('../assets/themes/lottie/background_login_dark')
-            : require('../assets/themes/lottie/background_login_light')
-        }
+        source={theme.dark ? darkBackground : lightBackground}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
 
-      <View style={{ flex: 1, alignSelf: 'center', height: 'auto', marginTop: insets.top }}>
-        <Animated.View style={animatedStyleLogo}>
-          <Image         source={
-          theme.dark
-            ? require('../assets/white.png')
-            : require('../assets/color.png')
-        } style={{ width: 200, height: 200 }} />
-        </Animated.View>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: insets.top }}>
+        <SpinningLogo dark={theme.dark} />
       </View>
 
-      <BottomSheet
-        index={0}
-        enableDynamicSizing
-        backgroundStyle={bgStyle}
-        handleIndicatorStyle={handleStyle}
-        backdropComponent={renderNoBackdrop}
+      <Animated.View
+        layout={LinearTransition.duration(250)}
+        style={{
+          marginHorizontal: 12,
+          marginBottom: insets.bottom + 12,
+          padding: PANEL_PADDING,
+          borderRadius: 32,
+          overflow: 'hidden',
+          backgroundColor: theme.colors.background,
+        }}
       >
-        <BottomSheetView style={{ paddingLeft: 25, paddingRight: 25, paddingBottom: insets.bottom }}>
-          {step === 'welcome' && (
-            <>
-          <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">
-            UniceNotes
-          </Text>
-              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleLarge">
-                Délaisse les vieux intranets et retrouve tes notes et ton emploi du temps directement dans l&apos;application.
-          </Text>
-              <Text style={{ textAlign: 'center', marginBottom: 8 }} variant="titleSmall">
-                En continuant, tu acceptes les conditions{'\n'}
-                d&apos;utilisation ainsi que la politique de confidentialité.
-          </Text>
-              <Button style={{ marginBottom: 8 }} icon="skip-next" mode="contained" onPress={handleWelcomeNext}>
+        <StepDots step={step} />
+        <Animated.View key={step} entering={FadeInRight.duration(300)} exiting={FadeOutLeft.duration(200)}>
+          {step === 'welcome' && <Welcome onNext={() => goTo('edt')} onSettings={() => router.push('/settings')} />}
+          {step === 'edt' && (
+            <EdtStep adeid={adeid} onConfigure={() => router.push('/edt-config')} onNext={() => goTo('appearance')} />
+          )}
+          {step === 'appearance' && <AppearanceStep onFinish={finish} />}
+        </Animated.View>
+      </Animated.View>
+    </View>
+  );
+}
+
+function Welcome({ onNext, onSettings }: { onNext: () => void; onSettings: () => void }) {
+  const theme = useAppTheme();
+  return (
+    <StepContent
+      title="UniceNotes"
+      text="Délaisse les vieux intranets : ton emploi du temps, les salles libres et ton ENT, réunis dans une seule app."
+    >
+      <Button mode="contained" icon="arrow-right" contentStyle={{ flexDirection: 'row-reverse' }} onPress={onNext}>
+        Commencer
+      </Button>
+      <Text variant="bodySmall" style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
+        En continuant, tu acceptes les conditions d&apos;utilisation et la politique de confidentialité.
+      </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+        <IconButton
+          icon="license"
+          mode="contained-tonal"
+          accessibilityLabel="Mentions légales"
+          onPress={() => openURL(LINKS.credits)}
+        />
+        <IconButton
+          icon="source-branch"
+          mode="contained-tonal"
+          accessibilityLabel="Code source"
+          onPress={() => openURL(LINKS.source)}
+        />
+        <IconButton icon="cog-outline" mode="contained-tonal" accessibilityLabel="Paramètres" onPress={onSettings} />
+      </View>
+    </StepContent>
+  );
+}
+
+function EdtStep({
+  adeid,
+  onConfigure,
+  onNext,
+}: {
+  adeid: string | null;
+  onConfigure: () => void;
+  onNext: () => void;
+}) {
+  const theme = useAppTheme();
+  return (
+    <StepContent
+      label="Étape 1 sur 2"
+      title="Ton emploi du temps"
+      text="Configure ton emploi du temps ADE pour retrouver ton prochain cours à l'accueil et sur tes widgets."
+    >
+      {adeid ? (
+        <>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              padding: 12,
+              borderRadius: 16,
+              backgroundColor: theme.colors.primaryContainer,
+            }}
+          >
+            <Icon source="check-circle" size={24} color={theme.colors.primary} />
+            <Text variant="titleMedium" style={{ flex: 1, color: theme.colors.onPrimaryContainer }}>
+              EDT {adeid} configuré
+            </Text>
+          </View>
+          <Button mode="contained" icon="arrow-right" contentStyle={{ flexDirection: 'row-reverse' }} onPress={onNext}>
             Suivant
           </Button>
-          <View style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center' }}>
-            <Tooltip title="Mentions légales">
-              <IconButton
-                icon="license"
-                mode="contained"
-                onPress={() => handleURL('https://notes.metrixmedia.fr/credits')}
-              />
-            </Tooltip>
-            <Tooltip title="Code source">
-              <IconButton
-                icon="source-branch"
-                mode="contained"
-                onPress={() => handleURL('https://github.com/UniceApps/UniceNotes')}
-              />
-            </Tooltip>
-            <Tooltip title="Paramètres">
-              <IconButton
-                icon="cog"
-                mode="contained"
-                onPress={() => router.push('/settings')}
-              />
-            </Tooltip>
-          </View>
-            </>
-          )}
+        </>
+      ) : (
+        <>
+          <Button mode="contained" icon="calendar-edit" onPress={onConfigure}>
+            Configurer
+          </Button>
+          <Button mode="text" onPress={onNext}>
+            Plus tard
+          </Button>
+        </>
+      )}
+    </StepContent>
+  );
+}
 
-          {step === 'edt' && (
-            <>
-              <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">
-                Configuration
-              </Text>
-              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleLarge">
-                (1/2) &mdash; Emploi du temps
-              </Text>
-              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleMedium">
-                Configure ton emploi du temps (via ADE) pour le retrouver directement à l&apos;accueil.
-              </Text>
-              {edtDone ? (
-                <Button
-                  style={{ marginBottom: 16 }}
-                  icon="check"
-                  mode="contained"
-                  buttonColor={GREEN}
-                  onPress={goToAppearance}
-                >
-                  Suivant
-                </Button>
-              ) : (
-                <>
-                  <Button style={{ marginBottom: 8 }} icon="calendar-edit" mode="contained" onPress={configureEdt}>
-                    Configurer
-                  </Button>
-                  <Button style={{ marginBottom: 16 }} mode="outlined" onPress={goToAppearance}>
-                    Plus tard
-                  </Button>
-                </>
-              )}
-            </>
-          )}
+function AppearanceStep({ onFinish }: { onFinish: () => void }) {
+  const theme = useAppTheme();
+  return (
+    <StepContent label="Étape 2 sur 2" title="À ton style">
+      <ThemePicker />
+      <IconPicker compact bleed={PANEL_PADDING} />
+      <Text variant="bodySmall" style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
+        Tu pourras changer d&apos;avis à tout moment dans Paramètres › Apparence.
+      </Text>
+      <Button mode="contained" icon="check" onPress={onFinish}>
+        C&apos;est parti !
+      </Button>
+    </StepContent>
+  );
+}
 
-          {step === 'appearance' && (
-            <>
-              <Text style={{ textAlign: 'left', marginBottom: 8, marginTop: 8 }} variant="displayMedium">
-                Personnalisation
-              </Text>
-              <Text style={{ textAlign: 'left', marginBottom: 16 }} variant="titleLarge">
-                (2/2) &mdash; UniceNotes de ton style
-              </Text>
-              <Text style={{ textAlign: 'left', marginBottom: 8 }} variant="titleMedium">
-                Thème
-              </Text>
-              <ThemePicker />
-              <Text style={{ textAlign: 'left', marginTop: 16 }} variant="titleMedium">
-                Icône
-              </Text>
-              <IconPicker compact />
-              <Text
-                style={{ textAlign: 'center', marginTop: 4, marginBottom: 8, color: theme.colors.onSurfaceVariant }}
-                variant="bodySmall"
-              >
-                Tu pourras changer d&apos;avis à tout moment dans Paramètres › Apparence.
-              </Text>
-              <Button style={{ marginBottom: 16 }} icon="check" mode="contained" buttonColor={GREEN} onPress={finishOobe}>
-                C&apos;est parti !
-              </Button>
-            </>
-          )}
-        </BottomSheetView>
-      </BottomSheet>
+function StepContent({
+  label,
+  title,
+  text,
+  children,
+}: {
+  label?: string;
+  title: string;
+  text?: string;
+  children: ReactNode;
+}) {
+  const theme = useAppTheme();
+  return (
+    <View style={{ gap: 12 }}>
+      <View>
+        {label && (
+          <Text variant="labelLarge" style={{ color: theme.colors.primary }}>
+            {label}
+          </Text>
+        )}
+        <Text variant="headlineLarge">{title}</Text>
+        {text && (
+          <Text variant="titleMedium" style={{ marginTop: 4, color: theme.colors.onSurfaceVariant }}>
+            {text}
+          </Text>
+        )}
+      </View>
+      {children}
     </View>
+  );
+}
+
+function StepDots({ step }: { step: Step }) {
+  const theme = useAppTheme();
+  const index = STEPS.indexOf(step);
+  return (
+    <View style={{ flexDirection: 'row', gap: 6, marginBottom: 16 }}>
+      {STEPS.map((item, i) => (
+        <View
+          key={item}
+          style={{
+            width: i === index ? 24 : 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: i <= index ? theme.colors.primary : theme.colors.surfaceVariant,
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+// tour complet avec rebond, en boucle
+function SpinningLogo({ dark }: { dark: boolean }) {
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    const spring = { damping: 2, stiffness: 15 };
+    rotation.set(withRepeat(withSequence(withSpring(0, spring), withSpring(360, spring)), -1, false));
+    return () => cancelAnimation(rotation);
+  }, [rotation]);
+
+  const style = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value}deg` }] }));
+
+  return (
+    <Animated.View style={style}>
+      <Image
+        source={dark ? require('../assets/white.png') : require('../assets/color.png')}
+        style={{ width: 180, height: 180 }}
+      />
+    </Animated.View>
   );
 }

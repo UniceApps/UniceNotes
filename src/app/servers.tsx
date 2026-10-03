@@ -1,106 +1,85 @@
-import { useChoosenTheme } from '@/src/constants/theme';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Platform, ScrollView, View } from 'react-native';
-import {
-  Appbar,
-  Button,
-  Chip,
-  Text,
-  Tooltip,
-} from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 
-export default function ServerConfigScreen() {
-  const router = useRouter();
-  const theme = useChoosenTheme();
-  const insets = useSafeAreaInsets();
+import { ActivityIndicator, Button, Icon, Text } from 'react-native-paper';
 
-  const [loading, setLoading] = useState(false);
-  const [statusPronote, setStatusPronote] = useState('timer-sand');
-  const [statusDW, setStatusDW] = useState('timer-sand');
-  const [statusADE, setStatusADE] = useState('timer-sand');
-  const [statusLoginUniCA, setStatusLoginUniCA] = useState('timer-sand');
+import { ListGroup, ListItem } from '@/src/components/ui/ListGroup';
+import { Screen } from '@/src/components/ui/Screen';
+import { checkServer, SERVERS } from '@/src/services/servers';
+import { getStatusColors, useAppTheme } from '@/src/theme';
+import { haptics } from '@/src/utils/haptics';
 
-  async function startTest() {
-    setLoading(true);
+// temps de réponse par URL : null hors ligne, absent pendant le test
+type Results = Record<string, number | null>;
 
-    const check = async (url: string, setter: (v: string) => void, okStatuses: number[] = [200]) => {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
+export default function ServersScreen() {
+  const theme = useAppTheme();
+  const [results, setResults] = useState<Results>({});
+  const [run, setRun] = useState(0);
+  const testing = SERVERS.some((server) => !(server.url in results));
 
-      try {
-        const res = await fetch(url, { signal: controller.signal });
-        setter(okStatuses.includes(res.status) ? 'check' : 'close');
-      } catch {
-        setter('close');
-      } finally {
-        clearTimeout(timeout);
-      }
+  useEffect(() => {
+    let cancelled = false;
+    for (const server of SERVERS) {
+      checkServer(server.url).then((latency) => {
+        if (!cancelled) setResults((current) => ({ ...current, [server.url]: latency }));
+      });
+    }
+    return () => {
+      cancelled = true;
     };
+  }, [run]);
 
-    await check('https://sco.polytech.unice.fr/1', setStatusPronote, [200, 301, 302]);
-    await check('https://mondossierweb.univ-cotedazur.fr', setStatusDW, [200, 301, 302]);
-    await check('https://edtweb.univ-cotedazur.fr', setStatusADE, [200, 301, 302]);
-    await check('https://login.univ-cotedazur.fr', setStatusLoginUniCA);
-
-    setLoading(false);
+  function retry() {
+    haptics('medium');
+    setResults({});
+    setRun((n) => n + 1);
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Appbar.Header elevated statusBarHeight={Platform.OS === 'ios' ? 0 : undefined}>
-        <Tooltip title="Retour">
-          <Appbar.BackAction onPress={() => router.back()} />
-        </Tooltip>
-        <Appbar.Content title="Serveurs" />
-      </Appbar.Header>
+    <Screen modal title="Serveurs" subtitle="État des services de l'université">
+      <ListGroup>
+        {SERVERS.map((server) => (
+          <ListItem
+            key={server.url}
+            icon={server.icon}
+            title={server.name}
+            subtitle={server.description}
+            right={<ServerStatus latency={results[server.url]} />}
+          />
+        ))}
+      </ListGroup>
 
-      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Text style={{ marginTop: 16, marginBottom: 16, textAlign: 'left' }} variant="titleMedium">
-          Status des serveurs Université :
-        </Text>
-
-        <Button mode="contained-tonal" onPress={startTest} loading={loading}>
-          Démarrer test serveurs
+      <View style={{ gap: 12 }}>
+        <Button mode="contained-tonal" icon="refresh" loading={testing} disabled={testing} onPress={retry}>
+          {testing ? 'Test en cours…' : 'Relancer le test'}
         </Button>
-
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleSmall">
-          Si ces serveurs ne répondent pas, c&apos;est sûrement de la faute de l&apos;Université
+        <Text variant="bodySmall" style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
+          Si un serveur ne répond pas, le problème vient sûrement de l&apos;université : réessaie plus tard.
         </Text>
-        <Chip
-          style={{ height: 48, justifyContent: 'center', marginTop: 16, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}
-          mode="outlined"
-          icon={statusPronote}
-          disabled
-        >
-          Serveur PronoteCampus
-        </Chip>
-        <Chip
-          style={{ height: 48, justifyContent: 'center', borderRadius: 0 }}
-          mode="outlined"
-          icon={statusDW}
-          disabled
-        >
-          Serveur Mon Dossier Web (Notes)
-        </Chip>
-        <Chip
-          style={{ height: 48, justifyContent: 'center', borderRadius: 0 }}
-          mode="outlined"
-          icon={statusADE}
-          disabled
-        >
-          Serveur ADE (Emploi du temps)
-        </Chip>
-        <Chip
-          style={{ height: 48, justifyContent: 'center', borderTopLeftRadius: 0, borderTopRightRadius: 0, marginBottom: insets.bottom }}
-          mode="outlined"
-          icon={statusLoginUniCA}
-          disabled
-        >
-          Serveur Login UniCA (Connexion)
-        </Chip>
-      </ScrollView>
+      </View>
+    </Screen>
+  );
+}
+
+function ServerStatus({ latency }: { latency: number | null | undefined }) {
+  const theme = useAppTheme();
+  const colors = getStatusColors(theme);
+
+  if (latency === undefined) return <ActivityIndicator size={20} />;
+
+  const online = latency !== null;
+  const color = online ? colors.free : colors.busy;
+  return (
+    <View
+      accessible
+      accessibilityLabel={online ? `En ligne, ${latency} millisecondes` : 'Hors ligne'}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+    >
+      <Icon source={online ? 'check-circle' : 'close-circle'} size={20} color={color} />
+      <Text variant="labelLarge" style={{ color }}>
+        {online ? `${latency} ms` : 'Hors ligne'}
+      </Text>
     </View>
   );
 }

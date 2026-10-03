@@ -1,11 +1,8 @@
-// Liens profonds : unicenotes://notes, unicenotes://ent, unicenotes://edt et unicenotes://edt/{code}
+// liens profonds : unicenotes://notes, unicenotes://ent, unicenotes://edt et unicenotes://edt/{code}
 
-export type DeepLink =
-  | { kind: 'notes' }
-  | { kind: 'ent' }
-  | { kind: 'edt'; code?: string };
+export type DeepLink = { kind: 'notes' } | { kind: 'ent' } | { kind: 'edt'; code?: string };
 
-export const EDT_CODE_MAX_LENGTH = 32;
+const EDT_CODE_MAX_LENGTH = 32;
 
 // code ADE
 const EDT_CODE_PATTERN = new RegExp(`^[A-Za-z0-9_-]{1,${EDT_CODE_MAX_LENGTH}}$`);

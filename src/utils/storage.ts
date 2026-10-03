@@ -1,30 +1,29 @@
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
-export async function saveSecure(key: string, value: string): Promise<void> {
-  await SecureStore.setItemAsync(key, value);
-}
+// toutes les clés utilisées par l'app, voir .docs/DATA.md
+export type StorageKey =
+  | 'theme'
+  | 'haptics'
+  | 'liveActivities'
+  | 'oobeCompleted'
+  | 'releaseNotesVersion'
+  | 'adeProjectOverride'
+  | 'favoriteRooms'
+  | 'androidWidgetTimeline';
 
-export async function getSecure(key: string): Promise<string | null> {
-  return SecureStore.getItemAsync(key);
-}
+export type SecureKey = 'adeid';
 
-export async function deleteSecure(key: string): Promise<void> {
-  await SecureStore.deleteItemAsync(key);
-}
+export const storage = {
+  get: (key: StorageKey) => AsyncStorage.getItem(key),
+  set: (key: StorageKey, value: string) => AsyncStorage.setItem(key, value),
+  remove: (key: StorageKey) => AsyncStorage.removeItem(key),
+  clear: () => AsyncStorage.clear(),
+};
 
-export async function saveAsync(key: string, value: string): Promise<void> {
-  await AsyncStorage.setItem(key, value);
-}
-
-export async function getAsync(key: string): Promise<string | null> {
-  return AsyncStorage.getItem(key);
-}
-
-export async function removeAsync(key: string): Promise<void> {
-  await AsyncStorage.removeItem(key);
-}
-
-export async function clearAsync(): Promise<void> {
-  await AsyncStorage.clear();
-}
+// trousseau iOS / keystore Android
+export const secureStorage = {
+  get: (key: SecureKey) => SecureStore.getItemAsync(key),
+  set: (key: SecureKey, value: string) => SecureStore.setItemAsync(key, value),
+  remove: (key: SecureKey) => SecureStore.deleteItemAsync(key),
+};

@@ -1,13 +1,19 @@
 import { Capsule, HStack, Image, ProgressView, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import {
-  font, foregroundStyle, frame, lineLimit,
-  monospacedDigit, multilineTextAlignment, padding, tint,
+  font,
+  foregroundStyle,
+  frame,
+  lineLimit,
+  monospacedDigit,
+  multilineTextAlignment,
+  padding,
+  tint,
 } from '@expo/ui/swift-ui/modifiers';
 import { createLiveActivity, type LiveActivityEnvironment } from 'expo-widgets';
 
-import type { ClassActivityProps } from '../types';
+import type { ClassActivityProps } from '@/src/types';
 
-// Live Activity
+// bannière de l'écran verrouillé et Dynamic Island
 const ClassActivityLayout = (props: ClassActivityProps, env: LiveActivityEnvironment) => {
   'widget';
   const accent = props.color || 'gray';
@@ -76,11 +82,7 @@ const ClassActivityLayout = (props: ClassActivityProps, env: LiveActivityEnviron
       </VStack>
     ),
     compactLeading: icon,
-    compactTrailing: finished ? (
-      <Text modifiers={[font({ size: 14 })]}>Fini</Text>
-    ) : (
-      timer(14, 52)
-    ),
+    compactTrailing: finished ? <Text modifiers={[font({ size: 14 })]}>Fini</Text> : timer(14, 52),
     minimal: icon,
     expandedLeading: (
       <HStack spacing={6} modifiers={[padding({ leading: 4 })]}>

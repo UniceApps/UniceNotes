@@ -1,64 +1,53 @@
-import React from 'react';
-import { View, ScrollView, Platform } from 'react-native';
-import { Text, Appbar, Card, Avatar, Tooltip } from 'react-native-paper';
-import * as Linking from 'expo-linking';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconPicker, ThemePicker } from '@/src/components/AppearancePickers';
-import { themeOptions, useChoosenTheme, useThemeId } from '@/src/constants/theme';
+import { Linking, View } from 'react-native';
+
+import { Text } from 'react-native-paper';
+
+import { IconPicker, ThemePicker } from '@/src/components/appearance/AppearancePickers';
+import { Card } from '@/src/components/ui/Card';
+import { IconBadge } from '@/src/components/ui/IconBadge';
+import { Screen } from '@/src/components/ui/Screen';
+import { SectionTitle } from '@/src/components/ui/SectionTitle';
+import { LINKS } from '@/src/constants/config';
+import { themeOptions, useAppTheme, useThemeId } from '@/src/theme';
 
 export default function AppearanceScreen() {
-  const router = useRouter();
-  const theme = useChoosenTheme();
+  const theme = useAppTheme();
   const themeId = useThemeId();
-  const insets = useSafeAreaInsets();
-  const selectedTheme = themeOptions.find((t) => t.id === themeId);
+  const selected = themeOptions.find((option) => option.id === themeId);
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Appbar.Header elevated statusBarHeight={Platform.OS === 'ios' ? 0 : undefined}>
-        <Tooltip title="Retour">
-          <Appbar.BackAction onPress={() => router.back()} />
-        </Tooltip>
-        <Appbar.Content title="Apparence" />
-      </Appbar.Header>
-
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 25, paddingBottom: insets.bottom + 24 }}>
-        <Text style={{ marginTop: 24 }} variant="titleLarge">
-          Thème
-        </Text>
-        <Text style={{ marginBottom: 16, color: theme.colors.onSurfaceVariant }} variant="bodyMedium">
-          {selectedTheme?.description ?? 'Les couleurs de l’application'}
-        </Text>
-        <ThemePicker />
-
-        <Text style={{ marginTop: 32 }} variant="titleLarge">
-          Icône
-        </Text>
-        <Text style={{ marginBottom: 8, color: theme.colors.onSurfaceVariant }} variant="bodyMedium">
-          L&apos;icône affichée sur ton écran d&apos;accueil.
-        </Text>
-        <IconPicker />
-
-        <Card mode="contained" style={{ marginTop: 24 }}>
-          <Card.Title
-            title="Tu es un·e artiste ?"
-            subtitle="Propose ton icône à la communauté"
-            left={(props) => <Avatar.Icon {...props} icon="brush-variant" />}
-          />
-          <Card.Content>
-            <Text variant="bodyMedium">
-              Envoie-nous tes œuvres d&apos;art à{' '}
-              <Text
-                style={{ color: theme.colors.primary }}
-                onPress={() => Linking.openURL('mailto://app+icons@metrixmedia.fr')}
-              >
-                app+icons@metrixmedia.fr
-              </Text>
-            </Text>
-          </Card.Content>
+    <Screen modal title="Apparence" subtitle="UniceNotes, à ton style">
+      <View>
+        <SectionTitle title="Thème" aside={selected?.label} />
+        <Card>
+          <ThemePicker />
+          <Text
+            variant="bodyMedium"
+            style={{ marginTop: 12, textAlign: 'center', color: theme.colors.onSurfaceVariant }}
+          >
+            {selected?.description}
+          </Text>
         </Card>
-      </ScrollView>
-    </View>
+      </View>
+
+      <View>
+        <SectionTitle title="Icône" />
+        <Card>
+          <IconPicker />
+        </Card>
+      </View>
+
+      <Card onPress={() => Linking.openURL(LINKS.iconsMail)} accessibilityHint="Écrire un e-mail">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <IconBadge icon="brush-variant" tone="tertiary" />
+          <View style={{ flex: 1 }}>
+            <Text variant="titleMedium">Tu es un·e artiste ?</Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+              Propose ton icône à la communauté : app+icons@metrixmedia.fr
+            </Text>
+          </View>
+        </View>
+      </Card>
+    </Screen>
   );
 }

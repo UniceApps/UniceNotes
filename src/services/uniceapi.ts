@@ -1,4 +1,5 @@
-import { API_URL } from '../constants/config';
+import { API_URL } from '@/src/constants/config';
+import { withTimeout } from '@/src/utils/network';
 
 export interface ApiAlert {
   title: string;
@@ -6,76 +7,53 @@ export interface ApiAlert {
 }
 
 export interface ApiStatus {
+  // dernière version publiée sur les stores
   version: string | null;
   alert: ApiAlert | null;
 }
 
-const FETCH_TIMEOUT_MS = 2000;
+const STATUS_TIMEOUT_MS = 3000;
 
-export async function fetchApiStatus(): Promise<ApiStatus | null> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(API_URL, {
-      signal: controller.signal,
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) return null;
-    return parseApiStatus(await res.json());
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
+function readString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
-export function parseApiStatus(json: unknown): ApiStatus | null {
+function parseStatus(json: unknown): ApiStatus | null {
   if (typeof json !== 'object' || json === null) return null;
   const data = json as Record<string, unknown>;
+  const alert = (typeof data.alert === 'object' && data.alert !== null ? data.alert : {}) as Record<string, unknown>;
+  const title = readString(alert.title);
+  const message = readString(alert.message);
 
   return {
-    version: typeof data.version === 'string' && data.version.trim() !== '' ? data.version.trim() : null,
-    alert: parseAlert(data.alert),
+    version: readString(data.version) || null,
+    alert: title || message ? { title: title || 'Information', message } : null,
   };
 }
 
-function parseAlert(raw: unknown): ApiAlert | null {
-  if (typeof raw !== 'object' || raw === null) return null;
-  const data = raw as Record<string, unknown>;
-
-  const title = typeof data.title === 'string' ? data.title.trim() : '';
-  const message = typeof data.message === 'string' ? data.message.trim() : '';
-  if (title === '' && message === '') return null;
-
-  return { title: title || 'Information', message };
+export function fetchApiStatus(): Promise<ApiStatus | null> {
+  return withTimeout(STATUS_TIMEOUT_MS, async (signal) => {
+    const res = await fetch(API_URL, { signal, headers: { Accept: 'application/json' } });
+    return res.ok ? parseStatus(await res.json()) : null;
+  });
 }
 
-export function compareVersions(a: string, b: string): number {
-  const pa = toNumericParts(a);
-  const pb = toNumericParts(b);
-  const len = Math.max(pa.length, pb.length);
-
-  for (let i = 0; i < len; i++) {
-    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
-}
-
-function toNumericParts(version: string): number[] {
+// "v3.10.0" -> [3, 10, 0]
+function toNumbers(version: string): number[] {
   return version
-    .trim()
     .replace(/^v/i, '')
     .split('.')
-    .map((part) => {
-      const n = parseInt(part, 10);
-      return Number.isNaN(n) ? 0 : n;
-    });
+    .map((part) => parseInt(part, 10) || 0);
 }
 
-/** true si la version installée est < à la version actuelle */
+// true si la version installée est plus ancienne que la dernière publiée
 export function isUpdateAvailable(installed: string, latest: string | null): boolean {
   if (!latest) return false;
-  return compareVersions(installed, latest) < 0;
+  const a = toNumbers(installed);
+  const b = toNumbers(latest);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const diff = (a[i] ?? 0) - (b[i] ?? 0);
+    if (diff !== 0) return diff < 0;
+  }
+  return false;
 }

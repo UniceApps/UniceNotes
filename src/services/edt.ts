@@ -1,246 +1,64 @@
 import ICAL from 'ical.js';
 
-import type { AdeProject, CalendarEvent, EDTResult } from '../types';
+import type { AdeProgram, CalendarEvent } from '@/src/types';
+import { colorFromString } from '@/src/utils/color';
+import { isValidEdtCode } from '@/src/utils/deeplink';
+import { withTimeout } from '@/src/utils/network';
 
-import { getCalendarFromCache, saveCalendarToFile } from '../utils/calendar';
-import { stringToColour } from '../utils/color';
-import { isValidEdtCode } from '../utils/deeplink';
-import { getAsync, removeAsync, saveAsync } from '../utils/storage';
+import { ADE_URL, getCurrentProject, getProjectYear } from './ade';
 
-interface ICALComponent {
-  getAllSubcomponents(name: string): unknown[];
-}
+const CALENDAR_TIMEOUT_MS = 10000;
+const SEARCH_TIMEOUT_MS = 5000;
+const SEARCH_URL = 'https://ade-consult.univ-cotedazur.fr/?action=search-vet&term=';
 
-interface ICALEvent {
-  summary: string;
-  location: string;
-  description: string;
-  uid: string;
-  startDate: { toJSDate: () => Date };
-  endDate: { toJSDate: () => Date };
-}
+// suffixe ADE d'un emploi du temps de cursus (VET)
+export const PROGRAM_SUFFIX = '-VET';
 
-export const ADE_BASE = 'https://edtweb.univ-cotedazur.fr';
-const ADE_PROJECT_OVERRIDE_KEY = 'adeProjectOverride';
-
-export const EDT_FETCH_TIMEOUT_MS = 5000;
-
-function getAcademicYearDateRange(projectName?: string): string {
-  const match = projectName?.match(/(\d{4})-(\d{4})/);
-  let startYear: number;
-  if (match) {
-    startYear = Number(match[1]);
-  } else {
-    const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
-    startYear = month >= 9 ? year : year - 1;
-  }
-  const endYear = startYear + 1;
-  return `&firstDate=${startYear}-09-01&lastDate=${endYear}-08-31`;
-}
-
-function getCurrentAcademicYearString(): string {
-  const now = new Date();
-  const startYear = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
-  return `${startYear}-${startYear + 1}`;
-}
-
-export async function fetchSessionId(): Promise<string | null> {
+function parseCalendar(ics: string): CalendarEvent[] | null {
   try {
-    // nouveau mode d'authentification de l'API ADE
-    // header Basic avec un token codé en base64
-    const authHeader = `Basic ${process.env.EXPO_PUBLIC_ADE_TOKEN ?? ''}`;
-
-    const res = await fetch(`${ADE_BASE}/jsp/webapi?function=connect`, {
-      method: "GET",
-      headers: {
-        Authorization: authHeader,
-      },
+    const calendar = new ICAL.Component(ICAL.parse(ics));
+    return calendar.getAllSubcomponents('vevent').map((vevent, index) => {
+      const event = new ICAL.Event(vevent);
+      const title = event.summary?.trim() ?? '';
+      return {
+        id: event.uid ?? String(index),
+        title,
+        room: event.location?.trim() ?? '',
+        notes: event.description?.trim() ?? '',
+        color: colorFromString(title),
+        start: { dateTime: event.startDate.toJSDate().toISOString() },
+        end: { dateTime: event.endDate.toJSDate().toISOString() },
+      };
     });
-
-    if (!res.ok) return null;
-    const text = await res.text();
-    const match = text.match(/<session id="(.*?)"\s*\/>/);
-    return match ? match[1] : null;
   } catch {
     return null;
   }
 }
 
-async function fetchProjects(sessionId: string): Promise<AdeProject[]> {
-  try {
-    const res = await fetch(
-      `${ADE_BASE}/jsp/webapi?function=getProjects&sessionId=${sessionId}&detail=2`,
-    );
-    if (!res.ok) return [];
-    const text = await res.text();
-    const projectRegex = /<project\s+id="(\d+)"\s+name="([^"]*)"/g;
-    return Array.from(text.matchAll(projectRegex)).map(([, id, name]) => ({ id, name }));
-  } catch {
-    return [];
-  }
+// null si ADE est injoignable ou renvoie autre chose qu'un calendrier
+export async function fetchCalendar(code: string): Promise<CalendarEvent[] | null> {
+  if (!isValidEdtCode(code)) return null;
+  const project = await getCurrentProject();
+  if (!project) return null;
+
+  const year = getProjectYear(project);
+  const url =
+    `${ADE_URL}/jsp/custom/modules/plannings/anonymous_cal.jsp?calType=ical` +
+    `&code=${encodeURIComponent(code)}&projectId=${project.id}` +
+    `&firstDate=${year}-09-01&lastDate=${year + 1}-08-31`;
+
+  return withTimeout(CALENDAR_TIMEOUT_MS, async (signal) => {
+    const res = await fetch(url, { signal });
+    return res.ok ? parseCalendar(await res.text()) : null;
+  });
 }
 
-function pickAutoProjectId(projects: AdeProject[]): string | null {
-  const yearStr = getCurrentAcademicYearString();
-  const match = projects.find(
-    (p) => p.name.includes(yearStr) && p.name.toLowerCase().includes('prod'),
-  );
-  return match?.id ?? null;
+// null en cas d'erreur réseau, [] si rien ne correspond
+export function searchPrograms(term: string): Promise<AdeProgram[] | null> {
+  return withTimeout(SEARCH_TIMEOUT_MS, async (signal) => {
+    const res = await fetch(SEARCH_URL + encodeURIComponent(term), { signal });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { results?: { id: string; text: string }[] };
+    return (data.results ?? []).map(({ id, text }) => ({ id, name: text }));
+  });
 }
-
-export async function disconnectSession(sessionId: string): Promise<void> {
-  try {
-    await fetch(`${ADE_BASE}/jsp/webapi?function=disconnect&sessionId=${sessionId}`);
-  } catch {
-    // la session expirera d'elle-même côté serveur
-  }
-}
-
-export class EDT {
-  private ADE_PROJECT: string | null = null;
-  private isOverridden = false;
-  private projects: AdeProject[] = [];
-  private _ready: Promise<void>;
-
-  constructor() {
-    this._ready = this.resolveProject();
-  }
-
-  private async resolveProject(): Promise<void> {
-    const sessionId = await fetchSessionId();
-    if (!sessionId) return;
-    this.projects = await fetchProjects(sessionId);
-    await disconnectSession(sessionId);
-
-    const override = await getAsync(ADE_PROJECT_OVERRIDE_KEY);
-    if (override) {
-      const stillExists = this.projects.some((p) => p.id === override);
-      if (stillExists) {
-        this.ADE_PROJECT = override;
-        this.isOverridden = true;
-        return;
-      }
-      // le projet choisi manuellement n'existe plus (nouvelle année ADE), retour en mode auto
-      await removeAsync(ADE_PROJECT_OVERRIDE_KEY);
-    }
-
-    this.ADE_PROJECT = pickAutoProjectId(this.projects);
-    this.isOverridden = false;
-  }
-
-  private waitUntilReady(): Promise<void> {
-    return this._ready;
-  }
-
-  // projet ADE en cours d'utilisation
-  async ensureProject(): Promise<string | null> {
-    await this.waitUntilReady();
-    if (!this.ADE_PROJECT) {
-      this._ready = this.resolveProject();
-      await this._ready;
-    }
-    return this.ADE_PROJECT;
-  }
-
-  async getProjectSelection(): Promise<{
-    projects: AdeProject[];
-    selectedId: string | null;
-    isOverridden: boolean;
-  }> {
-    await this.waitUntilReady();
-    return { projects: this.projects, selectedId: this.ADE_PROJECT, isOverridden: this.isOverridden };
-  }
-
-  async setProjectOverride(id: string | null): Promise<void> {
-    await this.waitUntilReady();
-    if (id === null) {
-      await removeAsync(ADE_PROJECT_OVERRIDE_KEY);
-      this.ADE_PROJECT = pickAutoProjectId(this.projects);
-      this.isOverridden = false;
-      return;
-    }
-    if (!this.projects.some((p) => p.id === id)) return;
-    await saveAsync(ADE_PROJECT_OVERRIDE_KEY, id);
-    this.ADE_PROJECT = id;
-    this.isOverridden = true;
-  }
-
-  async fetchEDT(adeid: string): Promise<string | null> {
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<null>((resolve) => {
-      timer = setTimeout(() => {
-        controller.abort();
-        resolve(null);
-      }, EDT_FETCH_TIMEOUT_MS); // ajout d'un timeout parce que ade c'est de la merde
-    });
-    try {
-      return await Promise.race([this.fetchEDTRequest(adeid, controller.signal), timeout]);
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  private async fetchEDTRequest(adeid: string, signal: AbortSignal): Promise<string | null> {
-    await this.waitUntilReady();
-    if (signal.aborted || !this.ADE_PROJECT) return null;
-    try {
-      const projectName = this.projects.find((p) => p.id === this.ADE_PROJECT)?.name;
-      const dateRange = getAcademicYearDateRange(projectName);
-      const url =
-        `${ADE_BASE}/jsp/custom/modules/plannings/anonymous_cal.jsp` +
-        `?code=${encodeURIComponent(adeid)}&projectId=${this.ADE_PROJECT}&calType=ical${dateRange}`;
-      const res = await fetch(url, { signal });
-      if (!res.ok) return null;
-      return await res.text();
-    } catch {
-      return null;
-    }
-  }
-
-  parseICal(icalData: string): ICALEvent[] {
-    try {
-      const parsed = ICAL.parse(icalData);
-      const comp = new ICAL.Component(parsed) as ICALComponent;
-      return comp.getAllSubcomponents('vevent').map((v) => new ICAL.Event(v as ICAL.Component) as ICALEvent);
-    } catch {
-      return [];
-    }
-  }
-
-  private convertToCalendarEvents(events: ICALEvent[]): CalendarEvent[] {
-    return events.map((e, index) => ({
-      id: e.uid ?? String(index),
-      start: { dateTime: e.startDate.toJSDate().toISOString() },
-      end: { dateTime: e.endDate.toJSDate().toISOString() },
-      title: e.summary ?? '',
-      subtitle: e.description ?? '',
-      description: e.location ?? '',
-      color: stringToColour(e.summary ?? ''),
-    }));
-  }
-
-  // récupère l'edt si possible, sinon retourne l'edt en cache
-  async getEDT(adeid: string): Promise<EDTResult> {
-    if (!adeid || adeid === 'demo') return { events: [], offline: false };
-
-    const icalData = await this.fetchEDT(adeid);
-    if (!icalData) return { events: await getCalendarFromCache(), offline: true };
-    const events = this.parseICal(icalData);
-    const calEvents = this.convertToCalendarEvents(events);
-    await saveCalendarToFile(calEvents);
-    return { events: calEvents, offline: false };
-  }
-
-  // edt d'un autre code ADE pour un affichage temporaire
-  async getTemporaryEDT(code: string): Promise<CalendarEvent[] | null> {
-    if (!isValidEdtCode(code)) return null;
-    const icalData = await this.fetchEDT(code);
-    if (!icalData) return null;
-    return this.convertToCalendarEvents(this.parseICal(icalData));
-  }
-}
-
-export const edtService = new EDT();

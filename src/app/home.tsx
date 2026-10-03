@@ -1,55 +1,28 @@
-import { useEffect, useRef } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl } from 'react-native';
 
+import { useRouter } from 'expo-router';
 import { Text } from 'react-native-paper';
 
-import BottomSheet from '@gorhom/bottom-sheet';
-import { useRouter } from 'expo-router';
-import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { Banner } from '@/src/components/Banner';
+import { AnnouncementSheet } from '@/src/components/home/AnnouncementSheet';
 import { HomeHeader } from '@/src/components/home/HomeHeader';
 import { NextClassCard } from '@/src/components/home/NextClassCard';
-import { ReleaseNotesSheet } from '@/src/components/home/ReleaseNotesSheet';
 import { Shortcuts, type Shortcut } from '@/src/components/home/Shortcuts';
 import { UpNextList } from '@/src/components/home/UpNextList';
-import { APP_VERSION, PRONOTE_URL } from '@/src/constants/config';
-import { useChoosenTheme } from '@/src/constants/theme';
-import { useApp } from '@/src/context/AppContext';
+import { Banner } from '@/src/components/ui/Banner';
+import { Screen } from '@/src/components/ui/Screen';
+import { LINKS } from '@/src/constants/config';
+import { useSettings } from '@/src/context/SettingsContext';
 import { useAgenda } from '@/src/hooks/useAgenda';
-import { formatSyncTime, getIsoWeek } from '@/src/utils/agenda';
-import { handleURL } from '@/src/utils/api';
-import { withAlpha } from '@/src/utils/color';
+import { useAppTheme } from '@/src/theme';
+import { openURL } from '@/src/utils/browser';
+import { formatSyncTime, getIsoWeek } from '@/src/utils/date';
 import { haptics } from '@/src/utils/haptics';
-import { saveAsync } from '@/src/utils/storage';
-
-// apparition en cascade, puis glissement quand un bloc voisin change de taille
-const enter = (index: number) => FadeInDown.duration(450).delay(index * 70);
-const layout = LinearTransition.duration(250);
 
 export default function HomeScreen() {
   const router = useRouter();
-  const theme = useChoosenTheme();
-  const insets = useSafeAreaInsets();
-  const { adeid, updateModalShown, setUpdateModalShown, setOnboarding } = useApp();
+  const theme = useAppTheme();
+  const { adeid } = useSettings();
   const agenda = useAgenda();
-  const releaseNotesRef = useRef<BottomSheet>(null);
-
-  useEffect(() => {
-    setOnboarding(false);
-  }, [setOnboarding]);
-
-  useEffect(() => {
-    if (updateModalShown) return;
-    // laisse l'accueil apparaître avant les nouveautés
-    const timer = setTimeout(() => {
-      saveAsync('releaseNotesVersion', APP_VERSION);
-      setUpdateModalShown(true);
-      releaseNotesRef.current?.expand();
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [updateModalShown, setUpdateModalShown]);
 
   function navigate(href: '/edt-config' | '/settings' | '/free-rooms' | '/ent') {
     haptics('light');
@@ -62,8 +35,7 @@ export default function HomeScreen() {
       return;
     }
     haptics('medium');
-    // rien en mémoire : l'emploi du temps se charge lui-même
-    router.push(agenda.classes.length > 0 ? '/timetable' : { pathname: '/timetable', params: { fresh: '1' } });
+    router.push('/timetable');
   }
 
   function refresh() {
@@ -99,7 +71,7 @@ export default function HomeScreen() {
       label: 'Notes',
       subtitle: 'PronoteCampus',
       tone: 'secondary',
-      onPress: () => handleURL(PRONOTE_URL),
+      onPress: () => openURL(LINKS.pronote),
     },
     {
       key: 'ent',
@@ -117,77 +89,48 @@ export default function HomeScreen() {
     : 'Emploi du temps non configuré';
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: insets.bottom + 24 }}
-        refreshControl={
-          agenda.configured ? (
-            <RefreshControl
-              refreshing={agenda.refreshing}
-              onRefresh={refresh}
-              tintColor={theme.colors.primary}
-              colors={[theme.colors.primary]}
-              progressBackgroundColor={theme.colors.elevation.level3}
-            />
-          ) : undefined
-        }
-      >
-        <View style={{ width: '100%', maxWidth: 600, alignSelf: 'center', gap: 24 }}>
-          <Animated.View entering={enter(0)}>
-            <HomeHeader
-              now={agenda.now}
-              onEditEdt={() => navigate('/edt-config')}
-              onSettings={() => navigate('/settings')}
-            />
-          </Animated.View>
+    <Screen
+      header={
+        <HomeHeader
+          now={agenda.now}
+          onEditEdt={() => navigate('/edt-config')}
+          onSettings={() => navigate('/settings')}
+        />
+      }
+      refreshControl={
+        agenda.configured ? (
+          <RefreshControl
+            refreshing={agenda.refreshing}
+            onRefresh={refresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+            progressBackgroundColor={theme.colors.elevation.level3}
+          />
+        ) : undefined
+      }
+      overlay={<AnnouncementSheet />}
+    >
+      {showOffline && (
+        <Banner
+          tone="error"
+          icon="wifi-off"
+          text={agenda.loading ? 'Nouvelle tentative…' : 'Hors ligne · EDT en cache'}
+          action={agenda.loading ? undefined : { label: 'Réessayer', onPress: retry }}
+          style={{ marginBottom: -8 }}
+        />
+      )}
 
-          {showOffline && (
-            <Animated.View
-              entering={FadeIn}
-              exiting={FadeOut}
-              layout={layout}
-              style={{ borderRadius: 16, overflow: 'hidden', marginBottom: -8 }}
-            >
-              <Banner
-                alert
-                icon="wifi-off"
-                text={agenda.fetching ? 'Nouvelle tentative…' : 'Hors ligne · EDT en cache'}
-                background={withAlpha(theme.colors.error, 0.12)}
-                foreground={theme.colors.error}
-                action={agenda.fetching ? undefined : { label: 'Réessayer', onPress: retry }}
-              />
-            </Animated.View>
-          )}
+      <NextClassCard agenda={agenda} onOpen={openTimetable} onSetup={() => navigate('/edt-config')} onRetry={retry} />
 
-          <Animated.View entering={enter(1)} layout={layout}>
-            <NextClassCard
-              agenda={agenda}
-              onOpen={openTimetable}
-              onSetup={() => navigate('/edt-config')}
-              onRetry={retry}
-            />
-          </Animated.View>
+      {agenda.later.length > 0 && agenda.dayEnd && (
+        <UpNextList items={agenda.later} dayEnd={agenda.dayEnd} onPress={openTimetable} />
+      )}
 
-          {agenda.later.length > 0 && agenda.dayEnd && (
-            <Animated.View entering={enter(2)} exiting={FadeOut} layout={layout}>
-              <UpNextList items={agenda.later} dayEnd={agenda.dayEnd} onPress={openTimetable} />
-            </Animated.View>
-          )}
+      <Shortcuts items={shortcuts} />
 
-          <Animated.View entering={enter(3)} layout={layout}>
-            <Shortcuts items={shortcuts} />
-          </Animated.View>
-
-          <Animated.View entering={enter(4)} layout={layout}>
-            <Text variant="bodySmall" style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
-              {footer}
-            </Text>
-          </Animated.View>
-        </View>
-      </ScrollView>
-
-      <ReleaseNotesSheet sheetRef={releaseNotesRef} />
-    </View>
+      <Text variant="bodySmall" style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
+        {footer}
+      </Text>
+    </Screen>
   );
 }

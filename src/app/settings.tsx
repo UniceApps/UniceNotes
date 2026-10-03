@@ -1,262 +1,217 @@
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, View } from 'react-native';
 
-import Constants from 'expo-constants';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { Button, Switch, Text } from 'react-native-paper';
 
-import {
-  Appbar,
-  Avatar,
-  Button,
-  Card,
-  Divider,
-  Text,
-  Tooltip,
-} from 'react-native-paper';
-
-import { APP_VERSION, IS_BETA } from '@/src/constants/config';
-import { useChoosenTheme } from '@/src/constants/theme';
-import { useApp } from '@/src/context/AppContext';
-import { handleURL } from '@/src/utils/api';
-import { haptics } from '@/src/utils/haptics';
-import { saveAsync } from '@/src/utils/storage';
+import { ListGroup, ListItem } from '@/src/components/ui/ListGroup';
+import { Screen } from '@/src/components/ui/Screen';
+import { SectionTitle } from '@/src/components/ui/SectionTitle';
+import { Watermark } from '@/src/components/ui/Watermark';
+import { APP_VERSION, BUILD_COMMIT, IS_BETA, LINKS } from '@/src/constants/config';
+import { useSettings } from '@/src/context/SettingsContext';
 import { LIVE_ACTIVITIES_SUPPORTED } from '@/src/services/widgets';
+import { useAppTheme } from '@/src/theme';
+import { openURL } from '@/src/utils/browser';
+import { haptics } from '@/src/utils/haptics';
 
-export default function ShowSettingsScreen() {
+export default function SettingsScreen() {
   const router = useRouter();
-  const { 
-    hapticsOn, setHapticsOn, liveActivitiesOn, 
-    setLiveActivitiesOn, clearAllData, setOobeCompleted 
-  } = useApp();
-  const theme = useChoosenTheme();
+  const theme = useAppTheme();
+  const settings = useSettings();
 
-  const hash = Constants.expoConfig?.extra?.github_hash as string | undefined;
-
-  function goBack() {
-    haptics('medium');
-    router.back();
+  function navigate(href: '/appearance' | '/servers' | '/edt-config') {
+    haptics('light');
+    router.push(href);
   }
 
-  function whatHapticMode(value: 'ON' | 'OFF'): 'contained' | 'contained-tonal' {
-    if (hapticsOn && value === 'ON') return 'contained';
-    if (!hapticsOn && value === 'OFF') return 'contained';
-    return 'contained-tonal';
+  function toggleHaptics(on: boolean) {
+    settings.setHaptics(on);
+    haptics('selection');
   }
 
-  function setHapticsBool(value: boolean) {
-    setHapticsOn(value);
-    saveAsync('haptics', value.toString());
-    haptics('error');
+  function toggleLiveActivities(on: boolean) {
+    haptics('selection');
+    settings.setLiveActivities(on);
   }
 
-  function whatLiveActivitiesMode(value: 'ON' | 'OFF'): 'contained' | 'contained-tonal' {
-    return liveActivitiesOn === (value === 'ON') ? 'contained' : 'contained-tonal';
-  }
-
-  function setLiveActivitiesBool(value: boolean) {
-    setLiveActivitiesOn(value);
-    saveAsync('liveActivities', value.toString());
-    haptics('error');
+  // repart de zéro : la configuration initiale devient le seul écran de la pile
+  function restartFromOobe() {
+    if (router.canDismiss()) router.dismissAll();
+    router.replace('/oobe');
   }
 
   function restartOobe() {
     haptics('medium');
-    setOobeCompleted(false);
-    router.dismissTo('/oobe');
+    settings.setOobeCompleted(false);
+    restartFromOobe();
   }
 
   function deleteAllData() {
+    haptics('warning');
     Alert.alert(
       'Supprimer mes données',
-      'Es-tu sûr de vouloir supprimer toutes tes données de l\'application ? Cette action est irréversible.',
+      "Ton emploi du temps, tes favoris et tes réglages seront effacés de l'appareil. Cette action est irréversible.",
       [
-        {
-          text: 'Annuler',
-          style: 'cancel',
-        },
+        { text: 'Annuler', style: 'cancel' },
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => {
-            clearAllData().then(() => {
-              haptics('success');
-            });
+          onPress: async () => {
+            await settings.clearAllData();
+            haptics('success');
+            restartFromOobe();
           },
         },
       ],
-    )
+    );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Appbar.Header elevated>
-        <Tooltip title="Retour">
-          <Appbar.BackAction onPress={goBack} />
-        </Tooltip>
-        <Appbar.Content title="Paramètres" />
-      </Appbar.Header>
+    <Screen title="Paramètres">
+      <AboutCard />
 
-      <ScrollView style={{ paddingLeft: 25, paddingRight: 25 }}>
-        <Button
-          style={{ marginTop: 16 }}
-          icon="bug"
-          mode="contained-tonal"
-          onPress={() => handleURL('https://notes.metrixmedia.fr/support')}
-        >
-          F.A.Q. / Signaler un bug
-        </Button>
-
-        <Button
-          style={{ marginTop: 8 }}
-          icon="replay"
-          mode="contained-tonal"
-          onPress={restartOobe}
-        >
-          Relancer la configuration initiale
-        </Button>
-
-        <Divider style={{ marginTop: 16 }} />
-
-        <Card style={{ marginTop: 16 }}>
-          <Card.Title
+      <View>
+        <SectionTitle title="Préférences" />
+        <ListGroup>
+          <ListItem
+            icon="calendar-edit"
+            title="Emploi du temps"
+            subtitle={settings.adeid ? `EDT ${settings.adeid}` : 'Non configuré'}
+            onPress={() => navigate('/edt-config')}
+          />
+          <ListItem
+            icon="palette-outline"
+            tone="tertiary"
             title="Apparence"
             subtitle="Thème et icône de l'application"
-            left={(props) => <Avatar.Icon {...props} icon="palette" />}
+            onPress={() => navigate('/appearance')}
           />
-          <Card.Actions>
-            <Button mode="contained-tonal" onPress={() => router.push('/appearance')}>
-              Choisir
-            </Button>
-          </Card.Actions>
-        </Card>
-
-        <Card style={{ marginTop: 16 }}>
-          <Card.Title
+          <ListItem
+            icon="vibrate"
+            tone="secondary"
             title="Retours haptiques"
-            subtitle="Activer/désactiver les vibrations"
-            left={(props) => <Avatar.Icon {...props} icon="vibrate" />}
+            subtitle="Vibrations au toucher"
+            onPress={() => toggleHaptics(!settings.haptics)}
+            right={<Switch value={settings.haptics} onValueChange={toggleHaptics} />}
           />
-          <Card.Actions>
-            <Button mode={whatHapticMode('ON')} onPress={() => setHapticsBool(true)}>
-              Activer
-            </Button>
-            <Button mode={whatHapticMode('OFF')} onPress={() => setHapticsBool(false)}>
-              Désactiver
-            </Button>
-          </Card.Actions>
-        </Card>
-
-        {LIVE_ACTIVITIES_SUPPORTED && (
-          <Card style={{ marginTop: 16 }}>
-            <Card.Title
+          {LIVE_ACTIVITIES_SUPPORTED && (
+            <ListItem
+              icon="cellphone-information"
+              tone="secondary"
               title="Live Activity"
               subtitle="Ton cours sur l'écran verrouillé"
-              left={(props) => <Avatar.Icon {...props} icon="cellphone-information" />}
+              onPress={() => toggleLiveActivities(!settings.liveActivities)}
+              right={<Switch value={settings.liveActivities} onValueChange={toggleLiveActivities} />}
             />
-            <Card.Actions>
-              <Button mode={whatLiveActivitiesMode('ON')} onPress={() => setLiveActivitiesBool(true)}>
-                Activer
-              </Button>
-              <Button mode={whatLiveActivitiesMode('OFF')} onPress={() => setLiveActivitiesBool(false)}>
-                Désactiver
-              </Button>
-            </Card.Actions>
-          </Card>
-        )}
+          )}
+        </ListGroup>
+      </View>
 
-        <Card style={{ marginTop: 16 }}>
-          <Card.Title
-            title="Serveurs Université"
-            subtitle="Diagnostic des serveurs UniCA"
-            left={(props) => <Avatar.Icon {...props} icon="server-network" />}
+      <View>
+        <SectionTitle title="Aide" />
+        <ListGroup>
+          <ListItem
+            icon="help-circle-outline"
+            title="F.A.Q. / Signaler un bug"
+            external
+            onPress={() => openURL(LINKS.support)}
           />
-          <Card.Actions>
-            <Button mode="contained-tonal" onPress={() => router.push('/servers')}>
-              Accéder
-            </Button>
-          </Card.Actions>
-        </Card>
+          <ListItem
+            icon="server-network"
+            tone="tertiary"
+            title="État des serveurs"
+            subtitle="ADE, PronoteCampus…"
+            onPress={() => navigate('/servers')}
+          />
+          <ListItem icon="replay" tone="secondary" title="Relancer la configuration initiale" onPress={restartOobe} />
+        </ListGroup>
+      </View>
 
-        <Divider style={{ marginTop: 16 }} />
+      <View>
+        <SectionTitle title="À propos" />
+        <ListGroup>
+          <ListItem icon="license" title="Mentions légales" external onPress={() => openURL(LINKS.credits)} />
+          <ListItem
+            icon="shield-account-outline"
+            title="Politique de confidentialité"
+            external
+            onPress={() => openURL(LINKS.privacy)}
+          />
+          <ListItem
+            icon="source-branch"
+            title="Code source"
+            subtitle="UniceApps/UniceNotes"
+            external
+            onPress={() => openURL(LINKS.source)}
+          />
+          <ListItem
+            icon="heart-outline"
+            tone="tertiary"
+            title="Fièrement développé par un SI"
+            subtitle="@hugofnm"
+            external
+            onPress={() => openURL(LINKS.author)}
+          />
+        </ListGroup>
+      </View>
 
-        <Text style={{ marginTop: 16, textAlign: 'left' }} variant="titleMedium">
-          UniceNotes
-        </Text>
-        <Text style={{ textAlign: 'left' }} variant="titleSmall">
-          Ton ENT. Dans ta poche.
-        </Text>
-        <Text style={{ textAlign: 'left' }} variant="titleSmall">
-          © {new Date().getFullYear()} - MetrixMedia / hugofnm
-        </Text>
-        <Text style={{ textAlign: 'left' }} variant="titleSmall">
-          Merci d&apos;avoir téléchargé UniceNotes :)
-        </Text>
-        <Text style={{ textAlign: 'left' }} variant="titleSmall">
-          ⚡ Version : {APP_VERSION}
-        </Text>
-        <Text style={{ textAlign: 'left' }} variant="titleSmall">
-          ❤️ Fièrement développé par un SI :{' '}
-          <Text
-            style={{ color: theme.colors.primary }}
-            onPress={() => handleURL('https://github.com/hugofnm')}
-          >
-            @hugofnm
-          </Text>
-        </Text>
-        <Text style={{ textAlign: 'left' }} variant="titleSmall">
-          🛠️ Hash local du commit Git : {hash ?? 'N/A'}
-        </Text>
+      <ListGroup>
+        <ListItem icon="delete-outline" tone="error" title="Supprimer mes données" onPress={deleteAllData} />
+      </ListGroup>
 
-        <Card style={{ marginTop: 16 }}>
-          <Card.Title left={(props) => <Avatar.Icon {...props} icon="alert" />} title />
-          <Card.Content>
-            <Text style={{ textAlign: 'left' }} variant="bodyMedium">
-              UniceNotes n&apos;est lié d&apos;aucune forme à l&apos;Université Côte d&apos;Azur, Polytech Nice Sophia Antipolis ou à l&apos;I.U.T. de Nice
-              Côte d&apos;Azur.
-            </Text>
-            <Text style={{ textAlign: 'left' }} variant="titleSmall">
-              Tout usage de cette application implique la seule responsabilité de l&apos;utilisateur comme
-              prévue dans les conditions d&apos;utilisation.
-            </Text>
-          </Card.Content>
-        </Card>
-
-        <Button
-          style={{ marginTop: 16 }}
-          icon="license"
-          onPress={() => handleURL('https://notes.metrixmedia.fr/credits')}
-        >
-          Mentions légales
-        </Button>
-        <Button
-          style={{ marginTop: 4 }}
-          icon="account-child-circle"
-          onPress={() => handleURL('https://notes.metrixmedia.fr/privacy')}
-        >
-          Politique de confidentialité
-        </Button>
-        <Button
-          style={{ marginTop: 4 }}
-          icon="source-branch"
-          onPress={() => handleURL('https://github.com/UniceApps/UniceNotes')}
-        >
-          Code source
-        </Button>
-        <Button
-          style={{ marginTop: 4 }}
-          icon="account-remove"
-          onPress={() => deleteAllData()}
-        >
-          Supprimer mes données de l'application
-        </Button>
-
+      <View style={{ gap: 8 }}>
+        <Text variant="bodySmall" style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
+          UniceNotes n&apos;est lié d&apos;aucune façon à l&apos;Université Côte d&apos;Azur, Polytech Nice Sophia ou à
+          l&apos;IUT Nice Côte d&apos;Azur. Tout usage de l&apos;application relève de la seule responsabilité de
+          l&apos;utilisateur, comme prévu dans les conditions d&apos;utilisation.
+        </Text>
+        <Text variant="bodySmall" style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
+          © {new Date().getFullYear()} MetrixMedia / hugofnm{BUILD_COMMIT ? ` · ${BUILD_COMMIT.slice(0, 7)}` : ''}
+        </Text>
         {IS_BETA && (
-          <Button style={{ marginTop: 4 }} icon="bug" onPress={() => { throw new Error('This is a crash'); }}>
+          <Button
+            icon="bug"
+            onPress={() => {
+              throw new Error('This is a crash');
+            }}
+          >
             crash_app
           </Button>
         )}
+      </View>
+    </Screen>
+  );
+}
 
-        <Divider style={{ marginTop: 32, marginBottom: 8 }} />
-      </ScrollView>
+function AboutCard() {
+  const theme = useAppTheme();
+  const c = theme.colors;
+
+  return (
+    <View style={{ borderRadius: 28, padding: 20, overflow: 'hidden', backgroundColor: c.primaryContainer }}>
+      <Watermark color={c.onPrimaryContainer} />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+        <Image source={require('../assets/icon.png')} style={{ width: 64, height: 64, borderRadius: 16 }} />
+        <View style={{ flex: 1 }}>
+          <Text variant="headlineSmall" style={{ color: c.onPrimaryContainer }}>
+            UniceNotes
+          </Text>
+          <Text variant="bodyLarge" style={{ color: c.onPrimaryContainer, opacity: 0.85 }}>
+            Ton ENT. Dans ta poche.
+          </Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16 }}>
+        <View style={{ borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: c.primary }}>
+          <Text variant="labelLarge" style={{ color: c.onPrimary }}>
+            Version {APP_VERSION}
+          </Text>
+        </View>
+        <Text variant="labelLarge" style={{ flex: 1, color: c.onPrimaryContainer }}>
+          Merci de l&apos;utiliser :)
+        </Text>
+      </View>
     </View>
   );
 }

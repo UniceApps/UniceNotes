@@ -1,13 +1,12 @@
-import React from 'react';
 import { View } from 'react-native';
 
 import { Text } from 'react-native-paper';
 
-import { useChoosenTheme } from '@/src/constants/theme';
-import { formatClock, type AgendaClass } from '@/src/utils/agenda';
-
-import { PressableScale } from './PressableScale';
-import { SectionTitle } from './SectionTitle';
+import { PressableScale } from '@/src/components/ui/PressableScale';
+import { SectionTitle } from '@/src/components/ui/SectionTitle';
+import { useAppTheme } from '@/src/theme';
+import type { AgendaClass } from '@/src/utils/agenda';
+import { formatClock } from '@/src/utils/date';
 
 const MAX_ROWS = 4;
 
@@ -19,7 +18,7 @@ interface UpNextListProps {
 
 // cours suivants, même jour que la carte principale
 export function UpNextList({ items, dayEnd, onPress }: UpNextListProps) {
-  const theme = useChoosenTheme();
+  const theme = useAppTheme();
   const c = theme.colors;
   const hidden = items.length - MAX_ROWS;
 

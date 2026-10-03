@@ -1,26 +1,28 @@
-import React, { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
-import { Appbar, Divider, ProgressBar, Snackbar, Text, Tooltip } from 'react-native-paper';
+import { Snackbar } from 'react-native-paper';
 
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { Banner } from '@/src/components/Banner';
 import { FavoriteRooms } from '@/src/components/rooms/FavoriteRooms';
 import { RoomFilters } from '@/src/components/rooms/RoomFilters';
 import type { RoomsViewContext } from '@/src/components/rooms/RoomRow';
 import { RoomTree } from '@/src/components/rooms/RoomTree';
-import { getRoomStatusColors, useChoosenTheme } from '@/src/constants/theme';
+import { Banner } from '@/src/components/ui/Banner';
+import { Card } from '@/src/components/ui/Card';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { Screen } from '@/src/components/ui/Screen';
+import { HeaderButton } from '@/src/components/ui/ScreenHeader';
+import { SectionTitle } from '@/src/components/ui/SectionTitle';
+import { Bone, Skeleton } from '@/src/components/ui/Skeleton';
 import { MAX_FAVORITE_ROOMS, useFavoriteRooms } from '@/src/hooks/useFavoriteRooms';
 import { useRoomsSnapshot } from '@/src/hooks/useRoomsSnapshot';
-import type { RoomBooking, RoomEntry } from '@/src/types';
+import { getStatusColors, useAppTheme } from '@/src/theme';
+import type { RoomBooking } from '@/src/types';
+import { formatDuration, formatTime } from '@/src/utils/date';
 import { haptics } from '@/src/utils/haptics';
 import {
   buildRoomTree,
   buildRoomView,
-  formatDuration,
-  formatTime,
   getParisClock,
   getRoomAvailability,
   groupBookingsByRoom,
@@ -28,14 +30,11 @@ import {
 } from '@/src/utils/rooms';
 
 const DEFAULT_DURATION = 60;
-const NO_ROOMS: RoomEntry[] = [];
 const NO_BOOKINGS: RoomBooking[] = [];
 
 export default function FreeRoomsScreen() {
-  const router = useRouter();
-  const theme = useChoosenTheme();
-  const insets = useSafeAreaInsets();
-  const colors = getRoomStatusColors(theme);
+  const theme = useAppTheme();
+  const colors = getStatusColors(theme);
 
   const { snapshot, clock, loading, failed, reload } = useRoomsSnapshot();
   const [duration, setDuration] = useState(DEFAULT_DURATION);
@@ -45,8 +44,7 @@ export default function FreeRoomsScreen() {
 
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
-  // position du début de l'arbre dans la page
-  const listY = useRef(0);
+  const treeRef = useRef<View>(null);
 
   const tree = useMemo(() => buildRoomTree(snapshot?.rooms ?? []), [snapshot]);
   const bookingsByRoom = useMemo(() => groupBookingsByRoom(snapshot?.bookings ?? []), [snapshot]);
@@ -65,11 +63,6 @@ export default function FreeRoomsScreen() {
     });
   }, [snapshot, favorites.ids, bookingsByRoom, clock.minutes, duration]);
 
-  function goBack() {
-    haptics('medium');
-    router.back();
-  }
-
   function refresh() {
     if (loading) return;
     haptics('medium');
@@ -81,6 +74,11 @@ export default function FreeRoomsScreen() {
     setDuration(minutes);
   }
 
+  function toggleOnlyFree() {
+    haptics('selection');
+    setOnlyFree((value) => !value);
+  }
+
   function toggleFavorite(roomId: string) {
     if (favorites.toggle(roomId)) {
       haptics('selection');
@@ -90,17 +88,15 @@ export default function FreeRoomsScreen() {
     }
   }
 
-  function toggleOnlyFree() {
-    haptics('selection');
-    setOnlyFree((value) => !value);
-  }
-
   // ouvrir ou fermer un niveau change la hauteur de la liste : si l'utilisateur avait dépassé le
   // début de l'arbre, on y remonte pour qu'il ne perde pas le fil
   function keepTreeInView() {
-    if (scrollY.current > listY.current) {
-      scrollRef.current?.scrollTo({ y: listY.current, animated: true });
-    }
+    const scrollView = scrollRef.current?.getNativeScrollRef();
+    scrollView?.measureInWindow((_x, top) => {
+      treeRef.current?.measureInWindow((_x2, y) => {
+        if (y < top) scrollRef.current?.scrollTo({ y: scrollY.current + y - top, animated: true });
+      });
+    });
   }
 
   const ctx: RoomsViewContext = {
@@ -115,93 +111,116 @@ export default function FreeRoomsScreen() {
     onToggleFavorite: toggleFavorite,
   };
 
-  const errorBackground = theme.dark ? theme.colors.errorContainer : theme.colors.error;
-  const errorForeground = theme.dark ? theme.colors.onErrorContainer : theme.colors.onError;
   const updatedAt = snapshot ? formatTime(getParisClock(new Date(snapshot.fetchedAt)).minutes) : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Appbar.Header elevated>
-        <Tooltip title="Retour">
-          <Appbar.BackAction onPress={goBack} />
-        </Tooltip>
-        <Appbar.Content title="Salles libres" />
-        <Tooltip title="Actualiser">
-          <Appbar.Action icon="refresh" disabled={loading} onPress={refresh} />
-        </Tooltip>
-      </Appbar.Header>
-
-      {loading && <ProgressBar indeterminate />}
-
-      {failed && (
+    <Screen
+      title="Salles libres"
+      subtitle={updatedAt ? `Mis à jour à ${updatedAt}` : 'Disponibilités du jour'}
+      actions={<HeaderButton icon="refresh" label="Actualiser" disabled={loading} onPress={refresh} />}
+      scrollRef={scrollRef}
+      onScroll={(event) => {
+        scrollY.current = event.nativeEvent.contentOffset.y;
+      }}
+      refreshControl={
+        snapshot ? (
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={refresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+            progressBackgroundColor={theme.colors.elevation.level3}
+          />
+        ) : undefined
+      }
+      overlay={
+        <Snackbar visible={notice !== null} onDismiss={() => setNotice(null)} duration={2500}>
+          {notice ?? ''}
+        </Snackbar>
+      }
+    >
+      {failed && snapshot && (
         <Banner
-          alert
+          tone="error"
           icon="wifi-off"
-          text={snapshot ? `ADE indisponible · données de ${updatedAt}` : 'ADE indisponible'}
-          background={errorBackground}
-          foreground={errorForeground}
+          text={`ADE indisponible · données de ${updatedAt}`}
           action={{ label: 'Réessayer', onPress: refresh }}
         />
       )}
 
       {snapshot && snapshot.bookings.length === 0 && (
         <Banner
+          tone="tertiary"
           icon="calendar-blank-outline"
           text="Aucun cours planifié aujourd'hui : toutes les salles apparaissent libres."
-          background={theme.colors.tertiaryContainer}
-          foreground={theme.colors.onTertiaryContainer}
         />
       )}
 
-      <ScrollView
-        ref={scrollRef}
-        onScroll={(event) => {
-          scrollY.current = event.nativeEvent.contentOffset.y;
-        }}
-        scrollEventThrottle={64}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
-        refreshControl={<RefreshControl refreshing={loading && !!snapshot} onRefresh={refresh} />}
-      >
-        {!snapshot && !failed && (
-          <Text variant="bodyLarge" style={{ textAlign: 'center', marginTop: 48, color: ctx.secondary }}>
-            Chargement des salles...
-          </Text>
-        )}
-
-        {snapshot && (
-          <>
-            <FavoriteRooms entries={favoriteEntries} ctx={ctx} />
-            <RoomFilters
-              duration={duration}
-              onSelectDuration={selectDuration}
-              onlyFree={onlyFree}
-              onToggleOnlyFree={toggleOnlyFree}
-              colors={colors}
-              secondary={ctx.secondary}
-              updatedAt={updatedAt}
+      {!snapshot &&
+        (failed && !loading ? (
+          <Card>
+            <EmptyState
+              tone="error"
+              icon="wifi-off"
+              title="ADE indisponible"
+              text="Impossible de récupérer les réservations des salles pour le moment."
+              action={{ label: 'Réessayer', icon: 'refresh', onPress: refresh }}
             />
-            <Divider />
+          </Card>
+        ) : (
+          <LoadingTree />
+        ))}
 
-            <View
-              onLayout={(event) => {
-                listY.current = event.nativeEvent.layout.y;
-              }}
-            >
-              {view.length === 0 ? (
-                <Text variant="bodyLarge" style={{ textAlign: 'center', marginTop: 32, color: ctx.secondary }}>
-                  Aucune salle libre pour {formatDuration(duration)}.
-                </Text>
-              ) : (
-                <RoomTree nodes={view} rooms={NO_ROOMS} depth={0} ctx={ctx} />
-              )}
+      {snapshot && favoriteEntries.length > 0 && <FavoriteRooms entries={favoriteEntries} ctx={ctx} />}
+
+      {snapshot && (
+        <RoomFilters
+          duration={duration}
+          onSelectDuration={selectDuration}
+          onlyFree={onlyFree}
+          onToggleOnlyFree={toggleOnlyFree}
+          colors={colors}
+          secondary={ctx.secondary}
+        />
+      )}
+
+      {snapshot && (
+        <View ref={treeRef}>
+          <SectionTitle title="Campus" />
+          {view.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon="door-closed"
+                title="Aucune salle libre"
+                text={`Aucune salle n'est libre pendant ${formatDuration(duration)}.`}
+              />
+            </Card>
+          ) : (
+            <RoomTree nodes={view} ctx={ctx} />
+          )}
+        </View>
+      )}
+    </Screen>
+  );
+}
+
+// squelette pendant le premier chargement (ADE met quelques secondes à répondre)
+function LoadingTree() {
+  return (
+    <Skeleton label="Chargement des salles">
+      <View style={{ gap: 12 }}>
+        {[0, 1, 2, 3].map((index) => (
+          <Card key={index}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Bone width={40} height={40} radius={13} />
+              <View style={{ flex: 1, gap: 8 }}>
+                <Bone width="60%" />
+                <Bone width="35%" height={12} />
+              </View>
             </View>
-          </>
-        )}
-      </ScrollView>
-
-      <Snackbar visible={notice !== null} onDismiss={() => setNotice(null)} duration={2500}>
-        {notice ?? ''}
-      </Snackbar>
-    </View>
+          </Card>
+        ))}
+      </View>
+    </Skeleton>
   );
 }

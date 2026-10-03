@@ -1,14 +1,16 @@
 import * as Haptics from 'expo-haptics';
-import type { HapticIntensity } from '../types';
 
-let hapticsEnabled = true;
+export type HapticIntensity = 'light' | 'medium' | 'heavy' | 'selection' | 'success' | 'warning' | 'error';
+
+let enabled = true;
 
 export function setHapticsEnabled(value: boolean): void {
-  hapticsEnabled = value;
+  enabled = value;
 }
 
+// conventions d'usage : voir .docs/HAPTICS.md
 export function haptics(intensity: HapticIntensity): void {
-  if (!hapticsEnabled) return;
+  if (!enabled) return;
   switch (intensity) {
     case 'light':
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -19,8 +21,8 @@ export function haptics(intensity: HapticIntensity): void {
     case 'heavy':
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       break;
-    case 'error':
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    case 'selection':
+      Haptics.selectionAsync();
       break;
     case 'success':
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -28,8 +30,8 @@ export function haptics(intensity: HapticIntensity): void {
     case 'warning':
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       break;
-    case 'selection':
-      Haptics.selectionAsync();
+    case 'error':
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       break;
   }
 }
