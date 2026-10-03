@@ -24,11 +24,6 @@ export interface AdeProject {
   name: string;
 }
 
-export interface NextEvent {
-  summary: string;
-  location: string;
-}
-
 export interface WidgetClass {
   title: string;
   room: string;

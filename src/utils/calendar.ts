@@ -17,3 +17,19 @@ export async function saveCalendarToFile(data: CalendarEvent[]): Promise<void> {
     CALENDAR_FILE.write(JSON.stringify(data));
   } catch {}
 }
+
+// date de la dernière synchronisation réussie, null sans cache
+export function getCalendarCacheTime(): number | null {
+  try {
+    return CALENDAR_FILE.exists ? (CALENDAR_FILE.info().modificationTime ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
+// l'edt en cache appartient à l'ancien identifiant
+export function clearCalendarCache(): void {
+  try {
+    if (CALENDAR_FILE.exists) CALENDAR_FILE.delete();
+  } catch {}
+}

@@ -121,6 +121,17 @@ export function pSBC(
   );
 }
 
+// "rgb(0, 98, 159)" ou "#00629f" -> "rgba(0, 98, 159, 0.12)"
+export function withAlpha(color: string, alpha: number): string {
+  const hex = color.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+  }
+  const rgb = color.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  return rgb ? `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${alpha})` : color;
+}
+
 export function stringToColour(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {

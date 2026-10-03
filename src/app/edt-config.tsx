@@ -22,6 +22,7 @@ import { useApp } from '@/src/context/AppContext';
 import { useChoosenTheme } from '@/src/constants/theme';
 import { haptics } from '@/src/utils/haptics';
 import { saveSecure } from '@/src/utils/storage';
+import { clearCalendarCache } from '@/src/utils/calendar';
 import { stringToColour } from '@/src/utils/color';
 import { edtService } from '@/src/services/edt';
 import type { AdeProject, SearchResult } from '@/src/types';
@@ -31,7 +32,7 @@ export default function EDTConfigScreen() {
   const theme = useChoosenTheme();
   const insets = useSafeAreaInsets();
 
-  const { adeid, setAdeid, onboarding } = useApp();
+  const { adeid, setAdeid, setCalendar, setCalendarOffline, onboarding } = useApp();
   const [tempAde, setTempAde] = useState('');
 
   const [mode, setMode] = useState(adeid?.includes('-VET') ? '1' : '0');
@@ -94,11 +95,18 @@ export default function EDTConfigScreen() {
       return;
     }
     const newAdeid = individual ? value : value + '-VET';
+    // l'edt en mémoire et en cache appartient à l'ancien identifiant
+    if (newAdeid !== adeid) {
+      setCalendar([]);
+      setCalendarOffline(false);
+      clearCalendarCache();
+    }
     setAdeid(newAdeid);
     saveSecure('adeid', newAdeid);
     haptics('heavy');
     if (onboarding) router.back();
-    else router.replace('/home');
+    // revient sur l'accueil existant, qui recharge le nouvel edt
+    else router.dismissTo('/home');
   }
 
   return (

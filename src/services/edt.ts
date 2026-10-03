@@ -1,6 +1,6 @@
 import ICAL from 'ical.js';
 
-import type { AdeProject, CalendarEvent, EDTResult, NextEvent } from '../types';
+import type { AdeProject, CalendarEvent, EDTResult } from '../types';
 
 import { getCalendarFromCache, saveCalendarToFile } from '../utils/calendar';
 import { stringToColour } from '../utils/color';
@@ -21,7 +21,6 @@ interface ICALEvent {
 }
 
 export const ADE_BASE = 'https://edtweb.univ-cotedazur.fr';
-const ONGOING_THRESHOLD_MS = 15 * 60 * 1000;
 const ADE_PROJECT_OVERRIDE_KEY = 'adeProjectOverride';
 
 export const EDT_FETCH_TIMEOUT_MS = 5000;
@@ -209,32 +208,6 @@ export class EDT {
     } catch {
       return [];
     }
-  }
-
-  findNextEvent(events: ICALEvent[]): NextEvent {
-    const now = new Date();
-    const windowStart = new Date(now.getTime() - ONGOING_THRESHOLD_MS);
-
-    const sorted = events
-      .map((e) => ({
-        start: e.startDate.toJSDate(),
-        summary: e.summary ?? 'Cours inconnu',
-        location: e.location ?? '',
-      }))
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
-
-    const next = sorted.find((e) => e.start >= windowStart);
-    if (!next) return { summary: 'Aucun cours', location: 'La chance...' };
-    return { summary: next.summary, location: next.location };
-  }
-
-  async getNextEvent(adeid: string): Promise<NextEvent> {
-    const icalData = await this.fetchEDT(adeid);
-    if (!icalData) {
-      return { summary: 'ADE Indisponible', location: 'Impossible de récupérer le cours.' };
-    }
-    const events = this.parseICal(icalData);
-    return this.findNextEvent(events);
   }
 
   private convertToCalendarEvents(events: ICALEvent[]): CalendarEvent[] {
