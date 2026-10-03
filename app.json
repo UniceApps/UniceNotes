@@ -22,8 +22,6 @@
         "tinted": "./src/assets/ios/tinteddark.png"
       },
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Connecte-toi sur l'application grâce à l'authentification biométrique.",
-        "NSNotificationsUsageDescription": "Reçois des notifications pour être informé de diverses choses.",
         "CFBundleLocalizations": ["fr"],
         "CFBundleDevelopmentRegion": "fr",
         "CADisableMinimumFrameDurationOnPhone": true
@@ -40,17 +38,10 @@
         "backgroundColor": "#FFFFFF"
       }
     },
-    "extra": {
-      "eas": {
-        "projectId": "ec0ebd57-7227-4cd2-a71e-344e0a5fffe5"
-      },
-      "github_hash": "$(EAS_BUILD_GIT_COMMIT_HASH)"
-    },
     "owner": "hugofnm",
     "plugins": [
       "expo-router",
       "expo-image",
-      "expo-sharing",
       "expo-status-bar",
       "expo-font",
       "expo-secure-store",

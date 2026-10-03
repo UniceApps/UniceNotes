@@ -1,22 +1,35 @@
 # Data guide
 
-## Data stored in SecureStore
+Everything stays on the device: UniceNotes has no server of its own and never uploads personal data.
+All keys are listed in `src/utils/storage.ts`.
+
+## SecureStore
 
 <p align="center">
   <img src="https://docs.expo.dev/static/images/packages/expo-secure-store.png" alt="SecureStore" width="50"/>
 </p>
 
-This data is stored in the secure enclave (Keychain from Apple / Keystore from Android) of the device, which is a secure storage system that is used to store sensitive data. The data is encrypted and can only be accessed by the user with biometrical authentication or a password (phone PIN).
+Encrypted storage backed by the iOS Keychain / Android Keystore.
 
-- ```username```: Username of the user
+- `adeid`: ADE timetable code, either a student number or a program id ending with `-VET`
 
-## Data stored in AsyncStorage
+## AsyncStorage
 
 <p align="center">
   <img src="https://docs.expo.dev/static/images/packages/expo-file-system.png" alt="AsyncStorage" width="50"/>
 </p>
 
-This data is stored in the AsyncStorage of the device, which is a storage system that is used to store data. The data is not encrypted and can be accessed by the user.
+Unencrypted key-value storage for non-sensitive preferences.
 
-- ```haptics```: Boolean value to check if the user has chosen to enable haptics
-- ```calendar```: Array of objects containing the calendar events	
+- `theme`: selected color palette (`azur`, `menthe`, `lavande`, `ambre`)
+- `haptics`: `"false"` when haptic feedback is disabled
+- `liveActivities`: `"false"` when the iOS Live Activity is disabled
+- `oobeCompleted`: `"true"` once the first-launch setup is done
+- `releaseNotesVersion`: last app version whose release notes were shown
+- `adeProjectOverride`: ADE project (school year) picked manually, absent in automatic mode
+- `favoriteRooms`: ids of the pinned rooms (3 max)
+- `androidWidgetTimeline`: upcoming classes read by the Android widget
+
+## File system
+
+- `calendar.json` (document directory): last downloaded timetable with its ADE code and download date, shown while offline

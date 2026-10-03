@@ -2,39 +2,15 @@
 
 <p align="center">
   <img src="https://docs.expo.dev/static/images/packages/expo-haptics.png" alt="Haptics" width="50"/>
+</p>
 
-## New
+Always go through `haptics()` from `src/utils/haptics.ts`: it does nothing when the user disabled haptic feedback in the settings.
 
-### Inputs
-
-Text Input -> ```haptics(selection)```
-
-Refresh Input -> ```haptics(light)```
-
-### Buttons
-
-Normal Button -> ```haptics(medium)```
-
-URL Buttons -> ```haptics(selection)```
-
-Logout Button -> ```haptics(heavy)```
-
-Delete Button -> ```haptics(warning)```
-
-## Deprecated
-
-### Inputs
-
-Text Input -> ```Haptics.selectionAsync()```
-
-Refresh Input -> ```Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)```
-
-### Buttons
-
-Normal Button -> ```Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)```
-
-URL Buttons -> ```Haptics.selectionAsync()```
-
-Logout Button -> ```Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)```
-
-Delete Button -> ```Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)```
+| Interaction | Call |
+| --- | --- |
+| Navigation (open a screen, go back, open a menu) | `haptics('light')` |
+| Main action (open the timetable, refresh, retry) | `haptics('medium')` |
+| Choice (chip, switch, list item, theme, link) | `haptics('selection')` |
+| Action completed (timetable saved, data deleted) | `haptics('success')` |
+| Limit reached, destructive confirmation | `haptics('warning')` |
+| Failure | `haptics('error')` |
