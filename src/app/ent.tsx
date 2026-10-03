@@ -24,6 +24,7 @@ const apps = [
     label: 'PronoteCampus',
     subtitle: 'Notes',
     icon: 'calculator-variant-outline',
+    image: require('../assets/images/ent/pronotecampus.png'),
     url: 'https://sco.polytech.unice.fr/1',
   },
   {
@@ -31,6 +32,12 @@ const apps = [
     subtitle: 'Notes',
     icon: 'calculator-variant',
     url: 'https://iut-notes.unice.fr/',
+  },
+  {
+    label: 'SoWeSign',
+    subtitle: 'Émargement',
+    icon: 'check-circle-outline',
+    url: 'https://app.sowesign.com/login',
   },
   {
     label: 'Mon dossier Web',
@@ -55,12 +62,6 @@ const apps = [
     subtitle: 'Impressions',
     icon: 'printer-outline',
     url: 'https://impression.univ-cotedazur.fr/',
-  },
-  {
-    label: 'Alumni UniCA',
-    subtitle: 'Anciennement Link',
-    icon: 'account-circle-outline',
-    url: 'https://link.univ-cotedazur.fr/fr/authentication/index/caslogin?1',
   },
   {
     label: 'Izly',

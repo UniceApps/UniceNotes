@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { useColorScheme } from 'react-native';
+import { DarkTheme, DefaultTheme, type Theme } from 'expo-router';
 import { configureFonts, MD3Theme } from 'react-native-paper';
 
 import { getAsync, saveAsync } from '../utils/storage';
@@ -146,6 +147,23 @@ export function getRoomStatusColors(theme: AppTheme): Record<'free' | 'tight' | 
   return theme.dark
     ? { free: '#5BC98A', tight: '#F5B041', busy: '#FF7B72' }
     : { free: '#1E8E4E', tight: '#D97706', busy: '#D93025' };
+}
+
+// fond du Stack (visible pendant les gestes de retour) : sinon React Navigation reste en clair
+export function getNavigationTheme(theme: AppTheme): Theme {
+  const base = theme.dark ? DarkTheme : DefaultTheme;
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: theme.colors.primary,
+      background: theme.colors.background,
+      card: theme.colors.surface,
+      text: theme.colors.onBackground,
+      border: theme.colors.outline,
+      notification: theme.colors.error,
+    },
+  };
 }
 
 export function getCalendarTheme(theme: AppTheme) {
