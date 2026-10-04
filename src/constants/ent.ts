@@ -118,8 +118,8 @@ export const ENT_APPS: EntApp[] = [
   },
 ];
 
-// accès rapide d'origine : les notes, les cours et les mails
-export const DEFAULT_PINNED_APPS = ['pronote', 'moodle', 'outlook'];
+// accès rapide d'origine : les notes, l'émargement et les mails
+export const DEFAULT_PINNED_APPS = ['pronote', 'sowesign', 'outlook'];
 
 export function getEntApp(id: unknown): EntApp | undefined {
   return typeof id === 'string' ? ENT_APPS.find((app) => app.id === id) : undefined;

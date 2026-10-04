@@ -225,7 +225,9 @@ function Browser({ app, onClose }: { app: EntApp; onClose: () => void }) {
             allowsBackForwardNavigationGestures
             pullToRefreshEnabled
             refreshControlLightMode={theme.dark}
-            decelerationRate="normal"
+            // inertie de Safari ; iOS seulement : sur Android la chaîne arrive telle quelle au
+            // composant natif, qui attend un nombre et plante
+            decelerationRate={Platform.OS === 'ios' ? 'normal' : undefined}
             allowsInlineMediaPlayback
             allowsFullscreenVideo
             setSupportMultipleWindows={false}
