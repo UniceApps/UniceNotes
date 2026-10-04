@@ -152,11 +152,6 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
                   title="Changer d'EDT"
                   onPress={() => menuAction(() => router.push('/edt-config'))}
                 />
-                <Menu.Item
-                  leadingIcon="cog-outline"
-                  title="Paramètres"
-                  onPress={() => menuAction(() => router.push('/settings'))}
-                />
               </Menu>
             </>
           }

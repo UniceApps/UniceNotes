@@ -66,7 +66,9 @@ export default function RootLayout() {
                   <Stack screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="index" />
                     <Stack.Screen name="oobe" options={{ gestureEnabled: false }} />
-                    {/* accueil, emploi du temps, salles libres et ENT */}
+                    {/* paramètres ouverts pendant la configuration initiale, avant les onglets */}
+                    <Stack.Screen name="oobe/settings" />
+                    {/* accueil, emploi du temps, salles libres, ENT et paramètres */}
                     <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
                     {/* le calendrier se fait défiler à l'horizontale : pas de retour par glissement */}
                     <Stack.Screen name="edt/[code]" options={{ gestureEnabled: false }} />
@@ -74,7 +76,6 @@ export default function RootLayout() {
                       name="browser"
                       options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
                     />
-                    <Stack.Screen name="settings" />
                     <Stack.Screen name="appearance" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="servers" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="edt-config" options={{ presentation: 'modal' }} />

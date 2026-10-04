@@ -3,7 +3,7 @@ import { Alert, View } from 'react-native';
 
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Button, Switch, Text } from 'react-native-paper';
+import { Button, Snackbar, Switch, Text } from 'react-native-paper';
 
 import { ListGroup, ListItem } from '@/src/components/ui/ListGroup';
 import { Screen } from '@/src/components/ui/Screen';
@@ -17,11 +17,12 @@ import { useAppTheme } from '@/src/theme';
 import { openURL } from '@/src/utils/browser';
 import { haptics } from '@/src/utils/haptics';
 
-export default function SettingsScreen() {
+// tab : onglet Paramètres ; sinon écran ouvert depuis la configuration initiale, avec un retour
+export function SettingsScreen({ tab = false }: { tab?: boolean }) {
   const router = useRouter();
   const theme = useAppTheme();
   const settings = useSettings();
-  const [webSignedOut, setWebSignedOut] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   function navigate(href: '/appearance' | '/servers' | '/edt-config') {
     haptics('light');
@@ -64,7 +65,7 @@ export default function SettingsScreen() {
           onPress: async () => {
             if (await clearWebSession()) {
               haptics('success');
-              setWebSignedOut(true);
+              setNotice("Déconnecté de tous les services de l'ENT");
             } else {
               haptics('error');
               Alert.alert('Déconnexion impossible', 'Réessaie dans un instant.');
@@ -96,7 +97,15 @@ export default function SettingsScreen() {
   }
 
   return (
-    <Screen title="Paramètres">
+    <Screen
+      tab={tab}
+      title="Paramètres"
+      overlay={
+        <Snackbar visible={notice !== null} onDismiss={() => setNotice(null)} duration={2500}>
+          {notice ?? ''}
+        </Snackbar>
+      }
+    >
       <AboutCard />
 
       <View>
@@ -140,12 +149,11 @@ export default function SettingsScreen() {
         <SectionTitle title="Services de l'ENT" />
         <ListGroup>
           <ListItem
-            icon={webSignedOut ? 'check' : 'logout'}
+            icon="logout"
             tone="secondary"
-            title={webSignedOut ? 'Déconnecté' : 'Se déconnecter partout'}
-            subtitle={webSignedOut ? 'Reconnexion à la prochaine ouverture' : "Tes connexions restent sur l'appareil"}
+            title="Se déconnecter partout"
+            subtitle="Tes connexions restent sur l'appareil"
             right={null}
-            disabled={webSignedOut}
             onPress={signOutWeb}
           />
         </ListGroup>
@@ -235,7 +243,7 @@ function AboutCard() {
     <View style={{ borderRadius: 28, padding: 20, overflow: 'hidden', backgroundColor: c.primaryContainer }}>
       <Watermark color={c.onPrimaryContainer} />
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-        <Image source={require('../assets/icon.png')} style={{ width: 64, height: 64, borderRadius: 16 }} />
+        <Image source={require('../../assets/icon.png')} style={{ width: 64, height: 64, borderRadius: 16 }} />
         <View style={{ flex: 1 }}>
           <Text variant="headlineSmall" style={{ color: c.onPrimaryContainer }}>
             UniceNotes

@@ -22,15 +22,15 @@ export default function HomeScreen() {
   const { adeid } = useSettings();
   const agenda = useAgenda();
 
-  function navigate(href: '/edt-config' | '/settings') {
+  function editEdt() {
     haptics('light');
-    router.push(href);
+    router.push('/edt-config');
   }
 
   // l'emploi du temps et l'ENT sont des onglets : on bascule dessus sans empiler d'écran
   function openTimetable() {
     if (!agenda.configured) {
-      navigate('/edt-config');
+      editEdt();
       return;
     }
     haptics('medium');
@@ -60,13 +60,7 @@ export default function HomeScreen() {
   return (
     <Screen
       tab
-      header={
-        <HomeHeader
-          now={agenda.now}
-          onEditEdt={() => navigate('/edt-config')}
-          onSettings={() => navigate('/settings')}
-        />
-      }
+      header={<HomeHeader now={agenda.now} onEditEdt={editEdt} />}
       refreshControl={
         agenda.configured ? (
           <RefreshControl
@@ -90,7 +84,7 @@ export default function HomeScreen() {
         />
       )}
 
-      <NextClassCard agenda={agenda} onOpen={openTimetable} onSetup={() => navigate('/edt-config')} onRetry={retry} />
+      <NextClassCard agenda={agenda} onOpen={openTimetable} onSetup={editEdt} onRetry={retry} />
 
       {agenda.later.length > 0 && agenda.dayEnd && (
         <UpNextList items={agenda.later} dayEnd={agenda.dayEnd} onPress={openTimetable} />

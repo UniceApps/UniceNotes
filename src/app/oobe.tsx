@@ -81,7 +81,9 @@ export default function OobeScreen() {
       >
         <StepDots step={step} />
         <Animated.View key={step} entering={FadeInRight.duration(300)} exiting={FadeOutLeft.duration(200)}>
-          {step === 'welcome' && <Welcome onNext={() => goTo('edt')} onSettings={() => router.push('/settings')} />}
+          {step === 'welcome' && (
+            <Welcome onNext={() => goTo('edt')} onSettings={() => router.push('/oobe/settings')} />
+          )}
           {step === 'edt' && (
             <EdtStep adeid={adeid} onConfigure={() => router.push('/edt-config')} onNext={() => goTo('appearance')} />
           )}

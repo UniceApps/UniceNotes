@@ -50,10 +50,9 @@ function getGreeting(date: Date) {
 interface HomeHeaderProps {
   now: Date;
   onEditEdt: () => void;
-  onSettings: () => void;
 }
 
-export function HomeHeader({ now, onEditEdt, onSettings }: HomeHeaderProps) {
+export function HomeHeader({ now, onEditEdt }: HomeHeaderProps) {
   const theme = useAppTheme();
   const [greeting] = useState(() => getGreeting(new Date()));
 
@@ -64,7 +63,6 @@ export function HomeHeader({ now, onEditEdt, onSettings }: HomeHeaderProps) {
           {formatLongDate(now)}
         </Text>
         <HeaderButton icon="calendar-edit" label="Configurer l'emploi du temps" onPress={onEditEdt} />
-        <HeaderButton icon="cog-outline" label="Paramètres" onPress={onSettings} />
       </View>
 
       <Text variant="displaySmall" style={{ marginTop: 8 }}>

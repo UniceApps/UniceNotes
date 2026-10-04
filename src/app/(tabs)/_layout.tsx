@@ -66,6 +66,11 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf={{ default: 'square.grid.2x2', selected: 'square.grid.2x2.fill' }} md="apps" />
         <NativeTabs.Trigger.Label>ENT</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="settings" accessibilityLabel="Paramètres">
+        <NativeTabs.Trigger.Icon sf={{ default: 'gearshape', selected: 'gearshape.fill' }} md="settings" />
+        <NativeTabs.Trigger.Label>Paramètres</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
