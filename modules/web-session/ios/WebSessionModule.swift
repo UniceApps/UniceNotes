@@ -2,9 +2,7 @@ import ExpoModulesCore
 import Foundation
 import WebKit
 
-// WKWebView oublie les cookies de session quand l'app est tuée : sans eux il faudrait se
-// reconnecter au CAS, à Moodle… à chaque lancement. On les garde dans un fichier protégé
-// pour les réinjecter avant le premier chargement.
+// sauvegarde les cookies de session, que WKWebView perd quand l'app est tuée
 public class WebSessionModule: Module {
   // tant que la sauvegarde n'a pas été relue, persistAsync l'écraserait avec une session vide
   private var restored = false
@@ -55,16 +53,6 @@ public class WebSessionModule: Module {
         } catch {
           promise.reject(error)
         }
-      }
-    }
-    .runOnQueue(.main)
-
-    // pour télécharger un fichier avec la session de la WebView
-    AsyncFunction("cookieHeaderAsync") { (url: URL, promise: Promise) in
-      self.dataStore().httpCookieStore.getAllCookies { cookies in
-        let matching = cookies.filter { CookieVault.matches($0, url: url) }
-        let header: String? = HTTPCookie.requestHeaderFields(with: matching)["Cookie"]
-        promise.resolve(header)
       }
     }
     .runOnQueue(.main)
@@ -183,26 +171,5 @@ private enum CookieVault {
   static func delete() {
     guard let target = file else { return }
     try? FileManager.default.removeItem(at: target)
-  }
-
-  // règles d'envoi d'un cookie (RFC 6265, 5.4) : domaine, chemin, connexion sécurisée, expiration
-  static func matches(_ cookie: HTTPCookie, url: URL) -> Bool {
-    guard let host = url.host(percentEncoded: false)?.lowercased() else { return false }
-    if cookie.isSecure && url.scheme?.lowercased() != "https" { return false }
-    if let expires = cookie.expiresDate, expires <= Date() { return false }
-
-    let domain = cookie.domain.lowercased()
-    if domain.hasPrefix(".") {
-      guard host == String(domain.dropFirst()) || host.hasSuffix(domain) else { return false }
-    } else if host != domain {
-      return false
-    }
-
-    let requestPath = url.path(percentEncoded: false)
-    let path = requestPath.isEmpty ? "/" : requestPath
-    let cookiePath = cookie.path.isEmpty ? "/" : cookie.path
-    if path == cookiePath { return true }
-    guard path.hasPrefix(cookiePath) else { return false }
-    return cookiePath.hasSuffix("/") || path.dropFirst(cookiePath.count).hasPrefix("/")
   }
 }

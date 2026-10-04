@@ -17,13 +17,11 @@ interface SheetProps {
   children: ReactNode;
 }
 
-// feuille flottante, ouverte avec sheetRef.current.present() ; modale : elle passe au-dessus de la
-// barre d'onglets (voir BottomSheetModalProvider dans app/_layout.tsx)
+// feuille flottante modale, ouverte avec sheetRef.current.present()
 export function Sheet({ sheetRef, onClose, children }: SheetProps) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
-  // iOS : dans un onglet, l'inset du bas inclut la barre d'onglets (SafeAreaProvider propre à chaque
-  // onglet) ; la feuille passe par-dessus, on ne garde que l'indicateur d'accueil de la fenêtre
+  // iOS : l'inset d'un onglet inclut la barre, que la feuille recouvre
   const bottom = Platform.OS === 'ios' ? (initialWindowMetrics?.insets.bottom ?? insets.bottom) : insets.bottom;
 
   const renderBackdrop = useCallback(

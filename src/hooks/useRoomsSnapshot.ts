@@ -21,9 +21,7 @@ interface RoomsSnapshotState {
   reload: () => void;
 }
 
-// les statuts des salles se recalculent avec l'heure, sans nouvelle requête.
-// active : écran affiché. L'onglet est monté avec l'app : rien n'est téléchargé (environ 2 Mo)
-// avant son premier affichage, et il ne se rafraîchit pas quand on regarde un autre onglet.
+// statuts recalculés avec l'heure ; active : ne charge et ne rafraîchit qu'à l'écran
 export function useRoomsSnapshot(active = true): RoomsSnapshotState {
   const [snapshot, setSnapshot] = useState<RoomsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);

@@ -9,10 +9,7 @@ public class ContentScrollModule: Module {
   }
 }
 
-// UIKit ne cherche la liste principale d'un écran que dans sa vue racine et le premier enfant de
-// celle-ci : une ScrollView de React Native, bien plus profonde, lui échappe. Posé dans son contenu,
-// ce repère invisible la déclare au contrôleur de l'onglet, qui la suit alors pour réduire la barre
-// d'onglets au défilement (iOS 26).
+// repère qui signale la ScrollView au contrôleur d'onglet, pour réduire la barre au défilement (iOS 26)
 final class ContentScrollMarkerView: ExpoView {
   private weak var registeredScrollView: UIScrollView?
   private weak var registeredController: UIViewController?

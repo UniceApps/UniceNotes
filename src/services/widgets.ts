@@ -31,8 +31,7 @@ function toWidgetClass(event: CalendarEvent): WidgetClass {
   };
 }
 
-// une entrée maintenant, puis une à chaque fin de cours : le widget avance sans l'app
-// events null : emploi du temps non configuré
+// une entrée maintenant puis à chaque fin de cours ; events null : edt non configuré
 function buildWidgetTimeline(events: CalendarEvent[] | null, now = new Date()): WidgetTimelineEntry[] {
   if (!events) return [{ date: now, props: { courses: [], configured: false } }];
 

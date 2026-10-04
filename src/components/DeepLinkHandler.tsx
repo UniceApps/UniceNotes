@@ -84,9 +84,9 @@ export function DeepLinkHandler() {
 
     // seulement un service du catalogue, jamais une adresse venue du lien
     const openApp = (id: string) => {
-      if (!getEntApp(id) || (pathname === '/browser' && currentApp === id)) return;
+      if (!getEntApp(id) || (pathname === '/ent/browser' && currentApp === id)) return;
       reset();
-      router.push({ pathname: '/browser', params: { app: id } });
+      router.push({ pathname: '/ent/browser', params: { app: id } });
     };
 
     switch (target.kind) {

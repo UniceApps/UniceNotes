@@ -7,8 +7,7 @@ import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
-// La WebView Android garde elle-même ses cookies sur le disque, y compris ceux de session :
-// il suffit de forcer leur écriture avant que le système ne tue l'app.
+// la WebView Android garde ses cookies : il suffit de forcer leur écriture sur le disque
 class WebSessionModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("WebSession")
@@ -20,11 +19,6 @@ class WebSessionModule : Module() {
     AsyncFunction("persistAsync") {
       CookieManager.getInstance().flush()
       0
-    }.runOnQueue(Queues.MAIN)
-
-    AsyncFunction("cookieHeaderAsync") { url: String ->
-      val header: String? = CookieManager.getInstance().getCookie(url)
-      header
     }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("clearAsync") { promise: Promise ->

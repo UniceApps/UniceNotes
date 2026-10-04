@@ -1,11 +1,7 @@
-// liens profonds : unicenotes://notes, unicenotes://ent, unicenotes://app/{id}, unicenotes://edt et
-// unicenotes://edt/{code}
+// liens unicenotes:// : notes, ent, app/{id}, edt et edt/{code}
 
 export type DeepLink =
-  | { kind: 'notes' }
-  | { kind: 'ent' }
-  | { kind: 'app'; id: string }
-  | { kind: 'edt'; code?: string };
+  { kind: 'notes' } | { kind: 'ent' } | { kind: 'app'; id: string } | { kind: 'edt'; code?: string };
 
 const EDT_CODE_MAX_LENGTH = 32;
 

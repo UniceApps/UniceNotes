@@ -1,9 +1,7 @@
 import WebSession from '@/modules/web-session';
 import { withTimeout } from '@/src/utils/network';
 
-// Session des services de l'ENT ouverts dans le navigateur intégré. Sans le module natif
-// (Expo Go, web), la WebView garde seulement ce que le système conserve de lui-même.
-// Les délais : une opération WebKit restée sans réponse ne doit jamais bloquer l'interface.
+// session du navigateur intégré, avec délais : WebKit peut ne jamais répondre
 
 let restoring: Promise<void> | null = null;
 
@@ -15,11 +13,6 @@ export function restoreWebSession(): Promise<void> {
 
 export function persistWebSession(): void {
   WebSession?.persistAsync().catch((error) => console.warn('[webSession] sauvegarde impossible', error));
-}
-
-// pour télécharger un fichier avec la session de la page
-export function getCookieHeader(url: string): Promise<string | null> {
-  return withTimeout(2000, async () => (WebSession ? WebSession.cookieHeaderAsync(url) : null));
 }
 
 // déconnecte tous les services et efface la sauvegarde ; false si le système n'a pas répondu

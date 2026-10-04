@@ -40,11 +40,9 @@ export function Screen(props: ScreenProps) {
   const insets = useSafeAreaInsets();
   // une modale iOS s'ouvre déjà sous la barre d'état
   const top = modal && Platform.OS === 'ios' ? 8 : insets.top;
-  // onglet : iOS ajoute lui-même la hauteur de la barre d'onglets (contentInsetAdjustmentBehavior),
-  // Android s'arrête déjà au-dessus
+  // onglet : iOS ajoute la hauteur de la barre d'onglets, Android s'arrête au-dessus
   const bottom = tab ? 24 : insets.bottom + 24;
-  // react-native-screens ne retrouve cette ScrollView, enveloppée dans une vue native, que dans des cas
-  // limités : on le demande nous-mêmes à iOS, plutôt que de laisser la fin de la page sous la barre
+  // demandé à iOS : react-native-screens ne trouve pas cette ScrollView imbriquée
   const insetBehavior = tab && Platform.OS === 'ios' ? 'automatic' : undefined;
 
   const blocks = [

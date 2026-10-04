@@ -90,8 +90,7 @@ export default function FreeRoomsScreen() {
     }
   }
 
-  // ouvrir ou fermer un niveau change la hauteur de la liste : si l'utilisateur avait dépassé le
-  // début de l'arbre, on y remonte pour qu'il ne perde pas le fil
+  // remonte au début de l'arbre quand ouvrir ou fermer un niveau change sa hauteur
   function keepTreeInView() {
     const scrollView = scrollRef.current?.getNativeScrollRef();
     scrollView?.measureInWindow((_x, top) => {

@@ -72,10 +72,6 @@ export default function RootLayout() {
                     <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
                     {/* le calendrier se fait défiler à l'horizontale : pas de retour par glissement */}
                     <Stack.Screen name="edt/[code]" options={{ gestureEnabled: false }} />
-                    <Stack.Screen
-                      name="browser"
-                      options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
-                    />
                     <Stack.Screen name="appearance" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="servers" options={{ presentation: 'modal' }} />
                     <Stack.Screen name="edt-config" options={{ presentation: 'modal' }} />

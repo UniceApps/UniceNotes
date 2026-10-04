@@ -35,12 +35,3 @@ Unencrypted key-value storage for non-sensitive preferences.
 
 - `calendar.json` (document directory): last downloaded timetable with its ADE code and download date, shown while offline
 
-## In-app browser
-
-ENT services (Moodle, Outlook, PronoteCampus…) open in a WebView that keeps its own cookies and web storage on the device, so the user stays signed in between launches.
-
-- iOS: WebKit keeps persistent cookies by itself. Session cookies, which WebKit drops when the app is killed, are saved by the local `web-session` module (`modules/web-session`) in `Application Support/WebSession/cookies.json`, protected until the first unlock and excluded from backups. They are not restored after 30 days without use.
-- Android: the system WebView keeps every cookie, session cookies included; the app only makes sure they are written to disk.
-- Files downloaded from a service on iOS go through the cache directory (`downloads/`) before being handed to the share sheet.
-
-_Paramètres › Services de l'ENT › Vider les cookies du navigateur intégré_ and _Supprimer mes données_ erase all of it.

@@ -45,8 +45,7 @@ interface RoomTreeProps {
   ctx: RoomsViewContext;
 }
 
-// une seule branche ouverte à la fois : ses voisines sont masquées
-// les campus (depth 0) sont des cartes, les niveaux suivants s'y emboîtent
+// une branche ouverte à la fois ; campus en cartes, niveaux suivants emboîtés
 export function RoomTree({ nodes, rooms = NO_ROOMS, depth = 0, ctx }: RoomTreeProps) {
   const [openKey, setOpenKey] = useState<string | null>(null);
   const open = nodes.find((node) => node.key === openKey);

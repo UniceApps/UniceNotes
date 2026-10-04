@@ -135,8 +135,7 @@ function mergeBookings(sorted: RoomBooking[]): Block[] {
   return blocks;
 }
 
-// bookings : réservations d'une seule salle, triées par début.
-// now : minutes depuis minuit. duration : durée voulue, en minutes.
+// bookings d'une seule salle, triées par début ; now (depuis minuit) et duration en minutes
 export function getRoomAvailability(bookings: RoomBooking[], now: number, duration: number): RoomAvailability {
   const blocks = mergeBookings(bookings);
   const currentIndex = blocks.findIndex((b) => b.start <= now && now < b.end);

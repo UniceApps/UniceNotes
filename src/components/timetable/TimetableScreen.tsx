@@ -44,8 +44,7 @@ interface BannerState {
   action?: { label: string; onPress: () => void };
 }
 
-// tempCode : edt d'un autre code ADE (lien unicenotes://edt/{code}), en lecture seule ;
-// null : l'edt enregistré, affiché dans l'onglet EDT
+// tempCode : edt d'un autre code ADE, en lecture seule ; null : l'edt enregistré
 export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
   const router = useRouter();
   const theme = useAppTheme();
