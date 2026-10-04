@@ -43,4 +43,4 @@ ENT services (Moodle, Outlook, PronoteCampus…) open in a WebView that keeps it
 - Android: the system WebView keeps every cookie, session cookies included; the app only makes sure they are written to disk.
 - Files downloaded from a service on iOS go through the cache directory (`downloads/`) before being handed to the share sheet.
 
-_Settings › Services de l'ENT › Se déconnecter partout_ and _Supprimer mes données_ erase all of it.
+_Paramètres › Services de l'ENT › Vider les cookies du navigateur intégré_ and _Supprimer mes données_ erase all of it.

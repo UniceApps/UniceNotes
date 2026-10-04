@@ -4,6 +4,7 @@ import { Platform, ScrollView, View, type RefreshControlProps, type ScrollViewPr
 import Animated, { FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ContentScrollMarker } from '@/modules/content-scroll';
 import { useAppTheme } from '@/src/theme';
 
 import { enter, layout } from './motion';
@@ -39,8 +40,12 @@ export function Screen(props: ScreenProps) {
   const insets = useSafeAreaInsets();
   // une modale iOS s'ouvre déjà sous la barre d'état
   const top = modal && Platform.OS === 'ios' ? 8 : insets.top;
-  // onglet : iOS décale lui-même ce ScrollView au-dessus de la barre d'onglets, Android s'arrête au-dessus
+  // onglet : iOS ajoute lui-même la hauteur de la barre d'onglets (contentInsetAdjustmentBehavior),
+  // Android s'arrête déjà au-dessus
   const bottom = tab ? 24 : insets.bottom + 24;
+  // react-native-screens ne retrouve cette ScrollView, enveloppée dans une vue native, que dans des cas
+  // limités : on le demande nous-mêmes à iOS, plutôt que de laisser la fin de la page sous la barre
+  const insetBehavior = tab && Platform.OS === 'ios' ? 'automatic' : undefined;
 
   const blocks = [
     <View key="header">
@@ -59,9 +64,12 @@ export function Screen(props: ScreenProps) {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
+        contentInsetAdjustmentBehavior={insetBehavior}
         refreshControl={refreshControl}
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: bottom }}
       >
+        {/* iOS 26 : la barre d'onglets se réduit quand on fait défiler cette liste */}
+        {tab && <ContentScrollMarker />}
         <View style={{ width: '100%', maxWidth: 600, alignSelf: 'center', gap: 24 }}>
           {blocks.map((block, index) => (
             <Animated.View

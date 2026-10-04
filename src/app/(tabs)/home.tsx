@@ -42,6 +42,12 @@ export default function HomeScreen() {
     router.navigate('/ent');
   }
 
+  // les paramètres sont aussi un onglet : la roue dentée reste là où on a l'habitude de la trouver
+  function openSettings() {
+    haptics('light');
+    router.navigate('/settings');
+  }
+
   function refresh() {
     haptics('medium');
     agenda.refresh();
@@ -60,7 +66,7 @@ export default function HomeScreen() {
   return (
     <Screen
       tab
-      header={<HomeHeader now={agenda.now} onEditEdt={editEdt} />}
+      header={<HomeHeader now={agenda.now} onEditEdt={editEdt} onSettings={openSettings} />}
       refreshControl={
         agenda.configured ? (
           <RefreshControl

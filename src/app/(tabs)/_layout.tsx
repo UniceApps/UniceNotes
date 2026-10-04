@@ -1,23 +1,15 @@
 import { Platform } from 'react-native';
 
-import { usePathname } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
-import { NextClassAccessory } from '@/src/components/NextClassAccessory';
-import { useHasUpcomingClass } from '@/src/hooks/useHasUpcomingClass';
 import { useAppTheme } from '@/src/theme';
 import { withAlpha } from '@/src/utils/color';
 
 // barre d'onglets du système : Liquid Glass sur iOS, Material 3 aux couleurs du thème sur Android
 export default function TabsLayout() {
   const theme = useAppTheme();
-  const pathname = usePathname();
-  const hasUpcomingClass = useHasUpcomingClass();
   const c = theme.colors;
   const android = Platform.OS === 'android';
-
-  // accessoire d'iOS 26 ; le prochain cours est déjà en grand sur l'accueil
-  const showAccessory = Platform.OS === 'ios' && hasUpcomingClass && pathname !== '/home';
 
   return (
     <NativeTabs
@@ -38,12 +30,6 @@ export default function TabsLayout() {
           : undefined
       }
     >
-      {showAccessory && (
-        <NativeTabs.BottomAccessory>
-          <NextClassAccessory />
-        </NativeTabs.BottomAccessory>
-      )}
-
       <NativeTabs.Trigger name="home" accessibilityLabel="Accueil">
         <NativeTabs.Trigger.Icon sf={{ default: 'house', selected: 'house.fill' }} md="home" />
         <NativeTabs.Trigger.Label>Accueil</NativeTabs.Trigger.Label>

@@ -52,23 +52,23 @@ export function SettingsScreen({ tab = false }: { tab?: boolean }) {
   }
 
   // cookies et données des pages de l'ENT ouvertes dans l'application
-  function signOutWeb() {
+  function clearBrowserCookies() {
     haptics('warning');
     Alert.alert(
-      'Se déconnecter partout',
+      'Vider les cookies ?',
       "Tu devras te reconnecter à Moodle, Outlook, PronoteCampus… la prochaine fois que tu les ouvriras dans l'application.",
       [
         { text: 'Annuler', style: 'cancel' },
         {
-          text: 'Se déconnecter',
+          text: 'Vider',
           style: 'destructive',
           onPress: async () => {
             if (await clearWebSession()) {
               haptics('success');
-              setNotice("Déconnecté de tous les services de l'ENT");
+              setNotice('Cookies du navigateur intégré vidés');
             } else {
               haptics('error');
-              Alert.alert('Déconnexion impossible', 'Réessaie dans un instant.');
+              Alert.alert('Impossible de vider les cookies', 'Réessaie dans un instant.');
             }
           },
         },
@@ -149,12 +149,12 @@ export function SettingsScreen({ tab = false }: { tab?: boolean }) {
         <SectionTitle title="Services de l'ENT" />
         <ListGroup>
           <ListItem
-            icon="logout"
+            icon="cookie-remove-outline"
             tone="secondary"
-            title="Se déconnecter partout"
-            subtitle="Tes connexions restent sur l'appareil"
+            title="Vider les cookies du navigateur intégré"
+            subtitle="Te déconnecte de Moodle, Outlook, PronoteCampus…"
             right={null}
-            onPress={signOutWeb}
+            onPress={clearBrowserCookies}
           />
         </ListGroup>
       </View>

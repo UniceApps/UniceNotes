@@ -28,7 +28,8 @@
 
 ```
 modules/
-└── web-session/  module natif local : garde la connexion aux services de l'ENT (cookies de session)
+├── content-scroll/  module natif local (iOS) : la barre d'onglets se réduit au défilement
+└── web-session/     module natif local : garde la connexion aux services de l'ENT (cookies de session)
 src/
 ├── app/          écrans (expo-router : un fichier = une route, (tabs)/ = barre d'onglets)
 ├── components/
