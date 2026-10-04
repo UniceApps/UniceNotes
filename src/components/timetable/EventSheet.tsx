@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 import { View } from 'react-native';
 
-import type BottomSheet from '@gorhom/bottom-sheet';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Button, Text } from 'react-native-paper';
 
 import { InfoLine } from '@/src/components/ui/InfoLine';
@@ -24,12 +24,12 @@ export function EventSheet({
   sheetRef,
   event,
 }: {
-  sheetRef: RefObject<BottomSheet | null>;
+  sheetRef: RefObject<BottomSheetModal | null>;
   event: CalendarEvent | null;
 }) {
   return (
     <Sheet sheetRef={sheetRef}>
-      {event && <EventDetails event={event} onClose={() => sheetRef.current?.close()} />}
+      {event && <EventDetails event={event} onClose={() => sheetRef.current?.dismiss()} />}
     </Sheet>
   );
 }

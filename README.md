@@ -27,11 +27,13 @@
 ## 🗂️ Architecture
 
 ```
+modules/
+└── web-session/  module natif local : garde la connexion aux services de l'ENT (cookies de session)
 src/
-├── app/          écrans (expo-router : un fichier = une route)
+├── app/          écrans (expo-router : un fichier = une route, (tabs)/ = barre d'onglets)
 ├── components/
 │   ├── ui/       briques communes : Screen, Card, ListItem, Tile, Sheet, Banner…
-│   └── …         composants propres à un écran (home, rooms, timetable, appearance)
+│   └── …         composants propres à un écran (home, rooms, timetable, browser, ent, appearance)
 ├── context/      réglages et emploi du temps partagés par toute l'app
 ├── hooks/        logique réutilisable des écrans
 ├── services/     accès réseau : ADE, UniceAPI, cache, widgets
@@ -41,6 +43,8 @@ src/
 ```
 
 L'emploi du temps n'est téléchargé qu'à un seul endroit (`src/context/CalendarContext.tsx`) : l'accueil, l'écran emploi du temps, les widgets et la Live Activity partagent les mêmes données.
+
+Les services de l'ENT (`src/constants/ent.ts`) s'ouvrent dans le navigateur de l'app (`src/app/browser.tsx`), qui n'accepte que les services de ce catalogue : un lien profond ne peut pas lui faire ouvrir une autre adresse.
 
 ## ⚙️ Contribution
 

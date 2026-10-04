@@ -29,6 +29,9 @@ export const RELEASE_NOTES = {
     { icon: 'palette-outline', text: "Toute l'application fait peau neuve" },
     { icon: 'widgets-outline', text: 'Les widgets sont maintenant disponibles pour Android' },
     { icon: 'star-outline', text: 'Ajoute tes salles favorites pour vérifier leur disponibilité plus rapidement' },
+    { icon: 'dock-bottom', text: "Une barre d'onglets pour passer de l'accueil à l'EDT, aux salles ou à l'ENT" },
+    { icon: 'web', text: "Moodle, Outlook, PronoteCampus… s'ouvrent dans l'app et tu restes connecté" },
+    { icon: 'pin-outline', text: "Épingle 3 services à l'accès rapide, retrouve-les aussi sur l'icône de l'app" },
     { icon: 'bug-outline', text: 'Correction de bugs' },
   ],
 };

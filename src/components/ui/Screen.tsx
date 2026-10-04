@@ -26,6 +26,7 @@ export function Screen(props: ScreenProps) {
     title = '',
     subtitle,
     modal,
+    tab,
     actions,
     header,
     refreshControl,
@@ -38,10 +39,12 @@ export function Screen(props: ScreenProps) {
   const insets = useSafeAreaInsets();
   // une modale iOS s'ouvre déjà sous la barre d'état
   const top = modal && Platform.OS === 'ios' ? 8 : insets.top;
+  // onglet : iOS décale lui-même ce ScrollView au-dessus de la barre d'onglets, Android s'arrête au-dessus
+  const bottom = tab ? 24 : insets.bottom + 24;
 
   const blocks = [
     <View key="header">
-      {header ?? <ScreenHeader title={title} subtitle={subtitle} modal={modal} actions={actions} />}
+      {header ?? <ScreenHeader title={title} subtitle={subtitle} modal={modal} tab={tab} actions={actions} />}
     </View>,
     ...Children.toArray(children),
   ];
@@ -57,7 +60,7 @@ export function Screen(props: ScreenProps) {
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets
         refreshControl={refreshControl}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: insets.bottom + 24 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: bottom }}
       >
         <View style={{ width: '100%', maxWidth: 600, alignSelf: 'center', gap: 24 }}>
           {blocks.map((block, index) => (

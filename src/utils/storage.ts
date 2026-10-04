@@ -10,6 +10,7 @@ export type StorageKey =
   | 'releaseNotesVersion'
   | 'adeProjectOverride'
   | 'favoriteRooms'
+  | 'pinnedApps'
   | 'androidWidgetTimeline';
 
 export type SecureKey = 'adeid';

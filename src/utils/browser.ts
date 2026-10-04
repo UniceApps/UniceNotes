@@ -1,9 +1,43 @@
+import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 
 import { haptics } from './haptics';
 
-// navigateur intégré, l'utilisateur reste dans l'app
+// pages externes (aide, mentions…) : navigateur du système, sans quitter l'app
 export async function openURL(url: string): Promise<void> {
   haptics('selection');
   await WebBrowser.openBrowserAsync(url);
+}
+
+// service de l'ENT : navigateur de l'app, qui garde la connexion d'un lancement à l'autre
+export function openEntApp(id: string): void {
+  haptics('light');
+  router.push({ pathname: '/browser', params: { app: id } });
+}
+
+// "https://www.bu.univ-cotedazur.fr/fr/..." -> "bu.univ-cotedazur.fr"
+export function getHost(url: string): string {
+  const host = /^[a-z][a-z0-9+.-]*:\/\/(?:[^@/?#]*@)?([^/?#:]+)/i.exec(url)?.[1];
+  return host ? host.replace(/^www\./i, '') : url;
+}
+
+export function isSecureUrl(url: string): boolean {
+  return /^https:/i.test(url);
+}
+
+// pages et documents affichés par la WebView ; le reste (mailto:, tel:, msteams:…) part vers le système
+export function isWebViewUrl(url: string): boolean {
+  return /^(https?|about|data|blob|javascript):/i.test(url);
+}
+
+// lien intent:// d'Android : page de repli quand l'app visée n'est pas installée
+export function getIntentFallback(url: string): string | null {
+  const match = /;S\.browser_fallback_url=([^;]+)/.exec(url);
+  if (!match) return null;
+  try {
+    const fallback = decodeURIComponent(match[1]);
+    return /^https?:/i.test(fallback) ? fallback : null;
+  } catch {
+    return null;
+  }
 }

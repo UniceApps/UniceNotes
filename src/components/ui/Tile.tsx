@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
-import { View, type ImageSourcePropType } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { Image } from 'expo-image';
 import { Text } from 'react-native-paper';
 
 import { useAppTheme, type Tone } from '@/src/theme';
@@ -17,33 +16,58 @@ export function TileGrid({ children }: { children: ReactNode }) {
 interface TileProps {
   label: string;
   subtitle: string;
-  icon: string;
+  // icône tonale, ou badge sur mesure (logo d'un service…)
+  icon?: string;
   tone?: Tone;
-  // logo affiché à la place de l'icône
-  image?: ImageSourcePropType;
+  badge?: ReactNode;
+  // à droite du badge (bouton épingle…)
+  aside?: ReactNode;
   onPress: () => void;
+  onLongPress?: () => void;
+  accessibilityHint?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
-export function Tile({ label, subtitle, icon, tone, image, onPress }: TileProps) {
+export function Tile({
+  label,
+  subtitle,
+  icon,
+  tone,
+  badge,
+  aside,
+  onPress,
+  onLongPress,
+  accessibilityHint,
+  style,
+}: TileProps) {
   const theme = useAppTheme();
+  const leading = badge ?? (icon ? <IconBadge icon={icon} tone={tone} /> : null);
 
   return (
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${label}, ${subtitle}`}
-      style={{
-        flexGrow: 1,
-        flexBasis: '40%',
-        borderRadius: 24,
-        padding: 16,
-        backgroundColor: theme.colors.elevation.level2,
-      }}
+      accessibilityHint={accessibilityHint}
+      style={[
+        {
+          flexGrow: 1,
+          flexBasis: '40%',
+          borderRadius: 24,
+          padding: 16,
+          backgroundColor: theme.colors.elevation.level2,
+        },
+        style,
+      ]}
       onPress={onPress}
+      onLongPress={onLongPress}
     >
-      {image ? (
-        <Image source={image} style={{ width: 44, height: 44, borderRadius: 14 }} />
+      {aside ? (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          {leading}
+          {aside}
+        </View>
       ) : (
-        <IconBadge icon={icon} tone={tone} />
+        leading
       )}
       <Text variant="titleMedium" numberOfLines={1} style={{ marginTop: 14 }}>
         {label}

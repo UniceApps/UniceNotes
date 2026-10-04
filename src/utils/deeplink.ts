@@ -1,19 +1,26 @@
-// liens profonds : unicenotes://notes, unicenotes://ent, unicenotes://edt et unicenotes://edt/{code}
+// liens profonds : unicenotes://notes, unicenotes://ent, unicenotes://app/{id}, unicenotes://edt et
+// unicenotes://edt/{code}
 
-export type DeepLink = { kind: 'notes' } | { kind: 'ent' } | { kind: 'edt'; code?: string };
+export type DeepLink =
+  | { kind: 'notes' }
+  | { kind: 'ent' }
+  | { kind: 'app'; id: string }
+  | { kind: 'edt'; code?: string };
 
 const EDT_CODE_MAX_LENGTH = 32;
 
 // code ADE
 const EDT_CODE_PATTERN = new RegExp(`^[A-Za-z0-9_-]{1,${EDT_CODE_MAX_LENGTH}}$`);
+// identifiant d'un service de l'ENT (src/constants/ent.ts)
+const APP_ID_PATTERN = /^[a-z0-9-]{1,32}$/;
 
 export function isValidEdtCode(code: unknown): code is string {
   return typeof code === 'string' && EDT_CODE_PATTERN.test(code);
 }
 
 // ni query string ni fragment ni segment en trop, un "/" final est toléré
-const LINK_PATTERN = /^unicenotes:\/\/(notes|ent|edt)(?:\/([^/?#]+))?\/?$/i;
-const RESERVED_HOST_PATTERN = /^unicenotes:\/\/(notes|ent|edt)(?:[/?#]|$)/i;
+const LINK_PATTERN = /^unicenotes:\/\/(notes|ent|edt|app)(?:\/([^/?#]+))?\/?$/i;
+const RESERVED_HOST_PATTERN = /^unicenotes:\/\/(notes|ent|edt|app)(?:[/?#]|$)/i;
 
 export function parseDeepLink(url: unknown): DeepLink | null {
   if (typeof url !== 'string') return null;
@@ -26,6 +33,9 @@ export function parseDeepLink(url: unknown): DeepLink | null {
   if (host === 'edt') {
     if (segment === undefined) return { kind: 'edt' };
     return isValidEdtCode(segment) ? { kind: 'edt', code: segment } : null;
+  }
+  if (host === 'app') {
+    return segment !== undefined && APP_ID_PATTERN.test(segment) ? { kind: 'app', id: segment } : null;
   }
   if (segment !== undefined) return null;
   return host === 'notes' ? { kind: 'notes' } : { kind: 'ent' };

@@ -24,7 +24,9 @@
       "infoPlist": {
         "CFBundleLocalizations": ["fr"],
         "CFBundleDevelopmentRegion": "fr",
-        "CADisableMinimumFrameDurationOnPhone": true
+        "CADisableMinimumFrameDurationOnPhone": true,
+        "NSCameraUsageDescription": "Les services de l'ENT ouverts dans l'application peuvent utiliser l'appareil photo, par exemple pour scanner un QR code d'émargement.",
+        "NSMicrophoneUsageDescription": "Les services de l'ENT ouverts dans l'application peuvent utiliser le micro, par exemple pour une visioconférence."
       },
       "config": {
         "usesNonExemptEncryption": false

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
 import { Image } from 'expo-image';
@@ -10,6 +11,7 @@ import { SectionTitle } from '@/src/components/ui/SectionTitle';
 import { Watermark } from '@/src/components/ui/Watermark';
 import { APP_VERSION, BUILD_COMMIT, IS_BETA, LINKS } from '@/src/constants/config';
 import { useSettings } from '@/src/context/SettingsContext';
+import { clearWebSession } from '@/src/services/webSession';
 import { LIVE_ACTIVITIES_SUPPORTED } from '@/src/services/widgets';
 import { useAppTheme } from '@/src/theme';
 import { openURL } from '@/src/utils/browser';
@@ -19,6 +21,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const theme = useAppTheme();
   const settings = useSettings();
+  const [webSignedOut, setWebSignedOut] = useState(false);
 
   function navigate(href: '/appearance' | '/servers' | '/edt-config') {
     haptics('light');
@@ -47,11 +50,36 @@ export default function SettingsScreen() {
     restartFromOobe();
   }
 
+  // cookies et données des pages de l'ENT ouvertes dans l'application
+  function signOutWeb() {
+    haptics('warning');
+    Alert.alert(
+      'Se déconnecter partout',
+      "Tu devras te reconnecter à Moodle, Outlook, PronoteCampus… la prochaine fois que tu les ouvriras dans l'application.",
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Se déconnecter',
+          style: 'destructive',
+          onPress: async () => {
+            if (await clearWebSession()) {
+              haptics('success');
+              setWebSignedOut(true);
+            } else {
+              haptics('error');
+              Alert.alert('Déconnexion impossible', 'Réessaie dans un instant.');
+            }
+          },
+        },
+      ],
+    );
+  }
+
   function deleteAllData() {
     haptics('warning');
     Alert.alert(
       'Supprimer mes données',
-      "Ton emploi du temps, tes favoris et tes réglages seront effacés de l'appareil. Cette action est irréversible.",
+      "Ton emploi du temps, tes favoris, tes connexions aux services de l'ENT et tes réglages seront effacés de l'appareil. Cette action est irréversible.",
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -105,6 +133,21 @@ export default function SettingsScreen() {
               right={<Switch value={settings.liveActivities} onValueChange={toggleLiveActivities} />}
             />
           )}
+        </ListGroup>
+      </View>
+
+      <View>
+        <SectionTitle title="Services de l'ENT" />
+        <ListGroup>
+          <ListItem
+            icon={webSignedOut ? 'check' : 'logout'}
+            tone="secondary"
+            title={webSignedOut ? 'Déconnecté' : 'Se déconnecter partout'}
+            subtitle={webSignedOut ? 'Reconnexion à la prochaine ouverture' : "Tes connexions restent sur l'appareil"}
+            right={null}
+            disabled={webSignedOut}
+            onPress={signOutWeb}
+          />
         </ListGroup>
       </View>
 

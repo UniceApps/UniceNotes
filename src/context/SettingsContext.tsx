@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
+import { resetPinnedApps } from '@/src/hooks/usePinnedApps';
 import { clearCalendarCache } from '@/src/services/calendar-cache';
+import { clearWebSession } from '@/src/services/webSession';
 import { resetTheme } from '@/src/theme';
 import { setHapticsEnabled } from '@/src/utils/haptics';
 import { secureStorage, storage } from '@/src/utils/storage';
@@ -79,9 +81,11 @@ export function SettingsProvider({ initial, children }: { initial: Settings; chi
     },
 
     async clearAllData() {
-      await Promise.all([secureStorage.remove('adeid'), storage.clear()]);
+      // connexions aux services de l'ENT comprises
+      await Promise.all([secureStorage.remove('adeid'), storage.clear(), clearWebSession()]);
       clearCalendarCache();
       resetTheme();
+      resetPinnedApps();
       setHapticsEnabled(true);
       setSettings(DEFAULT_SETTINGS);
     },

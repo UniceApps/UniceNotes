@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { loadRoomsSnapshot } from '@/src/services/rooms';
 import type { RoomsSnapshot } from '@/src/types';
@@ -21,37 +21,49 @@ interface RoomsSnapshotState {
   reload: () => void;
 }
 
-// les statuts des salles se recalculent avec l'heure, sans nouvelle requête
-export function useRoomsSnapshot(): RoomsSnapshotState {
+// les statuts des salles se recalculent avec l'heure, sans nouvelle requête.
+// active : écran affiché. L'onglet est monté avec l'app : rien n'est téléchargé (environ 2 Mo)
+// avant son premier affichage, et il ne se rafraîchit pas quand on regarde un autre onglet.
+export function useRoomsSnapshot(active = true): RoomsSnapshotState {
   const [snapshot, setSnapshot] = useState<RoomsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [fetchKey, setFetchKey] = useState(0);
   const now = useNow();
+  // dernière requête lancée : quitter l'onglet n'annule pas celle en cours
+  const requestedKey = useRef<number | null>(null);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    let cancelled = false;
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!active || requestedKey.current === fetchKey) return;
+    const key = fetchKey;
+    requestedKey.current = key;
     loadRoomsSnapshot().then((result) => {
-      if (cancelled) return;
+      // démonté, ou une requête plus récente a été lancée entre-temps
+      if (!mounted.current || requestedKey.current !== key) return;
       if (result) setSnapshot(result);
       setFailed(result === null);
       setLoading(false);
     });
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchKey]);
+  }, [active, fetchKey]);
 
   const clock = getParisClock(now);
   const usable = snapshot && snapshot.date === clock.eventDate ? snapshot : null;
 
-  // actualisation automatique
+  // actualisation automatique, seulement quand l'écran est affiché
   useEffect(() => {
-    if (!snapshot || failed) return;
+    if (!active || !snapshot || failed) return;
     const delay = usable ? snapshot.fetchedAt + STALE_AFTER_MS - Date.now() : 0;
     const timer = setTimeout(() => setFetchKey((key) => key + 1), Math.max(delay, MIN_REFRESH_DELAY_MS));
     return () => clearTimeout(timer);
-  }, [snapshot, usable, failed]);
+  }, [active, snapshot, usable, failed]);
 
   function reload() {
     setLoading(true);

@@ -12,6 +12,8 @@ export interface ScreenHeaderProps {
   subtitle?: string;
   // modale : une croix au lieu de la flèche de retour
   modal?: boolean;
+  // racine d'un onglet : pas de retour, le titre partage sa ligne avec les actions
+  tab?: boolean;
   // HeaderButton à droite
   actions?: ReactNode;
 }
@@ -42,7 +44,7 @@ export function HeaderButton({
   );
 }
 
-export function ScreenHeader({ title, subtitle, modal, actions }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, modal, tab, actions }: ScreenHeaderProps) {
   const router = useRouter();
   const theme = useAppTheme();
 
@@ -55,14 +57,25 @@ export function ScreenHeader({ title, subtitle, modal, actions }: ScreenHeaderPr
 
   return (
     <View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <HeaderButton icon={modal ? 'close' : 'arrow-left'} label={modal ? 'Fermer' : 'Retour'} onPress={goBack} />
-        <View style={{ flex: 1 }} />
-        {actions}
-      </View>
-      <Text variant="headlineLarge" style={{ marginTop: 12 }}>
-        {title}
-      </Text>
+      {tab ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <Text variant="headlineLarge" style={{ flex: 1 }}>
+            {title}
+          </Text>
+          {actions}
+        </View>
+      ) : (
+        <>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <HeaderButton icon={modal ? 'close' : 'arrow-left'} label={modal ? 'Fermer' : 'Retour'} onPress={goBack} />
+            <View style={{ flex: 1 }} />
+            {actions}
+          </View>
+          <Text variant="headlineLarge" style={{ marginTop: 12 }}>
+            {title}
+          </Text>
+        </>
+      )}
       {subtitle && (
         <Text variant="titleMedium" style={{ marginTop: 2, color: theme.colors.onSurfaceVariant }}>
           {subtitle}

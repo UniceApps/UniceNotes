@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 
+import { useIsFocused } from 'expo-router';
 import { Snackbar } from 'react-native-paper';
 
 import { FavoriteRooms } from '@/src/components/rooms/FavoriteRooms';
@@ -35,8 +36,9 @@ const NO_BOOKINGS: RoomBooking[] = [];
 export default function FreeRoomsScreen() {
   const theme = useAppTheme();
   const colors = getStatusColors(theme);
+  const focused = useIsFocused();
 
-  const { snapshot, clock, loading, failed, reload } = useRoomsSnapshot();
+  const { snapshot, clock, loading, failed, reload } = useRoomsSnapshot(focused);
   const [duration, setDuration] = useState(DEFAULT_DURATION);
   const [onlyFree, setOnlyFree] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -115,6 +117,7 @@ export default function FreeRoomsScreen() {
 
   return (
     <Screen
+      tab
       title="Salles libres"
       subtitle={updatedAt ? `Mis à jour à ${updatedAt}` : 'Disponibilités du jour'}
       actions={<HeaderButton icon="refresh" label="Actualiser" disabled={loading} onPress={refresh} />}

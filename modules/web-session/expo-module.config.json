@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["WebSessionModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.websession.WebSessionModule"]
+  }
+}

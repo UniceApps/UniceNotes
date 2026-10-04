@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 
-import type BottomSheet from '@gorhom/bottom-sheet';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { Button, Icon, Text } from 'react-native-paper';
 
 import { IconBadge } from '@/src/components/ui/IconBadge';
@@ -33,7 +33,7 @@ async function loadAnnouncements(): Promise<Announcement[]> {
 
 // alerte de l'API, mise à jour disponible puis nouveautés : une feuille à la fois
 export function AnnouncementSheet() {
-  const sheetRef = useRef<BottomSheet>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
   const [queue, setQueue] = useState<Announcement[]>([]);
   const current = queue[0];
 
@@ -51,12 +51,12 @@ export function AnnouncementSheet() {
     if (!current) return;
     const timer = setTimeout(() => {
       if (current.kind === 'release') storage.set('releaseNotesVersion', APP_VERSION);
-      sheetRef.current?.expand();
+      sheetRef.current?.present();
     }, OPEN_DELAY_MS);
     return () => clearTimeout(timer);
   }, [current]);
 
-  const close = () => sheetRef.current?.close();
+  const close = () => sheetRef.current?.dismiss();
 
   return (
     <Sheet sheetRef={sheetRef} onClose={() => setQueue((items) => items.slice(1))}>

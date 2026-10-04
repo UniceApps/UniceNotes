@@ -1,17 +1,23 @@
 import { useCallback, type ReactNode, type RefObject } from 'react';
 
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView, type BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetView,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@/src/theme';
 
 interface SheetProps {
-  sheetRef: RefObject<BottomSheet | null>;
+  sheetRef: RefObject<BottomSheetModal | null>;
   onClose?: () => void;
   children: ReactNode;
 }
 
-// feuille flottante fermée par défaut, ouverte avec sheetRef.current.expand()
+// feuille flottante, ouverte avec sheetRef.current.present() ; modale : elle passe au-dessus de la
+// barre d'onglets (voir BottomSheetModalProvider dans app/_layout.tsx)
 export function Sheet({ sheetRef, onClose, children }: SheetProps) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -24,9 +30,8 @@ export function Sheet({ sheetRef, onClose, children }: SheetProps) {
   );
 
   return (
-    <BottomSheet
+    <BottomSheetModal
       ref={sheetRef}
-      index={-1}
       enableDynamicSizing
       enablePanDownToClose
       detached
@@ -35,9 +40,9 @@ export function Sheet({ sheetRef, onClose, children }: SheetProps) {
       backgroundStyle={{ borderRadius: 32, backgroundColor: theme.colors.elevation.level3 }}
       handleIndicatorStyle={{ backgroundColor: theme.colors.onSurfaceVariant }}
       backdropComponent={renderBackdrop}
-      onClose={onClose}
+      onDismiss={onClose}
     >
       <BottomSheetView style={{ paddingHorizontal: 24, paddingTop: 8, paddingBottom: 24 }}>{children}</BottomSheetView>
-    </BottomSheet>
+    </BottomSheetModal>
   );
 }

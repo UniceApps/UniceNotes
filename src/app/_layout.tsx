@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Measure, MeasureConfig } from '@measuresh/react-native';
 import * as Font from 'expo-font';
 import { Stack, ThemeProvider } from 'expo-router';
@@ -13,6 +14,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DeepLinkHandler } from '@/src/components/DeepLinkHandler';
 import { CalendarProvider } from '@/src/context/CalendarContext';
 import { loadSettings, SettingsProvider, type Settings } from '@/src/context/SettingsContext';
+import { loadPinnedApps } from '@/src/hooks/usePinnedApps';
 import { getNavigationTheme, loadThemePreference, useAppTheme } from '@/src/theme';
 
 // l'écran de lancement natif reste affiché pendant le chargement
@@ -23,6 +25,7 @@ async function prepare(): Promise<Settings> {
   const [settings] = await Promise.all([
     loadSettings(),
     loadThemePreference(),
+    loadPinnedApps(),
     Font.loadAsync({ Bahnschrift: require('../assets/bahnschrift.ttf') }),
     // une erreur de Measure ne doit pas bloquer le démarrage
     Measure.init({ config: new MeasureConfig({}) }).catch(console.warn),
@@ -57,20 +60,26 @@ export default function RootLayout() {
           <ThemeProvider value={navigationTheme}>
             <SettingsProvider initial={settings}>
               <CalendarProvider>
-                <DeepLinkHandler />
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="index" />
-                  <Stack.Screen name="oobe" options={{ gestureEnabled: false }} />
-                  <Stack.Screen name="home" options={{ gestureEnabled: false }} />
-                  {/* le calendrier se fait défiler à l'horizontale : pas de retour par glissement */}
-                  <Stack.Screen name="timetable" options={{ gestureEnabled: false }} />
-                  <Stack.Screen name="free-rooms" />
-                  <Stack.Screen name="settings" />
-                  <Stack.Screen name="ent" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="appearance" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="servers" options={{ presentation: 'modal' }} />
-                  <Stack.Screen name="edt-config" options={{ presentation: 'modal' }} />
-                </Stack>
+                {/* les feuilles s'affichent au-dessus de la barre d'onglets */}
+                <BottomSheetModalProvider>
+                  <DeepLinkHandler />
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="index" />
+                    <Stack.Screen name="oobe" options={{ gestureEnabled: false }} />
+                    {/* accueil, emploi du temps, salles libres et ENT */}
+                    <Stack.Screen name="(tabs)" options={{ gestureEnabled: false }} />
+                    {/* le calendrier se fait défiler à l'horizontale : pas de retour par glissement */}
+                    <Stack.Screen name="edt/[code]" options={{ gestureEnabled: false }} />
+                    <Stack.Screen
+                      name="browser"
+                      options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen name="settings" />
+                    <Stack.Screen name="appearance" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="servers" options={{ presentation: 'modal' }} />
+                    <Stack.Screen name="edt-config" options={{ presentation: 'modal' }} />
+                  </Stack>
+                </BottomSheetModalProvider>
                 <StatusBar style="auto" />
               </CalendarProvider>
             </SettingsProvider>

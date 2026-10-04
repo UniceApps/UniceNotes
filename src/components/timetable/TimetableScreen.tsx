@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 
-import type BottomSheet from '@gorhom/bottom-sheet';
+import type { BottomSheetModal } from '@gorhom/bottom-sheet';
 import {
   CalendarBody,
   CalendarContainer,
@@ -10,7 +10,7 @@ import {
   type OnEventResponse,
   type PackedEvent,
 } from '@howljs/calendar-kit';
-import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Divider, Menu } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,11 +21,11 @@ import { Banner } from '@/src/components/ui/Banner';
 import { HeaderButton, ScreenHeader } from '@/src/components/ui/ScreenHeader';
 import { useCalendar } from '@/src/context/CalendarContext';
 import { useSettings } from '@/src/context/SettingsContext';
+import { useTabBarInset } from '@/src/hooks/useTabBarInset';
 import { useTemporaryCalendar } from '@/src/hooks/useTemporaryCalendar';
 import { useAppTheme, type Tone } from '@/src/theme';
 import type { CalendarEvent } from '@/src/types';
 import { formatMonth, getIsoWeek } from '@/src/utils/date';
-import { isValidEdtCode } from '@/src/utils/deeplink';
 import { haptics } from '@/src/utils/haptics';
 
 const VIEWS = [
@@ -44,29 +44,27 @@ interface BannerState {
   action?: { label: string; onPress: () => void };
 }
 
-export default function TimetableScreen() {
+// tempCode : edt d'un autre code ADE (lien unicenotes://edt/{code}), en lecture seule ;
+// null : l'edt enregistré, affiché dans l'onglet EDT
+export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
   const router = useRouter();
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
-  const { code } = useLocalSearchParams<{ code?: string }>();
+  const tabBarInset = useTabBarInset();
   const { adeid, haptics: hapticsOn } = useSettings();
   const calendar = useCalendar();
-
-  // ?code=… : edt d'un autre code ADE, en lecture seule
-  const tempCode = isValidEdtCode(code) ? code : null;
   const temporary = useTemporaryCalendar(tempCode);
+  const tab = tempCode === null;
 
   const [days, setDays] = useState(3);
   const [visibleDate, setVisibleDate] = useState(() => new Date());
   const [menuVisible, setMenuVisible] = useState(false);
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const calendarRef = useRef<CalendarKitHandle>(null);
-  const sheetRef = useRef<BottomSheet>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
 
   const calendarTheme = useMemo(() => getCalendarTheme(theme), [theme]);
   const renderEvent = useCallback((event: PackedEvent) => <EventCard event={event} />, []);
-
-  if (code !== undefined && !tempCode) return <Redirect href="/home" />;
 
   const events = tempCode ? temporary.events : calendar.events;
   const loading = tempCode ? temporary.loading : calendar.loading;
@@ -92,7 +90,7 @@ export default function TimetableScreen() {
     if (!event) return;
     haptics('selection');
     setSelected(event);
-    sheetRef.current?.expand();
+    sheetRef.current?.present();
   }
 
   let banner: BannerState | null = null;
@@ -122,6 +120,7 @@ export default function TimetableScreen() {
     <View style={{ flex: 1, paddingTop: insets.top, backgroundColor: theme.colors.background }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12, gap: 12 }}>
         <ScreenHeader
+          tab={tab}
           title={formatMonth(visibleDate)}
           subtitle={`Semaine ${getIsoWeek(visibleDate)} · ${tempCode ? 'EDT temporaire' : `EDT ${adeid ?? 'non configuré'}`}`}
           actions={
@@ -182,7 +181,8 @@ export default function TimetableScreen() {
         showWeekNumber
         allowPinchToZoom
         useHaptic={hapticsOn}
-        spaceFromBottom={insets.bottom}
+        // onglet : au-dessus de la barre d'onglets
+        spaceFromBottom={tab ? tabBarInset : insets.bottom}
         onChange={(date) => setVisibleDate(new Date(date))}
         onPressEvent={showEvent}
       >
