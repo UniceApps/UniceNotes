@@ -1,8 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
 
-// name doit correspondre exactement au nom déclaré dans app.json
-// null = icone principale de l'application.
 export interface AppIconOption {
+  // nom exact déclaré dans app.json (expo-alternate-app-icons), null pour l'icône principale
   name: string | null;
   label: string;
   author?: string;
@@ -31,8 +30,18 @@ export const appIconGroups: AppIconGroup[] = [
   {
     title: 'Communautaires',
     icons: [
-      { name: 'Glitched', label: 'Glitched', author: '@f.eli0tt', source: require('../assets/icons/icon_glitched.png') },
-      { name: 'Vaporwave', label: 'Vaporwave', author: '@nathan_jaffres', source: require('../assets/icons/icon_vaporwave.png') },
+      {
+        name: 'Glitched',
+        label: 'Glitched',
+        author: '@f.eli0tt',
+        source: require('../assets/icons/icon_glitched.png'),
+      },
+      {
+        name: 'Vaporwave',
+        label: 'Vaporwave',
+        author: '@nathan_jaffres',
+        source: require('../assets/icons/icon_vaporwave.png'),
+      },
       { name: 'Ios6', label: 'iOS 6', author: '@ds.marius', source: require('../assets/icons/icon_ios6.png') },
     ],
   },
@@ -40,7 +49,12 @@ export const appIconGroups: AppIconGroup[] = [
     title: 'Événements',
     icons: [
       { name: 'France', label: 'France', author: 'Euro & JO 2024', source: require('../assets/icons/icon_france.png') },
-      { name: 'Christmas2023', label: 'Noël', author: '2023', source: require('../assets/icons/icon_christmas2023.png') },
+      {
+        name: 'Christmas2023',
+        label: 'Noël',
+        author: '2023',
+        source: require('../assets/icons/icon_christmas2023.png'),
+      },
     ],
   },
 ];

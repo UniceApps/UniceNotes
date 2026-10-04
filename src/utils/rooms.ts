@@ -7,24 +7,23 @@ import type {
   RoomNodeView,
   RoomStatus,
   RoomStatusCounts,
-} from '../types';
+} from '@/src/types';
 
-// Durées proposées
+import { formatDuration, formatTime } from './date';
+
+// durées proposées
 export const DURATION_OPTIONS = [30, 60, 90, 120, 180, 240];
 
-// Marge exigée en plus de la durée voulue pour qu'une salle soit « libre » (sinon « juste »)
+// marge exigée en plus de la durée voulue pour qu'une salle soit « libre » (sinon « juste »)
 export const ROOM_MARGIN_MIN = 30;
 
-// Deux réservations séparées d'au plus ce délai forment un seul bloc
+// deux réservations séparées d'au plus ce délai forment un seul bloc
 const CHANGEOVER_MIN = 15;
 
 const OTHER_ROOMS = 'Autres salles';
 const KEY_SEPARATOR = '\u001f';
 
-// ---
-// Heure de Paris : ADE écrit les heures des événements dans le fuseau du campus
-// ---
-
+// heure de Paris : ADE écrit les heures des événements dans le fuseau du campus
 export interface ParisClock {
   // minutes depuis minuit
   minutes: number;
@@ -66,23 +65,7 @@ export function getParisClock(now: Date = new Date()): ParisClock {
   };
 }
 
-// 845 -> "14:05"
-export function formatTime(minutes: number): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(Math.floor(minutes / 60) % 24)}:${pad(minutes % 60)}`;
-}
-
-// 30 -> "30 min", 60 -> "1 h", 90 -> "1 h 30"
-export function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m} min`;
-  return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, '0')}`;
-}
-
-// ---
-// Arbre campus -> bâtiment -> sous-bâtiment -> salle, d'après le chemin ADE
-// ---
+// arbre campus -> bâtiment -> sous-bâtiment -> salle, d'après le chemin ADE
 
 function compareNames(a: string, b: string): number {
   return a.localeCompare(b, 'fr', { numeric: true, sensitivity: 'base' });
@@ -121,10 +104,6 @@ export function buildRoomTree(rooms: AdeRoom[]): RoomNode[] {
   return roots;
 }
 
-// ---
-// Disponibilité
-// ---
-
 export function groupBookingsByRoom(bookings: RoomBooking[]): Map<string, RoomBooking[]> {
   const byRoom = new Map<string, RoomBooking[]>();
   for (const booking of bookings) {
@@ -156,13 +135,8 @@ function mergeBookings(sorted: RoomBooking[]): Block[] {
   return blocks;
 }
 
-// bookings : réservations d'une seule salle, triées par début.
-// now : minutes depuis minuit. duration : durée voulue, en minutes.
-export function getRoomAvailability(
-  bookings: RoomBooking[],
-  now: number,
-  duration: number,
-): RoomAvailability {
+// bookings d'une seule salle, triées par début ; now (depuis minuit) et duration en minutes
+export function getRoomAvailability(bookings: RoomBooking[], now: number, duration: number): RoomAvailability {
   const blocks = mergeBookings(bookings);
   const currentIndex = blocks.findIndex((b) => b.start <= now && now < b.end);
 
@@ -210,7 +184,7 @@ export function describeAvailability(
   }
 
   const detail = booking ? `Ensuite : ${booking.title}` : null;
-  if (freeUntil === null) return { headline: 'Libre jusqu\'à la fin de la journée', detail };
+  if (freeUntil === null) return { headline: "Libre jusqu'à la fin de la journée", detail };
 
   const window = freeUntil - now;
   if (status === 'tight' && window < duration) {
@@ -225,9 +199,7 @@ export function describeAvailability(
   };
 }
 
-// ---
-// Vue affichée : arbre trié par disponibilité, avec le décompte de chaque niveau
-// ---
+// vue affichée : arbre trié par disponibilité, avec le décompte de chaque niveau
 
 const STATUS_RANK: Record<RoomStatus, number> = { free: 0, tight: 1, busy: 2 };
 
@@ -238,9 +210,7 @@ function compareEntries(a: RoomEntry, b: RoomEntry): number {
   if (x.status !== y.status) return STATUS_RANK[x.status] - STATUS_RANK[y.status];
 
   const diff =
-    x.status === 'busy'
-      ? (x.freeFrom ?? 0) - (y.freeFrom ?? 0)
-      : (y.freeUntil ?? Infinity) - (x.freeUntil ?? Infinity);
+    x.status === 'busy' ? (x.freeFrom ?? 0) - (y.freeFrom ?? 0) : (y.freeUntil ?? Infinity) - (x.freeUntil ?? Infinity);
   return diff || compareNames(a.room.name, b.room.name);
 }
 

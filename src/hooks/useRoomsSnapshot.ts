@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { loadRoomsSnapshot } from '@/src/services/rooms';
 import type { RoomsSnapshot } from '@/src/types';
+import { MINUTE_MS } from '@/src/utils/date';
 import { getParisClock, type ParisClock } from '@/src/utils/rooms';
 
-// les statuts sont recalculés sans nouvelle requête
-const TICK_MS = 30 * 1000;
+import { useNow } from './useNow';
+
 // au-delà, les réservations sont retéléchargées
-const STALE_AFTER_MS = 15 * 60 * 1000;
+const STALE_AFTER_MS = 15 * MINUTE_MS;
 // garde-fou : jamais deux actualisations automatiques à moins de 5 s d'écart
 const MIN_REFRESH_DELAY_MS = 5 * 1000;
 
@@ -20,41 +21,47 @@ interface RoomsSnapshotState {
   reload: () => void;
 }
 
-export function useRoomsSnapshot(): RoomsSnapshotState {
+// statuts recalculés avec l'heure ; active : ne charge et ne rafraîchit qu'à l'écran
+export function useRoomsSnapshot(active = true): RoomsSnapshotState {
   const [snapshot, setSnapshot] = useState<RoomsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [fetchKey, setFetchKey] = useState(0);
-  const [now, setNow] = useState(() => new Date());
+  const now = useNow();
+  // dernière requête lancée : quitter l'onglet n'annule pas celle en cours
+  const requestedKey = useRef<number | null>(null);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    let cancelled = false;
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!active || requestedKey.current === fetchKey) return;
+    const key = fetchKey;
+    requestedKey.current = key;
     loadRoomsSnapshot().then((result) => {
-      if (cancelled) return;
+      // démonté, ou une requête plus récente a été lancée entre-temps
+      if (!mounted.current || requestedKey.current !== key) return;
       if (result) setSnapshot(result);
       setFailed(result === null);
       setLoading(false);
     });
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchKey]);
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), TICK_MS);
-    return () => clearInterval(timer);
-  }, []);
+  }, [active, fetchKey]);
 
   const clock = getParisClock(now);
   const usable = snapshot && snapshot.date === clock.eventDate ? snapshot : null;
 
-  // actualisation automatique
+  // actualisation automatique, seulement quand l'écran est affiché
   useEffect(() => {
-    if (!snapshot || failed) return;
+    if (!active || !snapshot || failed) return;
     const delay = usable ? snapshot.fetchedAt + STALE_AFTER_MS - Date.now() : 0;
     const timer = setTimeout(() => setFetchKey((key) => key + 1), Math.max(delay, MIN_REFRESH_DELAY_MS));
     return () => clearTimeout(timer);
-  }, [snapshot, usable, failed]);
+  }, [active, snapshot, usable, failed]);
 
   function reload() {
     setLoading(true);

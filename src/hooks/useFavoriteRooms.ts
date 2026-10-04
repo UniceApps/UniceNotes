@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { AdeRoom } from '@/src/types';
-import { getAsync, saveAsync } from '@/src/utils/storage';
+import { storage } from '@/src/utils/storage';
 
-const FAVORITE_ROOMS_KEY = 'favoriteRooms';
 export const MAX_FAVORITE_ROOMS = 3;
 
 function parseIds(raw: string | null): string[] {
@@ -16,12 +15,12 @@ function parseIds(raw: string | null): string[] {
   }
 }
 
-// rooms : salles connues
+// rooms : salles connues, les favorites disparues d'ADE sont ignorées
 export function useFavoriteRooms(rooms: AdeRoom[] | undefined) {
   const [storedIds, setStoredIds] = useState<string[]>([]);
 
   useEffect(() => {
-    getAsync(FAVORITE_ROOMS_KEY).then((raw) => setStoredIds(parseIds(raw)));
+    storage.get('favoriteRooms').then((raw) => setStoredIds(parseIds(raw)));
   }, []);
 
   const ids = useMemo(() => {
@@ -32,7 +31,7 @@ export function useFavoriteRooms(rooms: AdeRoom[] | undefined) {
 
   function save(next: string[]) {
     setStoredIds(next);
-    saveAsync(FAVORITE_ROOMS_KEY, JSON.stringify(next));
+    storage.set('favoriteRooms', JSON.stringify(next));
   }
 
   // false si la limite est atteinte

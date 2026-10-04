@@ -19,10 +19,33 @@
 ## ⚠️ Documentation
 
 - Données : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/DATA.md)
-- Erreurs : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/ERRORS.md)
 - Haptics : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/HAPTICS.md)
+- API ADE : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/ADE_API.md)
 - Utilisation : [Voir la documentation](https://github.com/UniceApps/UniceNotes/tree/main/.docs/USAGE.md)
 - API : [Voir la documentation](https://github.com/UniceApps/UniceAPI)
+
+## 🗂️ Architecture
+
+```
+modules/
+├── content-scroll/  module natif local (iOS) : la barre d'onglets se réduit au défilement
+└── web-session/     module natif local : garde la connexion aux services de l'ENT (cookies de session)
+src/
+├── app/          écrans (expo-router : un fichier = une route, (tabs)/ = barre d'onglets)
+├── components/
+│   ├── ui/       briques communes : Screen, Card, ListItem, Tile, Sheet, Banner…
+│   └── …         composants propres à un écran (home, rooms, timetable, browser, ent, appearance)
+├── context/      réglages et emploi du temps partagés par toute l'app
+├── hooks/        logique réutilisable des écrans
+├── services/     accès réseau : ADE, UniceAPI, cache, widgets
+├── theme/        palettes Material 3 et thème choisi
+├── utils/        fonctions pures : dates, couleurs, parseurs ADE…
+└── widgets/      widgets iOS / Android et Live Activity
+```
+
+L'emploi du temps n'est téléchargé qu'à un seul endroit (`src/context/CalendarContext.tsx`) : l'accueil, l'écran emploi du temps, les widgets et la Live Activity partagent les mêmes données.
+
+Les services de l'ENT (`src/constants/ent.ts`) s'ouvrent dans le navigateur de l'app (`src/app/browser.tsx`), qui n'accepte que les services de ce catalogue : un lien profond ne peut pas lui faire ouvrir une autre adresse.
 
 ## ⚙️ Contribution
 
@@ -47,33 +70,38 @@ L'application UniceNotes utilise :
 
 avec ton consentement (en te connectant sur l'application et en acceptant les conditions d'utilisation) afin de te fournir une expérience utilisateur optimale.
 \
-Les données critiques sont stockées dans un format **crypté** dans la Keychain d'Apple / Keystore d'Android et ne peuvent être déchiffrées que par l'utilisateur lorsqu'il s'identifie grâce à un code ou grâce à une option de connxion biométrique. [Voir l'API SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
+Les données critiques sont stockées dans un format **chiffré** dans la Keychain d'Apple / Keystore d'Android et ne peuvent être déchiffrées que par l'utilisateur lorsqu'il s'identifie grâce à un code ou grâce à une option de connexion biométrique. [Voir l'API SecureStore](https://docs.expo.dev/versions/latest/sdk/securestore/)
 \
 Les données non-critiques sont stockées dans un stockage persistant nommé AsyncStorage de React Native. [Voir l'API AsyncStorage](https://react-native-async-storage.github.io/async-storage/docs/usage/)
 
 ## 🛠️ Build
 
-Pour construire l'application, vous aurez besoin de Node.js, npm, Expo CLI, EAS CLI et un compte Expo.
+Pour construire l'application, vous aurez besoin de Node.js, npm, EAS CLI et un compte Expo.
 
 > [!IMPORTANT]
 > Attention, vous devez posséder un compte payant Apple Developer ou Google Play Console pour pouvoir construire l'application pour iOS ou Android.
 
 ```bash
-# Installer Expo CLI et EAS CLI
-npm install -g expo-cli eas-cli
+# Installer EAS CLI
+npm install -g eas-cli
 
 # Cloner le dépôt
 git clone https://github.com/UniceApps/UniceNotes.git
-
-# Aller dans le dossier
 cd UniceNotes
 
 # Installer les dépendances
 npm install
 
+# Renseigner le jeton ADE et les clés Measure
+cp .env.example .env
+
+# Vérifier le code
+npm run lint
+npm run typecheck
+
 # Démarrer l'application en mode développement
-# Vous devez posséder Expo Go sur votre appareil
-npx expo
+# L'app utilise des modules natifs (widgets, icônes…) : Expo Go ne suffit pas, il faut un build de développement
+npx expo run:ios     # ou npx expo run:android
 
 # Construire l'application
 eas login
@@ -93,7 +121,7 @@ Toute ressemblance avec le nom de l'application, le logo et l'interface ne saura
 
 Toute utilisation de l'application UniceNotes est sous la seule responsabilité de l'utilisateur.
 
-Cette application agit comme un client internet où l'utilisateur effectue des pseudos-requêtes (GET HTTPS) sur l'intranet de l'Université Côte d'Azur à travers des API exposées. Cette application ne contient aucun code malveillant et ne vise pas à nuire à l'Université Côte d'Azur ou à ses utilisateurs. Les éventuelles suspiscions de "fuites de données" sont infondées dûes à la nature de l'application (les données sont stockées sur l'appareil de l'utilisateur et non sur des serveurs tiers).
+Cette application agit comme un client internet où l'utilisateur effectue des pseudos-requêtes (GET HTTPS) sur l'intranet de l'Université Côte d'Azur à travers des API exposées. Cette application ne contient aucun code malveillant et ne vise pas à nuire à l'Université Côte d'Azur ou à ses utilisateurs. Les éventuelles suspicions de "fuites de données" sont infondées du fait de la nature de l'application (les données sont stockées sur l'appareil de l'utilisateur et non sur des serveurs tiers).
 
 ## 🤝 Conditions d'utilisation :
 [Consulter les conditions d'utilisation](https://notes.metrixmedia.fr/eula)

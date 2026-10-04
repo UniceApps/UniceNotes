@@ -1,18 +1,21 @@
-import { 
-  Capsule, HStack, Image, 
-  Spacer, Text, VStack 
-} from '@expo/ui/swift-ui';
-
+import { Capsule, HStack, Image, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import {
-  background, fixedSize, font,
-  foregroundStyle, frame, lineLimit,
-  padding, shapes, widgetURL,
+  background,
+  fixedSize,
+  font,
+  foregroundStyle,
+  frame,
+  lineLimit,
+  padding,
+  shapes,
+  widgetURL,
 } from '@expo/ui/swift-ui/modifiers';
-import { createWidget } from 'expo-widgets';
+import { createWidget, type WidgetEnvironment } from 'expo-widgets';
 
-import type { NextClassWidgetProps, WidgetClass } from '../types';
+import type { NextClassWidgetProps, WidgetClass } from '@/src/types';
 
-const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
+// 'widget' : la fonction est exécutée par l'extension, elle ne peut rien utiliser en dehors d'elle-même
+const NextClassWidget = (props: NextClassWidgetProps, env: WidgetEnvironment) => {
   'widget';
   const isSmall = env?.widgetFamily === 'systemSmall';
   const blue = env?.colorScheme === 'dark' ? 'rgb(155, 203, 255)' : 'rgb(0, 98, 159)';
@@ -27,15 +30,10 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
     endTime: '',
   };
 
-  // Logo header commun
+  // en-tête commun
   const LogoHeader = (
     <HStack spacing={5} alignment="center">
-      <Image
-        systemName="graduationcap.fill"
-        color={blue}
-        size={14}
-        modifiers={[frame({ width: 18, height: 18 })]}
-      />
+      <Image systemName="graduationcap.fill" color={blue} size={14} modifiers={[frame({ width: 18, height: 18 })]} />
       <Text modifiers={[font({ size: 12 }), foregroundStyle(blue)]}>UniceNotes</Text>
     </HStack>
   );
@@ -56,9 +54,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
       <HStack alignment="center" spacing={7} modifiers={[fixedSize({ horizontal: false, vertical: true })]}>
         {bar(c, 4)}
         <VStack alignment="leading" spacing={1}>
-          <Text modifiers={[font({ size: 16, weight: 'semibold' }), lineLimit(isSmall ? 2 : 3)]}>
-            {c.title}
-          </Text>
+          <Text modifiers={[font({ size: 16, weight: 'semibold' }), lineLimit(isSmall ? 2 : 3)]}>{c.title}</Text>
           <Text modifiers={[font({ size: 12 }), foregroundStyle('secondary'), lineLimit(2)]}>
             {c.room || 'Salle non précisée'}
           </Text>
@@ -88,7 +84,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
     </VStack>
   );
 
-  // État : EDT non configuré
+  // edt non configuré
   if (props?.configured === false) {
     return message(
       isSmall
@@ -97,7 +93,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
     );
   }
 
-  // État : timeline expirée / widget jamais alimenté
+  // timeline expirée ou widget jamais alimenté
   if (props?.configured === undefined) {
     return message(
       isSmall
@@ -106,7 +102,6 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
     );
   }
 
-  // État normal : cours configurés
   const c1 = props?.courses?.[0] ?? EMPTY;
   const upNext = props?.courses?.slice(1, 3) ?? [];
 
@@ -123,7 +118,11 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
   // systemMedium : cours en avant à gauche, les suivants dans un panneau à droite
   return (
     <HStack alignment="top" spacing={12} modifiers={openEdt}>
-      <VStack alignment="leading" spacing={4} modifiers={[frame({ maxWidth: 10000, maxHeight: 10000, alignment: 'topLeading' })]}>
+      <VStack
+        alignment="leading"
+        spacing={4}
+        modifiers={[frame({ maxWidth: 10000, maxHeight: 10000, alignment: 'topLeading' })]}
+      >
         {LogoHeader}
         <Spacer />
         {mainCourse(c1)}
@@ -142,9 +141,7 @@ const NextClassWidget = (props: NextClassWidgetProps, env: any) => {
         {upNext.length > 0 ? (
           upNext.map((c, i) => nextCourse(c, i))
         ) : (
-          <Text modifiers={[font({ size: 11 }), foregroundStyle('secondary')]}>
-            {"Rien d'autre de prévu"}
-          </Text>
+          <Text modifiers={[font({ size: 11 }), foregroundStyle('secondary')]}>{"Rien d'autre de prévu"}</Text>
         )}
       </VStack>
     </HStack>
