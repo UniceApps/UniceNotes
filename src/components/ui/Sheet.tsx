@@ -1,4 +1,5 @@
 import { useCallback, type ReactNode, type RefObject } from 'react';
+import { Platform } from 'react-native';
 
 import {
   BottomSheetBackdrop,
@@ -6,7 +7,7 @@ import {
   BottomSheetView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@/src/theme';
 
@@ -21,6 +22,9 @@ interface SheetProps {
 export function Sheet({ sheetRef, onClose, children }: SheetProps) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  // iOS : dans un onglet, l'inset du bas inclut la barre d'onglets (SafeAreaProvider propre à chaque
+  // onglet) ; la feuille passe par-dessus, on ne garde que l'indicateur d'accueil de la fenêtre
+  const bottom = Platform.OS === 'ios' ? (initialWindowMetrics?.insets.bottom ?? insets.bottom) : insets.bottom;
 
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -35,7 +39,7 @@ export function Sheet({ sheetRef, onClose, children }: SheetProps) {
       enableDynamicSizing
       enablePanDownToClose
       detached
-      bottomInset={insets.bottom + 8}
+      bottomInset={bottom + 8}
       style={{ marginHorizontal: 12 }}
       backgroundStyle={{ borderRadius: 32, backgroundColor: theme.colors.elevation.level3 }}
       handleIndicatorStyle={{ backgroundColor: theme.colors.onSurfaceVariant }}

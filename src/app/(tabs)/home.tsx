@@ -60,7 +60,7 @@ export default function HomeScreen() {
 
   const showOffline = agenda.configured && agenda.offline && agenda.classes.length > 0;
   const footer = agenda.configured
-    ? `EDT ${adeid}${agenda.syncedAt ? ` · synchronisé ${formatSyncTime(agenda.syncedAt, agenda.now)}` : ''}`
+    ? `Connecté à ${adeid}${agenda.syncedAt ? ` · synchronisé ${formatSyncTime(agenda.syncedAt, agenda.now)}` : ''}`
     : 'Emploi du temps non configuré';
 
   return (

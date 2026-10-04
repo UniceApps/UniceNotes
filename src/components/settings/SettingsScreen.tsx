@@ -51,31 +51,6 @@ export function SettingsScreen({ tab = false }: { tab?: boolean }) {
     restartFromOobe();
   }
 
-  // cookies et données des pages de l'ENT ouvertes dans l'application
-  function clearBrowserCookies() {
-    haptics('warning');
-    Alert.alert(
-      'Vider les cookies ?',
-      "Tu devras te reconnecter à Moodle, Outlook, PronoteCampus… la prochaine fois que tu les ouvriras dans l'application.",
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Vider',
-          style: 'destructive',
-          onPress: async () => {
-            if (await clearWebSession()) {
-              haptics('success');
-              setNotice('Cookies du navigateur intégré vidés');
-            } else {
-              haptics('error');
-              Alert.alert('Impossible de vider les cookies', 'Réessaie dans un instant.');
-            }
-          },
-        },
-      ],
-    );
-  }
-
   function deleteAllData() {
     haptics('warning');
     Alert.alert(
@@ -114,7 +89,7 @@ export function SettingsScreen({ tab = false }: { tab?: boolean }) {
           <ListItem
             icon="calendar-edit"
             title="Emploi du temps"
-            subtitle={settings.adeid ? `EDT ${settings.adeid}` : 'Non configuré'}
+            subtitle={settings.adeid ? `Connecté à ${settings.adeid}` : 'Non configuré'}
             onPress={() => navigate('/edt-config')}
           />
           <ListItem
@@ -142,20 +117,6 @@ export function SettingsScreen({ tab = false }: { tab?: boolean }) {
               right={<Switch value={settings.liveActivities} onValueChange={toggleLiveActivities} />}
             />
           )}
-        </ListGroup>
-      </View>
-
-      <View>
-        <SectionTitle title="Services de l'ENT" />
-        <ListGroup>
-          <ListItem
-            icon="cookie-remove-outline"
-            tone="secondary"
-            title="Vider les cookies du navigateur intégré"
-            subtitle="Te déconnecte de Moodle, Outlook, PronoteCampus…"
-            right={null}
-            onPress={clearBrowserCookies}
-          />
         </ListGroup>
       </View>
 
@@ -260,7 +221,7 @@ function AboutCard() {
           </Text>
         </View>
         <Text variant="labelLarge" style={{ flex: 1, color: c.onPrimaryContainer }}>
-          Merci de l&apos;utiliser :)
+          Merci de l&apos;avoir installée :)
         </Text>
       </View>
     </View>

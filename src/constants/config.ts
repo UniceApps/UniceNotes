@@ -26,7 +26,7 @@ export const LINKS = {
 export const RELEASE_NOTES = {
   title: "Tu as mis à jour l'application ! 🎉",
   items: [
-    { icon: 'palette-outline', text: "Toute l'application fait peau neuve" },
+    { icon: 'palette-outline', text: "Toute l'application fait peau neuve !" },
     { icon: 'widgets-outline', text: 'Les widgets sont maintenant disponibles pour Android' },
     { icon: 'star-outline', text: 'Ajoute tes salles favorites pour vérifier leur disponibilité plus rapidement' },
     { icon: 'dock-bottom', text: "Une barre d'onglets pour tout retrouver : accueil, EDT, salles, ENT et paramètres" },

@@ -35,6 +35,6 @@ export function getCalendarTheme(theme: AppTheme): DeepPartial<ThemeConfigs> {
     nowIndicatorColor: c.error,
     // week-end grisé
     unavailableHourBackgroundColor: c.elevation.level1,
-    eventContainerStyle: { borderRadius: 8 },
+    eventContainerStyle: { borderRadius: 2 },
   };
 }
