@@ -9,10 +9,10 @@ export async function openURL(url: string): Promise<void> {
   await WebBrowser.openBrowserAsync(url);
 }
 
-// service de l'ENT : navigateur de l'app, dans l'onglet ENT
-export function openEntApp(id: string): void {
+// service de l'ENT : navigateur de l'app, dans l'onglet ENT ; from : onglet retrouvé à la fermeture
+export function openEntApp(id: string, from?: 'home'): void {
   haptics('light');
-  router.push({ pathname: '/ent/browser', params: { app: id } });
+  router.push({ pathname: '/ent/browser', params: from ? { app: id, from } : { app: id } });
 }
 
 // pages et documents affichés par la WebView ; le reste (mailto:, tel:, msteams:…) part vers le système

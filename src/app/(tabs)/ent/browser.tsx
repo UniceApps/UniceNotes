@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, BackHandler, Linking, Platform, View } from 'react-native';
 
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { IconButton, ProgressBar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, type WebViewNavigation } from 'react-native-webview';
@@ -20,8 +20,9 @@ import { haptics } from '@/src/utils/haptics';
 // navigateur de l'onglet ENT : les services y restent connectés d'un lancement à l'autre
 export default function BrowserScreen() {
   const router = useRouter();
-  const { app: appId } = useLocalSearchParams<{ app?: string }>();
+  const { app: appId, from } = useLocalSearchParams<{ app?: string; from?: string }>();
   const app = getEntApp(appId);
+  const fromHome = from === 'home';
 
   // lien vers un service inconnu
   useEffect(() => {
@@ -30,18 +31,21 @@ export default function BrowserScreen() {
     else router.replace('/ent');
   }, [app, router]);
 
-  function close() {
+  const close = useCallback(() => {
     haptics('light');
     if (router.canGoBack()) router.back();
     else router.replace('/ent');
-  }
+    // ouvert depuis l'accueil : on y retourne, la liste reste dans l'onglet ENT
+    if (fromHome) router.navigate('/home');
+  }, [router, fromHome]);
 
   if (!app) return null;
   // un autre service repart d'une page et d'un historique vierges
-  return <Browser key={app.id} app={app} onClose={close} />;
+  return <Browser key={app.id} app={app} fromHome={fromHome} onClose={close} />;
 }
 
-function Browser({ app, onClose }: { app: EntApp; onClose: () => void }) {
+function Browser({ app, fromHome, onClose }: { app: EntApp; fromHome: boolean; onClose: () => void }) {
+  const navigation = useNavigation();
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const tabBarInset = useTabBarInset();
@@ -88,13 +92,16 @@ function Browser({ app, onClose }: { app: EntApp; onClose: () => void }) {
 
   // le bouton retour d'Android remonte l'historique de la page avant de fermer
   useEffect(() => {
-    if (Platform.OS !== 'android' || !canGoBack) return;
+    if (Platform.OS !== 'android' || (!canGoBack && !fromHome)) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      webRef.current?.goBack();
+      // resté ouvert derrière un autre onglet
+      if (!navigation.isFocused()) return false;
+      if (canGoBack) webRef.current?.goBack();
+      else onClose();
       return true;
     });
     return () => subscription.remove();
-  }, [canGoBack]);
+  }, [canGoBack, fromHome, navigation, onClose]);
 
   // mailto:, tel:, Teams… confiés au système, jamais depuis une iframe
   function shouldStartLoad({ url, isTopFrame }: ShouldStartLoadRequest): boolean {
@@ -113,8 +120,8 @@ function Browser({ app, onClose }: { app: EntApp; onClose: () => void }) {
 
   return (
     <View style={{ flex: 1, paddingBottom: tabBarInset, backgroundColor: c.background }}>
-      {/* sans historique, le glissement depuis le bord revient à la liste */}
-      <Stack.Screen options={{ gestureEnabled: !canGoBack }} />
+      {/* sans historique, le glissement depuis le bord revient à la liste ; ouvert depuis l'accueil, seule la croix ferme */}
+      <Stack.Screen options={{ gestureEnabled: !canGoBack && !fromHome }} />
       <View style={{ paddingTop: insets.top, backgroundColor: c.elevation.level2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 12, paddingVertical: 8 }}>
           <HeaderButton icon="close" label="Fermer" onPress={onClose} />

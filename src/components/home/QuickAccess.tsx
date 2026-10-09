@@ -49,7 +49,7 @@ export function QuickAccess({ onOpenEnt }: { onOpenEnt: () => void }) {
             subtitle={app.subtitle}
             badge={<EntAppIcon app={app} />}
             accessibilityHint="Appui long pour le retirer de l'accès rapide"
-            onPress={() => openEntApp(app.id)}
+            onPress={() => openEntApp(app.id, 'home')}
             onLongPress={() => confirmUnpin(app)}
           />
         ))}
