@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { useRouter } from 'expo-router';
-import { IconButton, Text, Tooltip } from 'react-native-paper';
+import { Icon, IconButton, Text, Tooltip } from 'react-native-paper';
 
 import { useAppTheme } from '@/src/theme';
 import { haptics } from '@/src/utils/haptics';
@@ -16,6 +16,8 @@ export interface ScreenHeaderProps {
   tab?: boolean;
   // HeaderButton à droite
   actions?: ReactNode;
+  // titre pressable, signalé par un chevron ; label : son effet pour l'accessibilité
+  titleAction?: { label: string; onPress: () => void };
 }
 
 export function HeaderButton({
@@ -44,7 +46,7 @@ export function HeaderButton({
   );
 }
 
-export function ScreenHeader({ title, subtitle, modal, tab, actions }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, modal, tab, actions, titleAction }: ScreenHeaderProps) {
   const router = useRouter();
   const theme = useAppTheme();
 
@@ -55,13 +57,27 @@ export function ScreenHeader({ title, subtitle, modal, tab, actions }: ScreenHea
     else router.replace('/home');
   }
 
+  const heading = titleAction ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityHint={titleAction.label}
+      onPress={titleAction.onPress}
+      style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: pressed ? 0.6 : 1 })}
+    >
+      <Text variant="headlineLarge" style={{ flexShrink: 1 }}>
+        {title}
+      </Text>
+      <Icon source="chevron-down" size={28} color={theme.colors.onSurfaceVariant} />
+    </Pressable>
+  ) : (
+    <Text variant="headlineLarge">{title}</Text>
+  );
+
   return (
     <View>
       {tab ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
-          <Text variant="headlineLarge" style={{ flex: 1 }}>
-            {title}
-          </Text>
+          <View style={{ flex: 1, alignItems: 'flex-start' }}>{heading}</View>
           {actions}
         </View>
       ) : (
@@ -71,9 +87,7 @@ export function ScreenHeader({ title, subtitle, modal, tab, actions }: ScreenHea
             <View style={{ flex: 1 }} />
             {actions}
           </View>
-          <Text variant="headlineLarge" style={{ marginTop: 12 }}>
-            {title}
-          </Text>
+          <View style={{ marginTop: 12, alignItems: 'flex-start' }}>{heading}</View>
         </>
       )}
       {subtitle && (

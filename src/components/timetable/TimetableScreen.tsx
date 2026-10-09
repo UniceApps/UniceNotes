@@ -15,6 +15,7 @@ import { Divider, Menu } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CALENDAR_LOCALES, getCalendarTheme } from '@/src/components/timetable/calendarTheme';
+import { DatePicker } from '@/src/components/timetable/DatePicker';
 import { EventCard } from '@/src/components/timetable/EventCard';
 import { EventSheet } from '@/src/components/timetable/EventSheet';
 import { Banner } from '@/src/components/ui/Banner';
@@ -25,7 +26,7 @@ import { useTabBarInset } from '@/src/hooks/useTabBarInset';
 import { useTemporaryCalendar } from '@/src/hooks/useTemporaryCalendar';
 import { useAppTheme, type Tone } from '@/src/theme';
 import type { CalendarEvent } from '@/src/types';
-import { formatMonth, getIsoWeek } from '@/src/utils/date';
+import { formatIsoDate, formatMonth, getIsoWeek } from '@/src/utils/date';
 import { haptics } from '@/src/utils/haptics';
 
 const VIEWS = [
@@ -36,6 +37,10 @@ const VIEWS = [
 
 // samedi et dimanche grisés (jours luxon : 1 = lundi)
 const WEEKEND = { 6: [{ start: 0, end: 24 * 60 }], 7: [{ start: 0, end: 24 * 60 }] };
+
+const TODAY = new Date();
+const MIN_DATE = new Date(TODAY.getFullYear() - 2, TODAY.getMonth(), TODAY.getDate());
+const MAX_DATE = new Date(TODAY.getFullYear() + 2, TODAY.getMonth(), TODAY.getDate());
 
 interface BannerState {
   tone: Tone;
@@ -58,6 +63,7 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
   const [days, setDays] = useState(3);
   const [visibleDate, setVisibleDate] = useState(() => new Date());
   const [menuVisible, setMenuVisible] = useState(false);
+  const [picking, setPicking] = useState(false);
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
   const calendarRef = useRef<CalendarKitHandle>(null);
   const sheetRef = useRef<BottomSheetModal>(null);
@@ -82,6 +88,16 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
   function goToToday() {
     haptics('light');
     calendarRef.current?.goToDate({ date: new Date(), hourScroll: true, animatedDate: true, animatedHour: true });
+  }
+
+  function openPicker() {
+    haptics('light');
+    setPicking(true);
+  }
+
+  function goToDay(date: Date) {
+    haptics('selection');
+    calendarRef.current?.goToDate({ date: formatIsoDate(date), animatedDate: true });
   }
 
   function showEvent(pressed: OnEventResponse) {
@@ -121,6 +137,7 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
         <ScreenHeader
           tab={tab}
           title={formatMonth(visibleDate)}
+          titleAction={{ label: 'Choisir une date', onPress: openPicker }}
           subtitle={`Semaine ${getIsoWeek(visibleDate)} · ${tempCode ? 'EDT temporaire' : `EDT ${adeid ?? 'non configuré'}`}`}
           actions={
             <>
@@ -167,6 +184,8 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
         timeZone="Europe/Paris"
         numberOfDays={days}
         scrollByDay={days < 5}
+        minDate={MIN_DATE}
+        maxDate={MAX_DATE}
         start={7 * 60}
         end={20 * 60}
         unavailableHours={WEEKEND}
@@ -185,6 +204,16 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
       </CalendarContainer>
 
       <EventSheet sheetRef={sheetRef} event={selected} />
+
+      {picking && (
+        <DatePicker
+          value={visibleDate}
+          minimumDate={MIN_DATE}
+          maximumDate={MAX_DATE}
+          onPick={goToDay}
+          onClose={() => setPicking(false)}
+        />
+      )}
     </View>
   );
 }

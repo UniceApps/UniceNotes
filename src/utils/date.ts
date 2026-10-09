@@ -67,6 +67,10 @@ export function formatLongDate(date: Date): string {
   return capitalize(`${DAYS[date.getDay()]} ${day === 1 ? '1er' : day} ${MONTHS[date.getMonth()]}`);
 }
 
+export function formatIsoDate(date: Date): string {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 // "Octobre 2026"
 export function formatMonth(date: Date): string {
   return capitalize(`${MONTHS[date.getMonth()]} ${date.getFullYear()}`);
