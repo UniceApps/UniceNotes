@@ -38,7 +38,7 @@ export const ENT_APPS: EntApp[] = [
     tone: 'tertiary',
     symbol: 'book',
     image: require('../assets/images/ent/moodle.png'),
-    url: 'https://portail-lms.univ-cotedazur.fr',
+    url: 'https://lms.univ-cotedazur.fr',
   },
   {
     id: 'pronote',
@@ -115,6 +115,33 @@ export const ENT_APPS: EntApp[] = [
     symbol: 'creditcard',
     image: require('../assets/images/ent/izly.png'),
     url: 'https://mon-espace.izly.fr',
+  },
+  {
+    id: 'alertesignal',
+    label: 'Alerte Signalement',
+    subtitle: 'Harcèlement, violences, discriminations',
+    icon: 'alert-circle-outline',
+    tone: 'primary',
+    symbol: 'exclamationmark.triangle',
+    url: 'https://univ-cotedazur.signalement.net',
+  },
+  {
+    id: 'unicaalumni',
+    label: 'UniCA Alumni',
+    subtitle: 'Réseau professionnel',
+    icon: 'account-group-outline',
+    tone: 'primary',
+    symbol: 'person.2',
+    url: 'https://link.univ-cotedazur.fr/',
+  },
+  {
+    id: 'sesame',
+    label: 'Mon Compte UniCA',
+    subtitle: 'Mot de passe, email',
+    icon: 'account-cog-outline',
+    tone: 'primary',
+    symbol: 'gearshape',
+    url: 'https://moncompte.univ-cotedazur.fr',
   },
 ];
 
