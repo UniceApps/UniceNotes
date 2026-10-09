@@ -14,6 +14,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DeepLinkHandler } from '@/src/components/DeepLinkHandler';
 import { CalendarProvider } from '@/src/context/CalendarContext';
 import { loadSettings, SettingsProvider, type Settings } from '@/src/context/SettingsContext';
+import { loadExams } from '@/src/hooks/useExams';
 import { loadPinnedApps } from '@/src/hooks/usePinnedApps';
 import { getNavigationTheme, loadThemePreference, useAppTheme } from '@/src/theme';
 
@@ -26,6 +27,7 @@ async function prepare(): Promise<Settings> {
     loadSettings(),
     loadThemePreference(),
     loadPinnedApps(),
+    loadExams(),
     Font.loadAsync({ Bahnschrift: require('../assets/bahnschrift.ttf') }),
     // une erreur de Measure ne doit pas bloquer le démarrage
     Measure.init({ config: new MeasureConfig({}) }).catch(console.warn),

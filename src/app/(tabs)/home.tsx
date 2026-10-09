@@ -13,6 +13,7 @@ import { Screen } from '@/src/components/ui/Screen';
 import { useSettings } from '@/src/context/SettingsContext';
 import { useAgenda } from '@/src/hooks/useAgenda';
 import { useAppTheme } from '@/src/theme';
+import { formatExamReminder } from '@/src/utils/agenda';
 import { formatSyncTime } from '@/src/utils/date';
 import { haptics } from '@/src/utils/haptics';
 
@@ -86,6 +87,16 @@ export default function HomeScreen() {
           icon="wifi-off"
           text={agenda.loading ? 'Nouvelle tentative…' : 'Hors ligne · EDT en cache'}
           action={agenda.loading ? undefined : { label: 'Réessayer', onPress: retry }}
+          style={{ marginBottom: -8 }}
+        />
+      )}
+
+      {agenda.exams.length > 0 && (
+        <Banner
+          tone="tertiary"
+          icon="file-document-edit-outline"
+          text={formatExamReminder(agenda.exams, agenda.now)}
+          action={{ label: 'Voir', onPress: openTimetable }}
           style={{ marginBottom: -8 }}
         />
       )}

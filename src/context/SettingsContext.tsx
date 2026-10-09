@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
+import { resetExams } from '@/src/hooks/useExams';
 import { resetPinnedApps } from '@/src/hooks/usePinnedApps';
 import { clearCalendarCache } from '@/src/services/calendar-cache';
 import { clearWebSession } from '@/src/services/webSession';
@@ -12,6 +13,7 @@ export interface Settings {
   adeid: string | null;
   haptics: boolean;
   liveActivities: boolean;
+  notifications: boolean;
   oobeCompleted: boolean;
 }
 
@@ -19,20 +21,28 @@ interface SettingsContextValue extends Settings {
   setAdeid: (adeid: string) => void;
   setHaptics: (on: boolean) => void;
   setLiveActivities: (on: boolean) => void;
+  setNotifications: (on: boolean) => void;
   setOobeCompleted: (done: boolean) => void;
   clearAllData: () => Promise<void>;
 }
 
-const DEFAULT_SETTINGS: Settings = { adeid: null, haptics: true, liveActivities: true, oobeCompleted: false };
+const DEFAULT_SETTINGS: Settings = {
+  adeid: null,
+  haptics: true,
+  liveActivities: true,
+  notifications: true,
+  oobeCompleted: false,
+};
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 // lu une seule fois, avant le premier rendu (voir app/_layout.tsx)
 export async function loadSettings(): Promise<Settings> {
-  const [adeid, haptics, liveActivities, oobeCompleted] = await Promise.all([
+  const [adeid, haptics, liveActivities, notifications, oobeCompleted] = await Promise.all([
     secureStorage.get('adeid'),
     storage.get('haptics'),
     storage.get('liveActivities'),
+    storage.get('notifications'),
     storage.get('oobeCompleted'),
   ]);
 
@@ -44,6 +54,7 @@ export async function loadSettings(): Promise<Settings> {
     adeid: code,
     haptics: haptics !== 'false',
     liveActivities: liveActivities !== 'false',
+    notifications: notifications !== 'false',
     // un edt déjà configuré vient d'une version sans configuration initiale
     oobeCompleted: oobeCompleted === 'true' || code !== null,
   };
@@ -74,6 +85,11 @@ export function SettingsProvider({ initial, children }: { initial: Settings; chi
       storage.set('liveActivities', String(on));
     },
 
+    setNotifications(on) {
+      update({ notifications: on });
+      storage.set('notifications', String(on));
+    },
+
     setOobeCompleted(done) {
       update({ oobeCompleted: done });
       if (done) storage.set('oobeCompleted', 'true');
@@ -86,6 +102,7 @@ export function SettingsProvider({ initial, children }: { initial: Settings; chi
       clearCalendarCache();
       resetTheme();
       resetPinnedApps();
+      resetExams();
       setHapticsEnabled(true);
       setSettings(DEFAULT_SETTINGS);
     },

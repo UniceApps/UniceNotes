@@ -50,6 +50,12 @@
       "expo-web-browser",
       "expo-quick-actions",
       [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/android/monochrome.png"
+        }
+      ],
+      [
         "expo-alternate-app-icons",
         [
           {

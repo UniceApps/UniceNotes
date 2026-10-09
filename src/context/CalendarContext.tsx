@@ -1,8 +1,10 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 
+import { useExams } from '@/src/hooks/useExams';
 import { readCalendarCache, writeCalendarCache } from '@/src/services/calendar-cache';
 import { fetchCalendar } from '@/src/services/edt';
+import { updateExamReminders } from '@/src/services/reminders';
 import { updateClassActivity, updateWidgets } from '@/src/services/widgets';
 import type { CalendarEvent } from '@/src/types';
 import { MINUTE_MS } from '@/src/utils/date';
@@ -37,7 +39,8 @@ const CalendarContext = createContext<CalendarContextValue | null>(null);
 
 // seul endroit qui télécharge l'edt : l'accueil, l'emploi du temps et les widgets partagent ces données
 export function CalendarProvider({ children }: { children: ReactNode }) {
-  const { adeid, liveActivities } = useSettings();
+  const { adeid, liveActivities, notifications } = useSettings();
+  const exams = useExams();
   const [data, setData] = useState<CalendarData | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
   // dernière synchro terminée
@@ -96,14 +99,23 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
     updateClassActivity(liveActivities && current ? current.events : null);
   }, [adeid, current, liveActivities]);
 
+  // rappels des DS, même hors ligne avec l'edt en cache
+  useEffect(() => {
+    if (adeid && !current) return;
+    updateExamReminders(notifications && current ? current.events : null, exams);
+  }, [adeid, current, notifications, exams]);
+
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       if (adeid && Date.now() - lastSyncAt.current > STALE_AFTER_MS) setFetchKey((key) => key + 1);
-      else if (current) updateClassActivity(liveActivities ? current.events : null);
+      else if (current) {
+        updateClassActivity(liveActivities ? current.events : null);
+        updateExamReminders(notifications ? current.events : null, exams);
+      }
     });
     return () => subscription.remove();
-  }, [adeid, current, liveActivities]);
+  }, [adeid, current, liveActivities, notifications, exams]);
 
   const value: CalendarContextValue = {
     events: current?.events ?? [],

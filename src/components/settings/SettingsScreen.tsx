@@ -12,6 +12,7 @@ import { Watermark } from '@/src/components/ui/Watermark';
 import { APP_VERSION, BUILD_COMMIT, IS_BETA, LINKS } from '@/src/constants/config';
 import { useSettings } from '@/src/context/SettingsContext';
 import { clearWebSession } from '@/src/services/webSession';
+import { alertNotificationsDenied, NOTIFICATIONS_SUPPORTED, requestReminderPermission } from '@/src/services/reminders';
 import { LIVE_ACTIVITIES_SUPPORTED } from '@/src/services/widgets';
 import { useAppTheme } from '@/src/theme';
 import { openURL } from '@/src/utils/browser';
@@ -39,6 +40,18 @@ export function SettingsScreen({ tab = false }: { tab?: boolean }) {
     settings.setLiveActivities(on);
   }
 
+  // la permission est demandée avant : les rappels sont programmés dès l'activation
+  async function toggleNotifications(on: boolean) {
+    haptics('selection');
+    const allowed = !on || (await requestReminderPermission());
+    settings.setNotifications(on);
+    if (!allowed) {
+      alertNotificationsDenied(
+        'Autorise les notifications de UniceNotes dans les réglages pour recevoir des rappels.',
+      );
+    }
+  }
+
   // repart de zéro : la configuration initiale devient le seul écran de la pile
   function restartFromOobe() {
     if (router.canDismiss()) router.dismissAll();
@@ -55,7 +68,7 @@ export function SettingsScreen({ tab = false }: { tab?: boolean }) {
     haptics('warning');
     Alert.alert(
       'Supprimer mes données',
-      "Ton emploi du temps, tes favoris, tes connexions aux services de l'ENT et tes réglages seront effacés de l'appareil. Cette action est irréversible.",
+      "Ton emploi du temps, tes DS, tes favoris, tes connexions aux services de l'ENT et tes réglages seront effacés de l'appareil. Cette action est irréversible.",
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -115,6 +128,16 @@ export function SettingsScreen({ tab = false }: { tab?: boolean }) {
               subtitle="Ton cours sur l'écran verrouillé"
               onPress={() => toggleLiveActivities(!settings.liveActivities)}
               right={<Switch value={settings.liveActivities} onValueChange={toggleLiveActivities} />}
+            />
+          )}
+          {NOTIFICATIONS_SUPPORTED && (
+            <ListItem
+              icon="bell-outline"
+              tone="secondary"
+              title="Notifications"
+              subtitle="Reçois des rappels et alertes de l'app"
+              onPress={() => toggleNotifications(!settings.notifications)}
+              right={<Switch value={settings.notifications} onValueChange={toggleNotifications} />}
             />
           )}
         </ListGroup>

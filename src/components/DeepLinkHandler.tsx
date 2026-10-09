@@ -8,6 +8,7 @@ import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
 import { getEntApp } from '@/src/constants/ent';
 import { useSettings } from '@/src/context/SettingsContext';
 import { usePinnedApps } from '@/src/hooks/usePinnedApps';
+import { addReminderTapListener } from '@/src/services/reminders';
 import { emitDeepLink, parseDeepLink, peekDeepLink, subscribeDeepLink, takeDeepLink } from '@/src/utils/deeplink';
 
 const icon = (symbol: string) => (Platform.OS === 'ios' ? `symbol:${symbol}` : null);
@@ -48,12 +49,16 @@ function buildQuickActions(pinned: string[]): QuickActions.Action[] {
   return [EDT_ACTION, ...apps, ENT_ACTION].slice(0, MAX_QUICK_ACTIONS);
 }
 
-function onQuickAction(action: QuickActions.Action) {
-  const link = parseDeepLink(action.params?.href);
+function openLink(url: unknown) {
+  const link = parseDeepLink(url);
   if (link) emitDeepLink(link);
 }
 
-// liens profonds, widgets et raccourcis de l'icône : traités une fois l'accueil affiché
+function onQuickAction(action: QuickActions.Action) {
+  openLink(action.params?.href);
+}
+
+// liens profonds, widgets, raccourcis de l'icône et rappels : traités une fois l'accueil affiché
 export function DeepLinkHandler() {
   const router = useRouter();
   const pathname = usePathname();
@@ -65,6 +70,8 @@ export function DeepLinkHandler() {
   const landed = useRef(false);
 
   useQuickActionCallback(onQuickAction);
+
+  useEffect(() => addReminderTapListener(openLink), []);
 
   useEffect(() => {
     QuickActions.setItems(oobeCompleted ? buildQuickActions(pinned) : []);

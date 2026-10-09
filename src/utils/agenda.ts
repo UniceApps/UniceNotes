@@ -50,6 +50,23 @@ export function toAgendaClasses(events: CalendarEvent[]): AgendaClass[] {
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 }
 
+const EXAM_HORIZON_DAYS = 7;
+
+// DS du prochain jour qui en compte, dans la semaine à venir ; classes : triées par début
+export function findNextExams(classes: AgendaClass[], exams: ReadonlySet<string>, now: Date): AgendaClass[] {
+  const upcoming = classes.filter((item) => item.start > now && exams.has(item.id));
+  const [first] = upcoming;
+  if (!first || daysBetween(now, first.start) >= EXAM_HORIZON_DAYS) return [];
+  return upcoming.filter((item) => daysBetween(first.start, item.start) === 0);
+}
+
+export function formatExamReminder(exams: AgendaClass[], now: Date): string {
+  const [first] = exams;
+  const day = formatDay(first.start, now).toLowerCase();
+  if (exams.length > 1) return `Tu as ${exams.length} DS ${day}, le premier à ${formatClock(first.start)}`;
+  return `Tu as un DS ${day} à ${formatClock(first.start)} : ${first.title}`;
+}
+
 // classes : triées par début
 export function buildAgenda(classes: AgendaClass[], now: Date): Agenda {
   const [next = null, ...rest] = classes.filter((item) => item.end > now);

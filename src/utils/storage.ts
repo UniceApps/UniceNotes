@@ -7,11 +7,13 @@ export type StorageKey =
   | 'theme'
   | 'haptics'
   | 'liveActivities'
+  | 'notifications'
   | 'oobeCompleted'
   | 'releaseNotesVersion'
   | 'adeProjectOverride'
   | 'favoriteRooms'
   | 'pinnedApps'
+  | 'exams'
   | 'androidWidgetTimeline';
 
 export type SecureKey = 'adeid';

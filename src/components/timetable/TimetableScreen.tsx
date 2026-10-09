@@ -22,6 +22,7 @@ import { Banner } from '@/src/components/ui/Banner';
 import { HeaderButton, ScreenHeader } from '@/src/components/ui/ScreenHeader';
 import { useCalendar } from '@/src/context/CalendarContext';
 import { useSettings } from '@/src/context/SettingsContext';
+import { useExams } from '@/src/hooks/useExams';
 import { useTabBarInset } from '@/src/hooks/useTabBarInset';
 import { useTemporaryCalendar } from '@/src/hooks/useTemporaryCalendar';
 import { useAppTheme, type Tone } from '@/src/theme';
@@ -58,6 +59,7 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
   const { adeid, haptics: hapticsOn } = useSettings();
   const calendar = useCalendar();
   const temporary = useTemporaryCalendar(tempCode);
+  const exams = useExams();
   const tab = tempCode === null;
 
   const [days, setDays] = useState(3);
@@ -74,6 +76,11 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
   const events = tempCode ? temporary.events : calendar.events;
   const loading = tempCode ? temporary.loading : calendar.loading;
   const reload = tempCode ? temporary.retry : calendar.reload;
+
+  const calendarEvents = useMemo(
+    () => (tab ? events.map((event) => (exams.has(event.id) ? { ...event, exam: true } : event)) : events),
+    [tab, events, exams],
+  );
 
   function openMenu() {
     haptics('light');
@@ -177,7 +184,7 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
 
       <CalendarContainer
         ref={calendarRef}
-        events={events}
+        events={calendarEvents}
         theme={calendarTheme}
         initialLocales={CALENDAR_LOCALES}
         locale="fr"
@@ -203,7 +210,7 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
         <CalendarBody renderEvent={renderEvent} />
       </CalendarContainer>
 
-      <EventSheet sheetRef={sheetRef} event={selected} />
+      <EventSheet sheetRef={sheetRef} event={selected} readOnly={!tab} />
 
       {picking && (
         <DatePicker
