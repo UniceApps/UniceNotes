@@ -42,6 +42,16 @@ export async function requestReminderPermission(): Promise<boolean> {
   }
 }
 
+export async function hasReminderPermission(): Promise<boolean> {
+  if (!NOTIFICATIONS_SUPPORTED) return false;
+  try {
+    const { granted } = await Notifications.getPermissionsAsync();
+    return granted;
+  } catch {
+    return false;
+  }
+}
+
 // notifications refusées par le système : renvoie vers les réglages
 export function alertNotificationsDenied(message: string): void {
   Alert.alert('Notifications désactivées', message, [

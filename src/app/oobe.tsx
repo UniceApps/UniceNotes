@@ -23,13 +23,24 @@ import lightBackground from '@/src/assets/lottie/background_login_light.json';
 import { IconPicker, ThemePicker } from '@/src/components/appearance/AppearancePickers';
 import { APP_VERSION, LINKS } from '@/src/constants/config';
 import { useSettings } from '@/src/context/SettingsContext';
+import { hasReminderPermission, NOTIFICATIONS_SUPPORTED, requestReminderPermission } from '@/src/services/reminders';
 import { useAppTheme } from '@/src/theme';
 import { openURL } from '@/src/utils/browser';
 import { haptics } from '@/src/utils/haptics';
 import { storage } from '@/src/utils/storage';
 
-const STEPS = ['welcome', 'edt', 'appearance'] as const;
-type Step = (typeof STEPS)[number];
+type Step = 'welcome' | 'edt' | 'notifications' | 'appearance';
+// pas d'étape notifications sur le web
+const STEPS: Step[] = [
+  'welcome',
+  'edt',
+  ...(NOTIFICATIONS_SUPPORTED ? (['notifications'] as const) : []),
+  'appearance',
+];
+
+function stepLabel(step: Step): string {
+  return `Étape ${STEPS.indexOf(step)} sur ${STEPS.length - 1}`;
+}
 
 // marge intérieure du panneau, que le sélecteur d'icônes déborde
 const PANEL_PADDING = 24;
@@ -85,8 +96,13 @@ export default function OobeScreen() {
             <Welcome onNext={() => goTo('edt')} onSettings={() => router.push('/oobe/settings')} />
           )}
           {step === 'edt' && (
-            <EdtStep adeid={adeid} onConfigure={() => router.push('/edt-config')} onNext={() => goTo('appearance')} />
+            <EdtStep
+              adeid={adeid}
+              onConfigure={() => router.push('/edt-config')}
+              onNext={() => goTo(NOTIFICATIONS_SUPPORTED ? 'notifications' : 'appearance')}
+            />
           )}
+          {step === 'notifications' && <NotificationsStep onNext={() => goTo('appearance')} />}
           {step === 'appearance' && <AppearanceStep onFinish={finish} />}
         </Animated.View>
       </Animated.View>
@@ -138,7 +154,7 @@ function EdtStep({
   const theme = useAppTheme();
   return (
     <StepContent
-      label="Étape 1 sur 2"
+      label={stepLabel('edt')}
       title="Ton emploi du temps"
       text="Configure ton emploi du temps ADE pour retrouver ton prochain cours à l'accueil et sur tes widgets."
     >
@@ -177,10 +193,67 @@ function EdtStep({
   );
 }
 
+function NotificationsStep({ onNext }: { onNext: () => void }) {
+  const theme = useAppTheme();
+  const { setNotifications } = useSettings();
+  const [granted, setGranted] = useState(false);
+
+  useEffect(() => {
+    hasReminderPermission().then(setGranted);
+  }, []);
+
+  // un refus n'empêche pas de continuer, la permission sera redemandée au premier DS marqué
+  async function enable() {
+    const allowed = await requestReminderPermission();
+    if (allowed) setNotifications(true);
+    onNext();
+  }
+
+  return (
+    <StepContent
+      label={stepLabel('notifications')}
+      title="Reste informé"
+      text="Reçois un rappel la veille de tes DS et évaluations pour ne jamais être pris de court."
+    >
+      {granted ? (
+        <>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              padding: 12,
+              borderRadius: 16,
+              backgroundColor: theme.colors.primaryContainer,
+            }}
+          >
+            <Icon source="check-circle" size={24} color={theme.colors.primary} />
+            <Text variant="titleMedium" style={{ flex: 1, color: theme.colors.onPrimaryContainer }}>
+              Notifications activées
+            </Text>
+          </View>
+          <Button mode="contained" icon="arrow-right" contentStyle={{ flexDirection: 'row-reverse' }} onPress={onNext}>
+            Suivant
+          </Button>
+        </>
+      ) : (
+        <>
+          <Button mode="contained" icon="bell-ring-outline" onPress={enable}>
+            Activer les notifications
+          </Button>
+          <Button mode="text" onPress={onNext}>
+            Plus tard
+          </Button>
+        </>
+      )}
+    </StepContent>
+  );
+}
+
 function AppearanceStep({ onFinish }: { onFinish: () => void }) {
   const theme = useAppTheme();
   return (
-    <StepContent label="Étape 2 sur 2" title="À ton style">
+    <StepContent label={stepLabel('appearance')} title="À ton style">
       <ThemePicker />
       <IconPicker compact bleed={PANEL_PADDING} />
       <Text variant="bodySmall" style={{ textAlign: 'center', color: theme.colors.onSurfaceVariant }}>
