@@ -11,7 +11,7 @@ import { formatLongDate } from '@/src/utils/date';
 const GREETINGS = [
   {
     from: 18,
-    title: 'Bonsoir ! 🌙',
+    title: 'Bonsoir :o',
     messages: [
       'On jette un œil à demain ?',
       'Petit check avant demain ?',
@@ -21,7 +21,7 @@ const GREETINGS = [
   },
   {
     from: 12,
-    title: 'Salut ! 👋',
+    title: 'Salut :p',
     messages: [
       'On fait le point sur la journée ?',
       'Petit check rapide de ta journée ?',
@@ -31,7 +31,7 @@ const GREETINGS = [
   },
   {
     from: 5,
-    title: 'Bonjour ! ☀️',
+    title: 'Bonjour :)',
     messages: [
       'Passe une excellente journée !',
       "Quoi de prévu aujourd'hui ? :)",
