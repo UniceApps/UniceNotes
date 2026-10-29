@@ -28,7 +28,7 @@ async function prepare(): Promise<Settings> {
     loadThemePreference(),
     loadPinnedApps(),
     loadExams(),
-    Font.loadAsync({ Bahnschrift: require('../assets/bahnschrift.ttf') }),
+    Font.loadAsync({ BricolageGrotesque: require('../assets/bricolage-grotesque.ttf') }),
     // une erreur de Measure ne doit pas bloquer le démarrage
     Measure.init({ config: new MeasureConfig({}) }).catch(console.warn),
   ]);

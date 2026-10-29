@@ -25,8 +25,8 @@ export default function TabsLayout() {
       labelStyle={
         android
           ? {
-              default: { color: c.onSurfaceVariant, fontFamily: 'Bahnschrift' },
-              selected: { color: c.onSurface, fontFamily: 'Bahnschrift' },
+              default: { color: c.onSurfaceVariant, fontFamily: 'BricolageGrotesque' },
+              selected: { color: c.onSurface, fontFamily: 'BricolageGrotesque' },
             }
           : undefined
       }

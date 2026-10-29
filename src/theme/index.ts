@@ -42,7 +42,7 @@ export interface ThemeOption {
 }
 
 // la police est chargée avant le premier rendu (voir app/_layout.tsx)
-const fonts = configureFonts({ config: { fontFamily: 'Bahnschrift' } });
+const fonts = configureFonts({ config: { fontFamily: 'BricolageGrotesque' } });
 
 // azur sert de référence : une palette doit définir exactement les mêmes clés
 function isValidColors(value: unknown, reference: Record<string, unknown> = azur.light): boolean {

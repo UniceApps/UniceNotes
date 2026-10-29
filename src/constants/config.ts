@@ -26,8 +26,8 @@ export const RELEASE_NOTES = {
   title: "Tu as mis à jour l'application ! 🎉",
   items: [
     { icon: 'gift-outline', text: "TOC TOC ON FRAPPE A MA PORTE QUI C'EST QUI EST LA ? C'EST LE BON VIEUX HOHOHO PAPA NOEL !" },
-    { icon: 'widget-outline', text: "Widgets d'écran verouillé, compatibilité Siri et Raccourcis (iOS seulement)" },
-    { icon: 'open-outline', text: "Ouverture des applications natives de l'ENT si installées" },
+    { icon: 'widgets-outline', text: "Widgets d'écran verouillé, compatibilité Siri et Raccourcis (iOS seulement)" },
+    { icon: 'open-in-app', text: "Ouverture des applications natives de l'ENT si installées" },
     { icon: 'bug-outline', text: 'Correction de bugs' },
   ],
 };

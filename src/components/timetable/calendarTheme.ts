@@ -23,7 +23,7 @@ export function getCalendarTheme(theme: AppTheme): DeepPartial<ThemeConfigs> {
       surface: c.elevation.level2,
       onSurface: c.onSurface,
     },
-    textStyle: { fontFamily: 'Bahnschrift' },
+    textStyle: { fontFamily: 'BricolageGrotesque' },
     hourTextStyle: { color: c.onSurfaceVariant, fontSize: 11 },
     dayName: { color: c.onSurfaceVariant },
     dayNumber: { color: c.onSurface },
