@@ -55,7 +55,7 @@ export const ENT_APPS: EntApp[] = [
     image: require('../assets/images/ent/pronotecampus.png'),
     // version mobile, faite pour l'écran d'un téléphone
     url: LINKS.pronote,
-    native: 'hyperplanning://{site}',
+    native: 'hyperplanning://',
   },
   {
     id: 'iut-notes',
