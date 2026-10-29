@@ -1,7 +1,7 @@
 {
   "name": "unicenotes",
   "main": "index.ts",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "scripts": {
     "start": "expo start --dev-client",
     "android": "expo run:android",
