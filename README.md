@@ -46,7 +46,7 @@ src/
 
 L'emploi du temps n'est téléchargé qu'à un seul endroit (`src/context/CalendarContext.tsx`) : l'accueil, l'écran emploi du temps, les widgets et la Live Activity partagent les mêmes données.
 
-Les services de l'ENT (`src/constants/ent.ts`) s'ouvrent dans le navigateur de l'app (`src/app/browser.tsx`), qui n'accepte que les services de ce catalogue : un lien profond ne peut pas lui faire ouvrir une autre adresse.
+Les services de l'ENT (`src/constants/ent.ts`) s'ouvrent dans leur app native quand elle est installée (champ `native`, un schéma d'URL), sinon dans le navigateur de l'app (`src/app/browser.tsx`), qui n'accepte que les services de ce catalogue : un lien profond ne peut pas lui faire ouvrir une autre adresse.
 
 ## ⚙️ Contribution
 

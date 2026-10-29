@@ -11,6 +11,7 @@ import { useSettings } from '@/src/context/SettingsContext';
 import { usePinnedApps } from '@/src/hooks/usePinnedApps';
 import { handleAppIntents, publishEntApps } from '@/src/services/app-intents';
 import { addReminderTapListener } from '@/src/services/reminders';
+import { openNativeApp } from '@/src/utils/browser';
 import { emitDeepLink, parseDeepLink, peekDeepLink, subscribeDeepLink, takeDeepLink } from '@/src/utils/deeplink';
 import { showTimetableToday } from '@/src/utils/timetable';
 
@@ -94,11 +95,14 @@ export function DeepLinkHandler() {
       if (router.canDismiss()) router.dismissAll();
     };
 
-    // seulement un service du catalogue, jamais une adresse venue du lien
+    // seulement un service du catalogue, jamais une adresse venue du lien ; son app native en priorité
     const openApp = (id: string) => {
       if (!getEntApp(id) || (pathname === '/ent/browser' && currentApp === id)) return;
-      reset();
-      router.push({ pathname: '/ent/browser', params: { app: id } });
+      openNativeApp(id).then((opened) => {
+        if (opened) return;
+        reset();
+        router.push({ pathname: '/ent/browser', params: { app: id } });
+      });
     };
 
     switch (target.kind) {

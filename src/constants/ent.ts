@@ -16,9 +16,11 @@ export interface EntApp {
   tone: Tone;
   // SF Symbol des raccourcis de l'icône de l'app (iOS)
   symbol: string;
+  // app native ouverte à la place du navigateur si elle est installée ; {site} : adresse réelle du service
+  native?: string;
 }
 
-// services ouverts dans le navigateur intégré, qui garde la connexion d'un lancement à l'autre
+// app native si elle est installée, sinon navigateur intégré, qui garde la connexion d'un lancement à l'autre
 export const ENT_APPS: EntApp[] = [
   {
     id: 'outlook',
@@ -29,6 +31,7 @@ export const ENT_APPS: EntApp[] = [
     symbol: 'envelope',
     image: require('../assets/images/ent/outlook.png'),
     url: 'https://outlook.office.com/owa/?realm=etu.univ-cotedazur.fr&exsvurl=1&ll-cc=1036&modurl=0',
+    native: 'ms-outlook://',
   },
   {
     id: 'moodle',
@@ -39,6 +42,8 @@ export const ENT_APPS: EntApp[] = [
     symbol: 'book',
     image: require('../assets/images/ent/moodle.png'),
     url: 'https://lms.univ-cotedazur.fr',
+    // le portail redirige vers l'instance de l'année (lms.univ-cotedazur.fr/2026), que l'app Moodle attend
+    native: 'moodlemobile://{site}',
   },
   {
     id: 'pronote',
@@ -50,6 +55,7 @@ export const ENT_APPS: EntApp[] = [
     image: require('../assets/images/ent/pronotecampus.png'),
     // version mobile, faite pour l'écran d'un téléphone
     url: LINKS.pronote,
+    native: 'hyperplanning://{site}',
   },
   {
     id: 'iut-notes',
@@ -68,6 +74,7 @@ export const ENT_APPS: EntApp[] = [
     tone: 'tertiary',
     symbol: 'signature',
     url: 'https://app.sowesign.com/login',
+    native: 'studentapp://',
   },
   {
     id: 'dossier-web',
@@ -89,6 +96,17 @@ export const ENT_APPS: EntApp[] = [
     url: 'https://annuaire.univ-cotedazur.fr',
   },
   {
+    id: 'izly',
+    label: 'Izly',
+    subtitle: 'Paiement CROUS',
+    icon: 'cash-multiple',
+    tone: 'primary',
+    symbol: 'creditcard',
+    image: require('../assets/images/ent/izly.png'),
+    url: 'https://mon-espace.izly.fr',
+    native: 'izly://',
+  },
+  {
     id: 'bu',
     label: 'BU',
     subtitle: 'Bibliothèques',
@@ -105,16 +123,6 @@ export const ENT_APPS: EntApp[] = [
     tone: 'secondary',
     symbol: 'printer',
     url: 'https://impression.univ-cotedazur.fr/',
-  },
-  {
-    id: 'izly',
-    label: 'Izly',
-    subtitle: 'Paiement CROUS',
-    icon: 'cash-multiple',
-    tone: 'primary',
-    symbol: 'creditcard',
-    image: require('../assets/images/ent/izly.png'),
-    url: 'https://mon-espace.izly.fr',
   },
   {
     id: 'alertesignal',
