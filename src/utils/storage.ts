@@ -8,6 +8,7 @@ export type StorageKey =
   | 'themeSeason'
   | 'themeBeforeSeason'
   | 'haptics'
+  | 'holidays'
   | 'liveActivities'
   | 'notifications'
   | 'oobeCompleted'

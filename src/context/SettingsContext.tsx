@@ -12,6 +12,7 @@ export interface Settings {
   // numéro étudiant ou cursus (suffixe -VET), null tant que l'edt n'est pas configuré
   adeid: string | null;
   haptics: boolean;
+  holidays: boolean;
   liveActivities: boolean;
   notifications: boolean;
   oobeCompleted: boolean;
@@ -20,6 +21,7 @@ export interface Settings {
 interface SettingsContextValue extends Settings {
   setAdeid: (adeid: string) => void;
   setHaptics: (on: boolean) => void;
+  setHolidays: (on: boolean) => void;
   setLiveActivities: (on: boolean) => void;
   setNotifications: (on: boolean) => void;
   setOobeCompleted: (done: boolean) => void;
@@ -29,6 +31,7 @@ interface SettingsContextValue extends Settings {
 const DEFAULT_SETTINGS: Settings = {
   adeid: null,
   haptics: true,
+  holidays: true,
   liveActivities: true,
   notifications: true,
   oobeCompleted: false,
@@ -38,9 +41,10 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 // lu une seule fois, avant le premier rendu (voir app/_layout.tsx)
 export async function loadSettings(): Promise<Settings> {
-  const [adeid, haptics, liveActivities, notifications, oobeCompleted] = await Promise.all([
+  const [adeid, haptics, holidays, liveActivities, notifications, oobeCompleted] = await Promise.all([
     secureStorage.get('adeid'),
     storage.get('haptics'),
+    storage.get('holidays'),
     storage.get('liveActivities'),
     storage.get('notifications'),
     storage.get('oobeCompleted'),
@@ -53,6 +57,7 @@ export async function loadSettings(): Promise<Settings> {
   return {
     adeid: code,
     haptics: haptics !== 'false',
+    holidays: holidays !== 'false',
     liveActivities: liveActivities !== 'false',
     notifications: notifications !== 'false',
     // un edt déjà configuré vient d'une version sans configuration initiale
@@ -78,6 +83,11 @@ export function SettingsProvider({ initial, children }: { initial: Settings; chi
       update({ haptics: on });
       setHapticsEnabled(on);
       storage.set('haptics', String(on));
+    },
+
+    setHolidays(on) {
+      update({ holidays: on });
+      storage.set('holidays', String(on));
     },
 
     setLiveActivities(on) {

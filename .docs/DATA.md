@@ -25,6 +25,7 @@ Unencrypted key-value storage for non-sensitive preferences.
 - `themeSeason`: seasonal theme forced once on everyone (`noel-2026`), removed when the season ends
 - `themeBeforeSeason`: theme chosen before the seasonal theme, given back when the season ends
 - `haptics`: `"false"` when haptic feedback is disabled
+- `holidays`: `"false"` when French (metropolitan) public holidays are hidden from the timetable and home screen
 - `liveActivities`: `"false"` when the iOS Live Activity is disabled
 - `notifications`: `"false"` when the exam (DS) reminders are disabled
 - `oobeCompleted`: `"true"` once the first-launch setup is done

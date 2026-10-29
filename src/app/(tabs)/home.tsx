@@ -17,11 +17,12 @@ import { useAppTheme } from '@/src/theme';
 import { formatExamReminder } from '@/src/utils/agenda';
 import { formatSyncTime } from '@/src/utils/date';
 import { haptics } from '@/src/utils/haptics';
+import { formatHolidayReminder } from '@/src/utils/holidays';
 
 export default function HomeScreen() {
   const router = useRouter();
   const theme = useAppTheme();
-  const { adeid } = useSettings();
+  const { adeid, holidays } = useSettings();
   const agenda = useAgenda();
 
   function editEdt() {
@@ -61,6 +62,7 @@ export default function HomeScreen() {
   }
 
   const showOffline = agenda.configured && agenda.offline && agenda.classes.length > 0;
+  const holiday = holidays ? formatHolidayReminder(agenda.now) : null;
   const footer = agenda.configured
     ? `Connecté à ${adeid}${agenda.syncedAt ? ` · synchronisé ${formatSyncTime(agenda.syncedAt, agenda.now)}` : ''}`
     : 'Emploi du temps non configuré';
@@ -92,6 +94,8 @@ export default function HomeScreen() {
           style={{ marginBottom: -8 }}
         />
       )}
+
+      {holiday && <Banner tone="tertiary" icon="calendar-star" text={holiday} style={{ marginBottom: -8 }} />}
 
       {agenda.exams.length > 0 && (
         <Banner

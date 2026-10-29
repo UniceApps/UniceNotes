@@ -1,7 +1,8 @@
 import { View } from 'react-native';
 
-import type { PackedEvent } from '@howljs/calendar-kit';
-import { Text } from 'react-native-paper';
+import type { PackedAllDayEvent, PackedEvent, SizeAnimation } from '@howljs/calendar-kit';
+import { Icon, Text } from 'react-native-paper';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 
 import { getCourseColors, useAppTheme } from '@/src/theme';
 
@@ -35,5 +36,32 @@ export function EventCard({ event }: { event: PackedEvent }) {
         </Text>
       ) : null}
     </View>
+  );
+}
+
+// bandeau de l'en-tête : jour férié sur tertiaryContainer, ou cours ADE de 24 h et plus ; compact : vue semaine
+export function AllDayCard({
+  event,
+  size,
+  compact,
+}: {
+  event: PackedAllDayEvent;
+  size: SizeAnimation;
+  compact: boolean;
+}) {
+  const theme = useAppTheme();
+  const holiday = event.holiday === true;
+  const color = holiday ? theme.colors.onTertiaryContainer : getCourseColors(theme, event.title ?? '').onContainer;
+  const heightStyle = useAnimatedStyle(() => ({ height: size.height.value - 2 }));
+
+  return (
+    <Animated.View
+      style={[{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: compact ? 2 : 4 }, heightStyle]}
+    >
+      {holiday && !compact && <Icon source="calendar-star" size={14} color={color} />}
+      <Text variant="labelSmall" numberOfLines={compact ? 2 : 1} style={{ flexShrink: 1, color, fontWeight: '600' }}>
+        {event.title}
+      </Text>
+    </Animated.View>
   );
 }

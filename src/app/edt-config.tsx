@@ -57,6 +57,7 @@ export default function EdtConfigScreen() {
       )}
 
       <ProjectPicker />
+      <HolidaysToggle />
     </Screen>
   );
 }
@@ -241,6 +242,32 @@ function ProjectPicker() {
               }
             />
           ))}
+      </ListGroup>
+    </View>
+  );
+}
+
+// jours fériés de métropole dans l'edt et sur l'accueil
+function HolidaysToggle() {
+  const { holidays, setHolidays } = useSettings();
+
+  function toggle(on: boolean) {
+    haptics('selection');
+    setHolidays(on);
+  }
+
+  return (
+    <View>
+      <SectionTitle title="Affichage" />
+      <ListGroup>
+        <ListItem
+          icon="calendar-star"
+          tone="tertiary"
+          title="Jours fériés"
+          subtitle="France métropolitaine"
+          onPress={() => toggle(!holidays)}
+          right={<Switch value={holidays} onValueChange={toggle} />}
+        />
       </ListGroup>
     </View>
   );

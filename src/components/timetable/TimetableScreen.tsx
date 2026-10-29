@@ -8,7 +8,9 @@ import {
   CalendarHeader,
   type CalendarKitHandle,
   type OnEventResponse,
+  type PackedAllDayEvent,
   type PackedEvent,
+  type SizeAnimation,
 } from '@howljs/calendar-kit';
 import { useRouter } from 'expo-router';
 import { Divider, Menu } from 'react-native-paper';
@@ -16,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CALENDAR_LOCALES, getCalendarTheme } from '@/src/components/timetable/calendarTheme';
 import { DatePicker } from '@/src/components/timetable/DatePicker';
-import { EventCard } from '@/src/components/timetable/EventCard';
+import { AllDayCard, EventCard } from '@/src/components/timetable/EventCard';
 import { EventSheet } from '@/src/components/timetable/EventSheet';
 import { Banner } from '@/src/components/ui/Banner';
 import { HeaderButton, ScreenHeader } from '@/src/components/ui/ScreenHeader';
@@ -29,6 +31,7 @@ import { getCourseColors, useAppTheme, type Tone } from '@/src/theme';
 import type { CalendarEvent } from '@/src/types';
 import { formatIsoDate, formatMonth, getIsoWeek } from '@/src/utils/date';
 import { haptics } from '@/src/utils/haptics';
+import { getHolidays } from '@/src/utils/holidays';
 import { subscribeTimetableToday } from '@/src/utils/timetable';
 
 const VIEWS = [
@@ -37,12 +40,24 @@ const VIEWS = [
   { days: 5, label: 'Semaine', icon: 'view-week-outline' },
 ];
 
-// samedi et dimanche grisés (jours luxon : 1 = lundi)
-const WEEKEND = { 6: [{ start: 0, end: 24 * 60 }], 7: [{ start: 0, end: 24 * 60 }] };
-
 const TODAY = new Date();
 const MIN_DATE = new Date(TODAY.getFullYear() - 2, TODAY.getMonth(), TODAY.getDate());
 const MAX_DATE = new Date(TODAY.getFullYear() + 2, TODAY.getMonth(), TODAY.getDate());
+
+const HOLIDAYS = Array.from({ length: MAX_DATE.getFullYear() - MIN_DATE.getFullYear() + 1 }, (_, i) =>
+  getHolidays(MIN_DATE.getFullYear() + i),
+).flat();
+
+// samedi, dimanche (jours luxon : 1 = lundi) et fériés grisés
+const FULL_DAY = [{ start: 0, end: 24 * 60 }];
+const WEEKEND = { 6: FULL_DAY, 7: FULL_DAY };
+const WEEKEND_AND_HOLIDAYS = {
+  ...WEEKEND,
+  ...Object.fromEntries(HOLIDAYS.map((holiday) => [holiday.date, FULL_DAY])),
+};
+
+// calendar-kit laisse les bandeaux de l'en-tête à 2 pt de haut (reanimated 4) : ils prennent celle d'AllDayCard
+const ALL_DAY_CONTAINER = { bottom: undefined };
 
 interface BannerState {
   tone: Tone;
@@ -57,7 +72,7 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const tabBarInset = useTabBarInset();
-  const { adeid, haptics: hapticsOn } = useSettings();
+  const { adeid, haptics: hapticsOn, holidays: holidaysOn } = useSettings();
   const calendar = useCalendar();
   const temporary = useTemporaryCalendar(tempCode);
   const exams = useExams();
@@ -73,21 +88,45 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
 
   const calendarTheme = useMemo(() => getCalendarTheme(theme), [theme]);
   const renderEvent = useCallback((event: PackedEvent) => <EventCard event={event} />, []);
+  // vue semaine : colonnes étroites, bandeaux sur deux lignes
+  const compact = days === 5;
+  const renderAllDayEvent = useCallback(
+    (event: PackedAllDayEvent, size: SizeAnimation) => <AllDayCard event={event} size={size} compact={compact} />,
+    [compact],
+  );
 
   const events = tempCode ? temporary.events : calendar.events;
   const loading = tempCode ? temporary.loading : calendar.loading;
   const reload = tempCode ? temporary.retry : calendar.reload;
 
-  // couleurs des cours tirées du thème ; DS marqués dans l'onglet seulement
+  // couleurs des cours tirées du thème ; DS marqués dans l'onglet seulement ; fériés en tête de journée
   const calendarEvents = useMemo(
-    () =>
-      events.map((event) => ({
+    () => [
+      ...events.map((event) => ({
         ...event,
         color: getCourseColors(theme, event.title).container,
+        containerStyle: ALL_DAY_CONTAINER,
         exam: tab && exams.has(event.id),
       })),
-    [tab, events, exams, theme],
+      ...(holidaysOn ? HOLIDAYS : []).map((holiday) => ({
+        id: `holiday-${holiday.date}`,
+        title: holiday.name,
+        start: { date: holiday.date },
+        end: { date: holiday.date },
+        color: theme.colors.tertiaryContainer,
+        containerStyle: ALL_DAY_CONTAINER,
+        holiday: true,
+      })),
+    ],
+    [tab, events, exams, theme, holidaysOn],
   );
+
+  // jour et numéro des fériés en tertiaire, sauf aujourd'hui qui garde sa pastille
+  const highlightDates = useMemo(() => {
+    if (!holidaysOn) return undefined;
+    const style = { dayName: { color: theme.colors.tertiary }, dayNumber: { color: theme.colors.tertiary } };
+    return Object.fromEntries(HOLIDAYS.map((holiday) => [holiday.date, style]));
+  }, [theme, holidaysOn]);
 
   function openMenu() {
     haptics('light');
@@ -209,7 +248,8 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
         maxDate={MAX_DATE}
         start={7 * 60}
         end={20 * 60}
-        unavailableHours={WEEKEND}
+        unavailableHours={holidaysOn ? WEEKEND_AND_HOLIDAYS : WEEKEND}
+        highlightDates={highlightDates}
         isLoading={loading}
         scrollToNow
         showWeekNumber
@@ -220,7 +260,11 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
         onChange={(date) => setVisibleDate(new Date(date))}
         onPressEvent={showEvent}
       >
-        <CalendarHeader />
+        <CalendarHeader
+          renderEvent={renderAllDayEvent}
+          eventInitialMinutes={compact ? 36 : 20}
+          eventMaxMinutes={compact ? 36 : 30}
+        />
         <CalendarBody renderEvent={renderEvent} />
       </CalendarContainer>
 
