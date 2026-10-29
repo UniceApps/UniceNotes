@@ -10,7 +10,7 @@ import { Sheet } from '@/src/components/ui/Sheet';
 import { useSettings } from '@/src/context/SettingsContext';
 import { setExam, useExams } from '@/src/hooks/useExams';
 import { alertNotificationsDenied, requestReminderPermission } from '@/src/services/reminders';
-import { useAppTheme } from '@/src/theme';
+import { getCourseColors, useAppTheme } from '@/src/theme';
 import type { CalendarEvent } from '@/src/types';
 import { formatSchedule } from '@/src/utils/agenda';
 import { DAY_MS, formatClock, formatDay, formatLongDate } from '@/src/utils/date';
@@ -51,7 +51,7 @@ function EventDetails({ event, readOnly, onClose }: { event: CalendarEvent; read
   return (
     <View>
       <View style={{ flexDirection: 'row', gap: 12 }}>
-        <View style={{ width: 6, borderRadius: 3, backgroundColor: event.color }} />
+        <View style={{ width: 6, borderRadius: 3, backgroundColor: getCourseColors(theme, event.title).accent }} />
         <View style={{ flex: 1 }}>
           <Text variant="labelLarge" style={{ color: theme.colors.primary }}>
             {formatLongDate(start)}

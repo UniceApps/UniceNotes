@@ -89,9 +89,11 @@ const NextClassWidget = (props: NextClassWidgetProps, env: WidgetEnvironment) =>
     </HStack>
   );
 
-  // barre verticale à la couleur du cours, à la hauteur du texte qu'elle accompagne
+  // barre verticale à la couleur du cours dans le thème de l'app, à la hauteur du texte qu'elle accompagne
   const bar = (c: WidgetClass, width: number) => (
-    <Capsule modifiers={[frame({ width }), foregroundStyle(c.color || 'gray')]} />
+    <Capsule
+      modifiers={[frame({ width }), foregroundStyle((env?.colorScheme === 'dark' ? c.colorDark : c.color) || 'gray')]}
+    />
   );
 
   // cours mis en avant : horaire au-dessus, titre et salle à côté de la barre

@@ -1,7 +1,6 @@
 import ICAL from 'ical.js';
 
 import type { AdeProgram, CalendarEvent } from '@/src/types';
-import { colorFromString } from '@/src/utils/color';
 import { isValidEdtCode } from '@/src/utils/deeplink';
 import { withTimeout } from '@/src/utils/network';
 
@@ -25,7 +24,6 @@ function parseCalendar(ics: string): CalendarEvent[] | null {
         title,
         room: event.location?.trim() ?? '',
         notes: event.description?.trim() ?? '',
-        color: colorFromString(title),
         start: { dateTime: event.startDate.toJSDate().toISOString() },
         end: { dateTime: event.endDate.toJSDate().toISOString() },
       };

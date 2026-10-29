@@ -79,8 +79,10 @@ function currentProps(timeline: StoredEntry[] | null, now: number): NextClassWid
   return { courses, configured: true };
 }
 
-function courseColor(c: WidgetClass): ColorProp {
-  return c.color && /^#[0-9a-f]{6}$/i.test(c.color) ? (c.color as ColorProp) : '#9E9E9E';
+// couleur du cours dans le thème de l'app, version claire ou sombre du widget
+function courseColor(c: WidgetClass, palette: Palette): ColorProp {
+  const color = palette === DARK ? (c.colorDark ?? c.color) : c.color;
+  return color && /^#[0-9a-f]{6}$/i.test(color) ? (color as ColorProp) : '#9E9E9E';
 }
 
 function Header({ palette }: { palette: Palette }) {
@@ -98,7 +100,7 @@ function MainCourse({ course, palette, compact }: { course: WidgetClass; palette
             width: compact ? 3 : 4,
             height: compact ? 44 : 38,
             borderRadius: 2,
-            backgroundColor: courseColor(course),
+            backgroundColor: courseColor(course, palette),
             marginRight: compact ? 6 : 8,
           }}
         />
@@ -125,7 +127,7 @@ function NextCourse({ course, palette }: { course: WidgetClass; palette: Palette
   return (
     <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', alignItems: 'center', marginTop: 8 }}>
       <FlexWidget
-        style={{ width: 3, height: 28, borderRadius: 2, backgroundColor: courseColor(course), marginRight: 6 }}
+        style={{ width: 3, height: 28, borderRadius: 2, backgroundColor: courseColor(course, palette), marginRight: 6 }}
       />
       <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
         <TextWidget
@@ -260,7 +262,13 @@ function StripWidget({ props, palette }: { props: NextClassWidgetProps; palette:
       {course ? (
         <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', width: 'match_parent' }}>
           <FlexWidget
-            style={{ width: 3, height: 32, borderRadius: 2, backgroundColor: courseColor(course), marginRight: 8 }}
+            style={{
+              width: 3,
+              height: 32,
+              borderRadius: 2,
+              backgroundColor: courseColor(course, palette),
+              marginRight: 8,
+            }}
           />
           <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
             <TextWidget

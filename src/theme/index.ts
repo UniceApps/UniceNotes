@@ -5,6 +5,7 @@ import { DarkTheme, DefaultTheme, type Theme } from 'expo-router';
 import { configureFonts, type MD3Theme } from 'react-native-paper';
 
 import type { RoomStatus } from '@/src/types';
+import { hashString, hexColor } from '@/src/utils/color';
 import { storage } from '@/src/utils/storage';
 
 import ambre from './palettes/ambre.json';
@@ -22,6 +23,7 @@ const BASE_THEME_ID = 'azur';
 const DEFAULT_THEME_ID = SEASON.active ? SEASON.theme : BASE_THEME_ID;
 
 export type ThemeColors = typeof azur.light;
+export type CourseColors = ThemeColors['courses'][number];
 
 export interface AppTheme {
   dark: boolean;
@@ -178,6 +180,20 @@ export function getToneColors(theme: AppTheme, tone: Tone) {
         onAccent: c.onPrimary,
       };
   }
+}
+
+// couleurs d'un cours dans la gamme du thème, choisies d'après son nom : un cours garde toujours la même
+export function getCourseColors(theme: AppTheme, title: string): CourseColors {
+  const { courses } = theme.colors;
+  return courses[(hashString(title) >>> 0) % courses.length];
+}
+
+// accents d'un cours pour les widgets et la Live Activity, qui choisissent eux-mêmes entre clair et sombre
+export function getCourseAccents(themeId: string, title: string): { color: string; colorDark: string } {
+  return {
+    color: hexColor(getCourseColors(getTheme(themeId, false), title).accent),
+    colorDark: hexColor(getCourseColors(getTheme(themeId, true), title).accent),
+  };
 }
 
 // pastilles vert / orange / rouge (salles, serveurs) : le thème Material n'en a pas

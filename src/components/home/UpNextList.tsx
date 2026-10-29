@@ -4,7 +4,7 @@ import { Text } from 'react-native-paper';
 
 import { PressableScale } from '@/src/components/ui/PressableScale';
 import { SectionTitle } from '@/src/components/ui/SectionTitle';
-import { useAppTheme } from '@/src/theme';
+import { getCourseColors, useAppTheme } from '@/src/theme';
 import type { AgendaClass } from '@/src/utils/agenda';
 import { formatClock } from '@/src/utils/date';
 
@@ -39,7 +39,7 @@ export function UpNextList({ items, dayEnd, onPress }: UpNextListProps) {
                 {formatClock(item.end)}
               </Text>
             </View>
-            <View style={{ width: 4, borderRadius: 2, backgroundColor: item.color }} />
+            <View style={{ width: 4, borderRadius: 2, backgroundColor: getCourseColors(theme, item.title).accent }} />
             <View style={{ flex: 1 }}>
               <Text variant="titleSmall" numberOfLines={2}>
                 {item.title}

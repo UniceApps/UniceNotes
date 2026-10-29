@@ -6,7 +6,6 @@ export interface AgendaClass {
   id: string;
   title: string;
   room: string;
-  color: string;
   start: Date;
   end: Date;
 }
@@ -42,7 +41,6 @@ export function toAgendaClasses(events: CalendarEvent[]): AgendaClass[] {
       id: event.id,
       title: event.title || 'Cours sans titre',
       room: event.room,
-      color: event.color,
       start: new Date(event.start.dateTime),
       end: new Date(event.end.dateTime),
     }))

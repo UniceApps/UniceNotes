@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import type { CalendarEvent, ClassActivityProps, WidgetClass, WidgetTimelineEntry } from '@/src/types';
+import { getCourseAccents } from '@/src/theme';
 import { DAY_MS, MINUTE_MS, formatClock } from '@/src/utils/date';
 import { ClassActivity } from '@/src/widgets/ClassActivity';
 import { NextClassWidgetInstance } from '@/src/widgets/NextClassWidget';
@@ -20,19 +21,23 @@ function upcoming(events: CalendarEvent[], now: Date): CalendarEvent[] {
   return events.filter((e) => endOf(e) > now).sort((a, b) => startOf(a).getTime() - startOf(b).getTime());
 }
 
-function toWidgetClass(event: CalendarEvent): WidgetClass {
+function toWidgetClass(event: CalendarEvent, themeId: string): WidgetClass {
   return {
     title: event.title,
     room: event.room,
     startTime: formatClock(startOf(event)),
     endTime: formatClock(endOf(event)),
-    color: event.color,
+    ...getCourseAccents(themeId, event.title),
     endsAt: endOf(event).getTime(),
   };
 }
 
 // une entrée maintenant puis à chaque fin de cours ; null : edt non configuré, undefined : pas encore téléchargé
-function buildWidgetTimeline(events: CalendarEvent[] | null | undefined, now = new Date()): WidgetTimelineEntry[] {
+function buildWidgetTimeline(
+  events: CalendarEvent[] | null | undefined,
+  themeId: string,
+  now = new Date(),
+): WidgetTimelineEntry[] {
   if (!events) return [{ date: now, props: { courses: [], configured: events === null ? false : undefined } }];
 
   const future = upcoming(events, now);
@@ -40,7 +45,7 @@ function buildWidgetTimeline(events: CalendarEvent[] | null | undefined, now = n
     future
       .filter((e) => endOf(e) > date)
       .slice(0, 3)
-      .map(toWidgetClass);
+      .map((e) => toWidgetClass(e, themeId));
 
   const cutoff = now.getTime() + TIMELINE_SPAN_MS;
   const ends = future.map((e) => endOf(e).getTime()).filter((ms) => ms > now.getTime() && ms <= cutoff);
@@ -54,7 +59,7 @@ function buildWidgetTimeline(events: CalendarEvent[] | null | undefined, now = n
 }
 
 // cours en cours ou qui commence bientôt, null sinon
-function buildClassActivity(events: CalendarEvent[], now = new Date()): ClassActivityProps | null {
+function buildClassActivity(events: CalendarEvent[], themeId: string, now = new Date()): ClassActivityProps | null {
   const [current, next] = upcoming(events, now);
   if (!current || startOf(current).getTime() - now.getTime() > ACTIVITY_LEAD_MS) return null;
 
@@ -65,7 +70,7 @@ function buildClassActivity(events: CalendarEvent[], now = new Date()): ClassAct
     room: current.room,
     start: startOf(current).getTime(),
     end: end.getTime(),
-    color: current.color,
+    ...getCourseAccents(themeId, current.title),
     next:
       next && nextStart && nextStart.toDateString() === end.toDateString()
         ? { title: next.title, room: next.room, startTime: formatClock(nextStart) }
@@ -73,20 +78,21 @@ function buildClassActivity(events: CalendarEvent[], now = new Date()): ClassAct
   };
 }
 
-export function updateWidgets(events: CalendarEvent[] | null | undefined): void {
+// themeId : les couleurs des cours suivent le thème de l'app
+export function updateWidgets(events: CalendarEvent[] | null | undefined, themeId: string): void {
   if (!WIDGETS_SUPPORTED) return;
   try {
-    NextClassWidgetInstance.updateTimeline(buildWidgetTimeline(events));
+    NextClassWidgetInstance.updateTimeline(buildWidgetTimeline(events, themeId));
   } catch {
     // widget non installé ou extension indisponible
   }
 }
 
 // démarre, met à jour ou arrête la Live Activity (events null : l'arrête)
-export async function updateClassActivity(events: CalendarEvent[] | null): Promise<void> {
+export async function updateClassActivity(events: CalendarEvent[] | null, themeId: string): Promise<void> {
   if (!LIVE_ACTIVITIES_SUPPORTED) return;
   try {
-    const props = events ? buildClassActivity(events) : null;
+    const props = events ? buildClassActivity(events, themeId) : null;
     const [running, ...extra] = ClassActivity.getInstances();
     await Promise.all(extra.map((activity) => activity.end('immediate')));
 

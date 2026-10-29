@@ -16,7 +16,9 @@ import type { ClassActivityProps } from '@/src/types';
 // bannière de l'écran verrouillé et Dynamic Island
 const ClassActivityLayout = (props: ClassActivityProps, env: LiveActivityEnvironment) => {
   'widget';
-  const accent = props.color || 'gray';
+  // couleur du cours dans le thème de l'app : l'écran verrouillé suit le mode du système, la Dynamic Island est toujours sombre
+  const accent = (env?.colorScheme === 'dark' ? props.colorDark : props.color) || 'gray';
+  const islandAccent = props.colorDark || accent;
   const interval = { lower: new Date(props.start), upper: new Date(props.end) };
   const finished = env?.isStale === true;
 
@@ -26,7 +28,7 @@ const ClassActivityLayout = (props: ClassActivityProps, env: LiveActivityEnviron
     return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
-  const icon = <Image systemName="graduationcap.fill" color={accent} />;
+  const icon = <Image systemName="graduationcap.fill" color={islandAccent} />;
 
   const timer = (size: number, width: number) => (
     <Text
@@ -58,7 +60,9 @@ const ClassActivityLayout = (props: ClassActivityProps, env: LiveActivityEnviron
     </VStack>
   );
 
-  const progress = <ProgressView timerInterval={interval} countsDown={false} modifiers={[tint(accent)]} />;
+  const progress = (color: string) => (
+    <ProgressView timerInterval={interval} countsDown={false} modifiers={[tint(color)]} />
+  );
 
   return {
     banner: (
@@ -76,7 +80,7 @@ const ClassActivityLayout = (props: ClassActivityProps, env: LiveActivityEnviron
               <Spacer />
               {timer(22, 90)}
             </HStack>
-            {progress}
+            {progress(accent)}
           </>
         )}
       </VStack>
@@ -94,7 +98,7 @@ const ClassActivityLayout = (props: ClassActivityProps, env: LiveActivityEnviron
     expandedBottom: (
       <VStack alignment="leading" spacing={8} modifiers={[padding({ horizontal: 4 })]}>
         {finished ? ended : details}
-        {finished ? null : progress}
+        {finished ? null : progress(islandAccent)}
       </VStack>
     ),
   };

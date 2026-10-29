@@ -7,6 +7,7 @@ import { readCalendarCache, writeCalendarCache } from '@/src/services/calendar-c
 import { fetchCalendar } from '@/src/services/edt';
 import { updateExamReminders } from '@/src/services/reminders';
 import { updateClassActivity, updateWidgets } from '@/src/services/widgets';
+import { useThemeId } from '@/src/theme';
 import type { CalendarEvent } from '@/src/types';
 import { MINUTE_MS } from '@/src/utils/date';
 
@@ -41,6 +42,8 @@ const CalendarContext = createContext<CalendarContextValue | null>(null);
 // seul endroit qui télécharge l'edt : l'accueil, l'emploi du temps et les widgets partagent ces données
 export function CalendarProvider({ children }: { children: ReactNode }) {
   const { adeid, liveActivities, notifications } = useSettings();
+  // les widgets et la Live Activity reprennent les couleurs du thème choisi
+  const themeId = useThemeId();
   const exams = useExams();
   const [data, setData] = useState<CalendarData | null>(null);
   const [fetchKey, setFetchKey] = useState(0);
@@ -94,15 +97,15 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (adeid && !current) return;
     const events = !current ? null : current.syncedAt === null ? undefined : current.events;
-    updateWidgets(events);
+    updateWidgets(events, themeId);
     publishCourses(events);
-  }, [adeid, current]);
+  }, [adeid, current, themeId]);
 
   // la Live Activity suit l'edt affiché, une fois le cache lu
   useEffect(() => {
     if (adeid && !current) return;
-    updateClassActivity(liveActivities && current ? current.events : null);
-  }, [adeid, current, liveActivities]);
+    updateClassActivity(liveActivities && current ? current.events : null, themeId);
+  }, [adeid, current, liveActivities, themeId]);
 
   // rappels des DS, même hors ligne avec l'edt en cache
   useEffect(() => {
@@ -115,12 +118,12 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
       if (state !== 'active') return;
       if (adeid && Date.now() - lastSyncAt.current > STALE_AFTER_MS) setFetchKey((key) => key + 1);
       else if (current) {
-        updateClassActivity(liveActivities ? current.events : null);
+        updateClassActivity(liveActivities ? current.events : null, themeId);
         updateExamReminders(notifications ? current.events : null, exams);
       }
     });
     return () => subscription.remove();
-  }, [adeid, current, liveActivities, notifications, exams]);
+  }, [adeid, current, liveActivities, notifications, exams, themeId]);
 
   const value: CalendarContextValue = {
     events: current?.events ?? [],

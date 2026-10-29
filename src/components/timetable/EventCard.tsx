@@ -3,30 +3,30 @@ import { View } from 'react-native';
 import type { PackedEvent } from '@howljs/calendar-kit';
 import { Text } from 'react-native-paper';
 
-import { readableOn } from '@/src/utils/color';
+import { getCourseColors, useAppTheme } from '@/src/theme';
 
-const EXAM_COLOR = 'rgb(186, 26, 26)';
-
-// case d'un cours dans la grille, posée sur la couleur du cours
+// case d'un cours dans la grille, posée sur la couleur du cours (voir TimetableScreen)
 export function EventCard({ event }: { event: PackedEvent }) {
-  const color = readableOn(event.color ?? '#9E9E9E');
+  const theme = useAppTheme();
+  const color = getCourseColors(theme, event.title ?? '').onContainer;
   const exam = event.exam === true;
+  const { error, onError } = theme.colors;
 
   return (
     <View
       style={[
         { flex: 1, padding: 6, gap: 2 },
-        exam && { padding: 4, borderWidth: 2, borderRadius: 2, borderColor: EXAM_COLOR },
+        exam && { padding: 4, borderWidth: 2, borderRadius: 2, borderColor: error },
       ]}
     >
       {exam && (
-        <View style={{ alignSelf: 'flex-start', borderRadius: 4, paddingHorizontal: 4, backgroundColor: EXAM_COLOR }}>
-          <Text variant="labelSmall" style={{ color: 'white', fontWeight: '700' }}>
+        <View style={{ alignSelf: 'flex-start', borderRadius: 4, paddingHorizontal: 4, backgroundColor: error }}>
+          <Text variant="labelSmall" style={{ color: onError, fontWeight: '700' }}>
             DS
           </Text>
         </View>
       )}
-      <Text numberOfLines={4} style={{ fontWeight: '600', color: 'black', marginBottom: 4 }}>
+      <Text numberOfLines={4} style={{ fontWeight: '600', color, marginBottom: 4 }}>
         {event.title}
       </Text>
       {event.room ? (

@@ -25,7 +25,7 @@ import { useSettings } from '@/src/context/SettingsContext';
 import { useExams } from '@/src/hooks/useExams';
 import { useTabBarInset } from '@/src/hooks/useTabBarInset';
 import { useTemporaryCalendar } from '@/src/hooks/useTemporaryCalendar';
-import { useAppTheme, type Tone } from '@/src/theme';
+import { getCourseColors, useAppTheme, type Tone } from '@/src/theme';
 import type { CalendarEvent } from '@/src/types';
 import { formatIsoDate, formatMonth, getIsoWeek } from '@/src/utils/date';
 import { haptics } from '@/src/utils/haptics';
@@ -78,9 +78,15 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
   const loading = tempCode ? temporary.loading : calendar.loading;
   const reload = tempCode ? temporary.retry : calendar.reload;
 
+  // couleurs des cours tirées du thème ; DS marqués dans l'onglet seulement
   const calendarEvents = useMemo(
-    () => (tab ? events.map((event) => (exams.has(event.id) ? { ...event, exam: true } : event)) : events),
-    [tab, events, exams],
+    () =>
+      events.map((event) => ({
+        ...event,
+        color: getCourseColors(theme, event.title).container,
+        exam: tab && exams.has(event.id),
+      })),
+    [tab, events, exams, theme],
   );
 
   function openMenu() {

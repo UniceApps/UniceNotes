@@ -42,7 +42,59 @@
     },
     "surfaceDisabled": "rgba(32, 26, 23, 0.12)",
     "onSurfaceDisabled": "rgba(32, 26, 23, 0.38)",
-    "backdrop": "rgba(58, 47, 40, 0.4)"
+    "backdrop": "rgba(58, 47, 40, 0.4)",
+    "courses": [
+      {
+        "container": "rgb(255, 212, 191)",
+        "onContainer": "rgb(51, 17, 0)",
+        "accent": "rgb(183, 95, 43)"
+      },
+      {
+        "container": "rgb(245, 220, 129)",
+        "onContainer": "rgb(34, 27, 0)",
+        "accent": "rgb(141, 117, 0)"
+      },
+      {
+        "container": "rgb(220, 227, 142)",
+        "onContainer": "rgb(27, 29, 0)",
+        "accent": "rgb(116, 125, 15)"
+      },
+      {
+        "container": "rgb(195, 232, 162)",
+        "onContainer": "rgb(11, 32, 0)",
+        "accent": "rgb(85, 131, 50)"
+      },
+      {
+        "container": "rgb(173, 235, 186)",
+        "onContainer": "rgb(0, 33, 13)",
+        "accent": "rgb(42, 135, 79)"
+      },
+      {
+        "container": "rgb(157, 236, 211)",
+        "onContainer": "rgb(0, 32, 24)",
+        "accent": "rgb(0, 135, 109)"
+      },
+      {
+        "container": "rgb(255, 205, 255)",
+        "onContainer": "rgb(49, 9, 56)",
+        "accent": "rgb(160, 95, 168)"
+      },
+      {
+        "container": "rgb(255, 208, 231)",
+        "onContainer": "rgb(55, 7, 40)",
+        "accent": "rgb(176, 90, 142)"
+      },
+      {
+        "container": "rgb(255, 209, 216)",
+        "onContainer": "rgb(58, 7, 23)",
+        "accent": "rgb(185, 88, 110)"
+      },
+      {
+        "container": "rgb(255, 211, 204)",
+        "onContainer": "rgb(59, 9, 5)",
+        "accent": "rgb(187, 90, 76)"
+      }
+    ]
   },
   "dark": {
     "primary": "rgb(255, 182, 140)",
@@ -84,6 +136,58 @@
     },
     "surfaceDisabled": "rgba(236, 224, 219, 0.12)",
     "onSurfaceDisabled": "rgba(236, 224, 219, 0.38)",
-    "backdrop": "rgba(58, 47, 40, 0.4)"
+    "backdrop": "rgba(58, 47, 40, 0.4)",
+    "courses": [
+      {
+        "container": "rgb(112, 55, 21)",
+        "onContainer": "rgb(255, 219, 202)",
+        "accent": "rgb(255, 162, 111)"
+      },
+      {
+        "container": "rgb(85, 69, 0)",
+        "onContainer": "rgb(251, 225, 134)",
+        "accent": "rgb(213, 183, 61)"
+      },
+      {
+        "container": "rgb(69, 74, 3)",
+        "onContainer": "rgb(226, 233, 147)",
+        "accent": "rgb(182, 192, 80)"
+      },
+      {
+        "container": "rgb(49, 79, 26)",
+        "onContainer": "rgb(200, 238, 168)",
+        "accent": "rgb(148, 199, 109)"
+      },
+      {
+        "container": "rgb(20, 81, 45)",
+        "onContainer": "rgb(178, 241, 192)",
+        "accent": "rgb(113, 203, 140)"
+      },
+      {
+        "container": "rgb(0, 81, 64)",
+        "onContainer": "rgb(163, 242, 216)",
+        "accent": "rgb(79, 205, 172)"
+      },
+      {
+        "container": "rgb(97, 55, 102)",
+        "onContainer": "rgb(255, 214, 254)",
+        "accent": "rgb(232, 159, 238)"
+      },
+      {
+        "container": "rgb(107, 52, 85)",
+        "onContainer": "rgb(255, 216, 234)",
+        "accent": "rgb(251, 154, 210)"
+      },
+      {
+        "container": "rgb(113, 51, 65)",
+        "onContainer": "rgb(255, 217, 222)",
+        "accent": "rgb(255, 156, 176)"
+      },
+      {
+        "container": "rgb(115, 52, 43)",
+        "onContainer": "rgb(255, 218, 213)",
+        "accent": "rgb(255, 159, 145)"
+      }
+    ]
   }
 }

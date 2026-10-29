@@ -7,7 +7,6 @@ export interface CalendarEvent {
   room: string;
   // description ADE : groupes, enseignants…
   notes: string;
-  color: string;
   start: { dateTime: string };
   end: { dateTime: string };
 }
@@ -31,7 +30,9 @@ export interface WidgetClass {
   room: string;
   startTime: string;
   endTime: string;
+  // accents du cours dans le thème choisi, en clair et en sombre
   color?: string;
+  colorDark?: string;
   // fin du cours en ms
   endsAt?: number;
 }
@@ -53,6 +54,7 @@ export interface ClassActivityProps {
   start: number;
   end: number;
   color?: string;
+  colorDark?: string;
   // cours suivant le même jour
   next?: { title: string; room: string; startTime: string };
 }
