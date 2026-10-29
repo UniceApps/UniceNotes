@@ -21,6 +21,21 @@ const withMeasureSimulatorFix = (config) =>
     return mod;
   });
 
+// SDK 58 moved bindReactNativeFactory to SceneDelegate: give Measure its anchor back, before super.application
+const MEASURE_ANCHOR = '    // measure anchor (was bindReactNativeFactory( before the SDK 58 scene life cycle)';
+
+const withMeasureSceneAnchor = (config) =>
+  withAppDelegate(config, (mod) => {
+    const { contents } = mod.modResults;
+    if (!/bindReactNativeFactory\(|window\s*=\s*UIWindow\(/.test(contents)) {
+      mod.modResults.contents = contents.replace(
+        /^\s*return super\.application\(application, didFinishLaunchingWithOptions: launchOptions\)$/m,
+        `${MEASURE_ANCHOR}\n$&`,
+      );
+    }
+    return mod;
+  });
+
 module.exports = ({ config }) => {
   const measurePlugin = [
     '@measuresh/react-native',
@@ -34,8 +49,8 @@ module.exports = ({ config }) => {
 
   return {
     ...config,
-    // mods run in reverse order: the fix must be listed before Measure
-    plugins: [...(config.plugins ?? []), withMeasureSimulatorFix, measurePlugin],
+    // mods run in reverse order: a fix listed before a plugin runs after it, one listed after runs before it
+    plugins: [...(config.plugins ?? []), withMeasureSimulatorFix, measurePlugin, withMeasureSceneAnchor],
     extra: {
       eas: {
         projectId: 'ec0ebd57-7227-4cd2-a71e-344e0a5fffe5',

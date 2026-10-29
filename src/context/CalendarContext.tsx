@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { AppState } from 'react-native';
 
 import { useExams } from '@/src/hooks/useExams';
+import { publishCourses } from '@/src/services/app-intents';
 import { readCalendarCache, writeCalendarCache } from '@/src/services/calendar-cache';
 import { fetchCalendar } from '@/src/services/edt';
 import { updateExamReminders } from '@/src/services/reminders';
@@ -53,10 +54,7 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
   const current = data && data.code === adeid ? data : null;
 
   useEffect(() => {
-    if (!adeid) {
-      updateWidgets(null);
-      return;
-    }
+    if (!adeid) return;
     let cancelled = false;
     lastSyncAt.current = Date.now();
 
@@ -74,7 +72,6 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
       if (events) {
         const syncedAt = Date.now();
         writeCalendarCache({ code, savedAt: syncedAt, events });
-        updateWidgets(events);
         setData({ code, events, offline: false, syncedAt });
       } else {
         setData((previous) =>
@@ -92,6 +89,14 @@ export function CalendarProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [adeid, fetchKey]);
+
+  // widgets et Siri suivent l'edt affiché, cache compris : un changement d'edt les met à jour même hors ligne
+  useEffect(() => {
+    if (adeid && !current) return;
+    const events = !current ? null : current.syncedAt === null ? undefined : current.events;
+    updateWidgets(events);
+    publishCourses(events);
+  }, [adeid, current]);
 
   // la Live Activity suit l'edt affiché, une fois le cache lu
   useEffect(() => {

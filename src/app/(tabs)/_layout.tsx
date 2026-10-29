@@ -1,9 +1,10 @@
 import { Platform } from 'react-native';
 
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
+import { NativeTabs } from 'expo-router/native-tabs';
 
 import { useAppTheme } from '@/src/theme';
 import { withAlpha } from '@/src/utils/color';
+import { showTimetableToday } from '@/src/utils/timetable';
 
 // barre d'onglets du système : Liquid Glass sur iOS, Material 3 aux couleurs du thème sur Android
 export default function TabsLayout() {
@@ -35,7 +36,17 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Label>Accueil</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="timetable" accessibilityLabel="Emploi du temps">
+      <NativeTabs.Trigger
+        name="timetable"
+        accessibilityLabel="Emploi du temps"
+        // onglet touché alors qu'il est déjà affiché : retour à aujourd'hui, à la place du défilement natif
+        disableScrollToTop
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            if (navigation.isFocused()) showTimetableToday();
+          },
+        })}
+      >
         <NativeTabs.Trigger.Icon sf="calendar" md="calendar_month" />
         <NativeTabs.Trigger.Label>EDT</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>

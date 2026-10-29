@@ -172,7 +172,7 @@ function EdtStep({
           >
             <Icon source="check-circle" size={24} color={theme.colors.primary} />
             <Text variant="titleMedium" style={{ flex: 1, color: theme.colors.onPrimaryContainer }}>
-              EDT {adeid} configuré
+              Connecté avec {adeid}
             </Text>
           </View>
           <Button mode="contained" icon="arrow-right" contentStyle={{ flexDirection: 'row-reverse' }} onPress={onNext}>

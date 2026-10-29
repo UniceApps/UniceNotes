@@ -27,6 +27,7 @@
 ## 🗂️ Architecture
 
 ```
+app-intents/      intents Siri et Raccourcis (Swift, iOS) : prochain cours, EDT, services de l'ENT
 modules/
 ├── content-scroll/  module natif local (iOS) : la barre d'onglets se réduit au défilement
 └── web-session/     module natif local : garde la connexion aux services de l'ENT (cookies de session)

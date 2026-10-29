@@ -31,9 +31,9 @@ function toWidgetClass(event: CalendarEvent): WidgetClass {
   };
 }
 
-// une entrée maintenant puis à chaque fin de cours ; events null : edt non configuré
-function buildWidgetTimeline(events: CalendarEvent[] | null, now = new Date()): WidgetTimelineEntry[] {
-  if (!events) return [{ date: now, props: { courses: [], configured: false } }];
+// une entrée maintenant puis à chaque fin de cours ; null : edt non configuré, undefined : pas encore téléchargé
+function buildWidgetTimeline(events: CalendarEvent[] | null | undefined, now = new Date()): WidgetTimelineEntry[] {
+  if (!events) return [{ date: now, props: { courses: [], configured: events === null ? false : undefined } }];
 
   const future = upcoming(events, now);
   const coursesAt = (date: Date) =>
@@ -73,7 +73,7 @@ function buildClassActivity(events: CalendarEvent[], now = new Date()): ClassAct
   };
 }
 
-export function updateWidgets(events: CalendarEvent[] | null): void {
+export function updateWidgets(events: CalendarEvent[] | null | undefined): void {
   if (!WIDGETS_SUPPORTED) return;
   try {
     NextClassWidgetInstance.updateTimeline(buildWidgetTimeline(events));

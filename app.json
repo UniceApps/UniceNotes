@@ -49,6 +49,7 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-quick-actions",
+      "expo-app-intents",
       [
         "expo-notifications",
         {
@@ -178,7 +179,15 @@
               "name": "NextClassWidget",
               "displayName": "Prochains Cours",
               "description": "Affiche vos prochains cours UniceNotes",
-              "supportedFamilies": ["systemSmall", "systemMedium"]
+              "ios": {
+                "supportedFamilies": [
+                  "systemSmall",
+                  "systemMedium",
+                  "accessoryInline",
+                  "accessoryRectangular",
+                  "accessoryCircular"
+                ]
+              }
             }
           ]
         }
@@ -198,10 +207,6 @@
       [
         "expo-build-properties",
         {
-          "ios": {
-            //remove in expo sdk 58
-            "enableSceneSupport": true
-          },
           "android": {
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true
@@ -250,7 +255,10 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "inlineModules": {
+        "watchedDirectories": ["app-intents"]
+      }
     }
   }
 }

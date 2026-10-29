@@ -1,6 +1,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 
+import { useAppIntents } from 'expo-app-intents';
 import * as QuickActions from 'expo-quick-actions';
 import { useQuickActionCallback } from 'expo-quick-actions/hooks';
 import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
@@ -8,8 +9,10 @@ import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
 import { getEntApp } from '@/src/constants/ent';
 import { useSettings } from '@/src/context/SettingsContext';
 import { usePinnedApps } from '@/src/hooks/usePinnedApps';
+import { handleAppIntents, publishEntApps } from '@/src/services/app-intents';
 import { addReminderTapListener } from '@/src/services/reminders';
 import { emitDeepLink, parseDeepLink, peekDeepLink, subscribeDeepLink, takeDeepLink } from '@/src/utils/deeplink';
+import { showTimetableToday } from '@/src/utils/timetable';
 
 const icon = (symbol: string) => (Platform.OS === 'ios' ? `symbol:${symbol}` : null);
 
@@ -58,7 +61,7 @@ function onQuickAction(action: QuickActions.Action) {
   openLink(action.params?.href);
 }
 
-// liens profonds, widgets, raccourcis de l'icône et rappels : traités une fois l'accueil affiché
+// liens profonds, widgets, raccourcis de l'icône, Siri et rappels : traités une fois l'accueil affiché
 export function DeepLinkHandler() {
   const router = useRouter();
   const pathname = usePathname();
@@ -70,8 +73,10 @@ export function DeepLinkHandler() {
   const landed = useRef(false);
 
   useQuickActionCallback(onQuickAction);
+  useAppIntents(handleAppIntents);
 
   useEffect(() => addReminderTapListener(openLink), []);
+  useEffect(publishEntApps, []);
 
   useEffect(() => {
     QuickActions.setItems(oobeCompleted ? buildQuickActions(pinned) : []);
@@ -121,9 +126,12 @@ export function DeepLinkHandler() {
             reset();
             router.push('/edt-config');
           }
-        } else if (pathname !== '/timetable') {
-          reset();
-          router.navigate('/timetable');
+        } else {
+          if (pathname !== '/timetable') {
+            reset();
+            router.navigate('/timetable');
+          }
+          showTimetableToday();
         }
         break;
     }

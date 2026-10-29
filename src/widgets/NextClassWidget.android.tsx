@@ -71,7 +71,7 @@ function currentProps(timeline: StoredEntry[] | null, now: number): NextClassWid
   if (!timeline) return { courses: [] };
 
   const entry = timeline.filter((e) => e.date <= now).pop() ?? timeline[0];
-  if (entry.props.configured === false) return entry.props;
+  if (entry.props.configured !== true) return entry.props;
 
   const all = entry.props.courses ?? [];
   const courses = all.filter((c) => !c.endsAt || c.endsAt > now);

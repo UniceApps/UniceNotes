@@ -37,3 +37,8 @@ Unencrypted key-value storage for non-sensitive preferences.
 
 - `calendar.json` (document directory): last downloaded timetable with its ADE code and download date, shown while offline
 
+## Native stores
+
+- expo-widgets: classes shown by the iOS widget (timeline in the App Group)
+- expo-app-intents (iOS `UserDefaults`): `course` catalog (classes of the next 7 days, read by the "Prochain cours" intent) and `entApp` catalog (ENT services)
+

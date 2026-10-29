@@ -77,7 +77,7 @@ export default function EntScreen() {
 
       <Text variant="bodySmall" style={{ textAlign: 'center', color: c.onSurfaceVariant }}>
         Épingle jusqu&apos;à {MAX_PINNED_APPS} services pour les retrouver sur l&apos;accueil et sur l&apos;icône de
-        l&apos;app. Tes connexions restent enregistrées sur cet appareil.
+        l&apos;app.
       </Text>
     </Screen>
   );

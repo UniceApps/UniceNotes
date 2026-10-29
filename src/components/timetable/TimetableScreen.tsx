@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import type { BottomSheetModal } from '@gorhom/bottom-sheet';
@@ -29,6 +29,7 @@ import { useAppTheme, type Tone } from '@/src/theme';
 import type { CalendarEvent } from '@/src/types';
 import { formatIsoDate, formatMonth, getIsoWeek } from '@/src/utils/date';
 import { haptics } from '@/src/utils/haptics';
+import { subscribeTimetableToday } from '@/src/utils/timetable';
 
 const VIEWS = [
   { days: 1, label: 'Jour', icon: 'view-day-outline' },
@@ -92,10 +93,17 @@ export function TimetableScreen({ tempCode }: { tempCode: string | null }) {
     action();
   }
 
+  const showToday = useCallback(() => {
+    calendarRef.current?.goToDate({ date: new Date(), hourScroll: true, animatedDate: true, animatedHour: true });
+  }, []);
+
   function goToToday() {
     haptics('light');
-    calendarRef.current?.goToDate({ date: new Date(), hourScroll: true, animatedDate: true, animatedHour: true });
+    showToday();
   }
+
+  // onglet EDT uniquement, pas l'edt temporaire
+  useEffect(() => (tab ? subscribeTimetableToday(showToday) : undefined), [tab, showToday]);
 
   function openPicker() {
     haptics('light');
