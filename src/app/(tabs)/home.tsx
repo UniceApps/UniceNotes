@@ -7,6 +7,7 @@ import { AnnouncementSheet } from '@/src/components/home/AnnouncementSheet';
 import { HomeHeader } from '@/src/components/home/HomeHeader';
 import { NextClassCard } from '@/src/components/home/NextClassCard';
 import { QuickAccess } from '@/src/components/home/QuickAccess';
+import { Snowfall } from '@/src/components/home/Snowfall';
 import { UpNextList } from '@/src/components/home/UpNextList';
 import { Banner } from '@/src/components/ui/Banner';
 import { Screen } from '@/src/components/ui/Screen';
@@ -80,6 +81,7 @@ export default function HomeScreen() {
         ) : undefined
       }
       overlay={<AnnouncementSheet />}
+      background={<Snowfall />}
     >
       {showOffline && (
         <Banner

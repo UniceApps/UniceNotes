@@ -11,11 +11,15 @@ import ambre from './palettes/ambre.json';
 import azur from './palettes/azur.json';
 import lavande from './palettes/lavande.json';
 import menthe from './palettes/menthe.json';
+import noel from './palettes/noel.json';
 
 // une palette = un JSON MD3, voir https://oss.callstack.com/react-native-paper/docs/guides/theming
-const PALETTES: unknown[] = [azur, menthe, lavande, ambre];
+const PALETTES: unknown[] = [noel, azur, menthe, lavande, ambre];
 
-const DEFAULT_THEME_ID = 'azur';
+// thème de saison imposé une fois à tous à son arrivée ; active: false le retire et rend à chacun son thème d'avant
+const SEASON = { id: 'noel-2026', theme: 'noel', active: true };
+const BASE_THEME_ID = 'azur';
+const DEFAULT_THEME_ID = SEASON.active ? SEASON.theme : BASE_THEME_ID;
 
 export type ThemeColors = typeof azur.light;
 
@@ -95,7 +99,31 @@ function subscribe(listener: () => void): () => void {
 }
 
 export async function loadThemePreference(): Promise<void> {
-  const stored = await storage.get('theme');
+  const [stored, season, before] = await Promise.all([
+    storage.get('theme'),
+    storage.get('themeSeason'),
+    storage.get('themeBeforeSeason'),
+  ]);
+
+  // début de saison : le thème de chacun est mis de côté
+  if (SEASON.active && season !== SEASON.id) {
+    if (isThemeId(stored) && stored !== SEASON.theme) storage.set('themeBeforeSeason', stored);
+    else storage.remove('themeBeforeSeason');
+    storage.set('themeSeason', SEASON.id);
+    setThemeId(SEASON.theme);
+    return;
+  }
+
+  // fin de saison : retour au thème d'avant, sauf si un autre a été choisi entre-temps
+  if (!SEASON.active && season === SEASON.id) {
+    storage.remove('themeSeason');
+    storage.remove('themeBeforeSeason');
+    if (stored === SEASON.theme) {
+      setThemeId(isThemeId(before) ? before : BASE_THEME_ID);
+      return;
+    }
+  }
+
   emit(isThemeId(stored) ? stored : DEFAULT_THEME_ID);
 }
 

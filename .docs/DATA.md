@@ -21,7 +21,9 @@ Encrypted storage backed by the iOS Keychain / Android Keystore.
 
 Unencrypted key-value storage for non-sensitive preferences.
 
-- `theme`: selected color palette (`azur`, `menthe`, `lavande`, `ambre`)
+- `theme`: selected color palette (`noel`, `azur`, `menthe`, `lavande`, `ambre`)
+- `themeSeason`: seasonal theme forced once on everyone (`noel-2026`), removed when the season ends
+- `themeBeforeSeason`: theme chosen before the seasonal theme, given back when the season ends
 - `haptics`: `"false"` when haptic feedback is disabled
 - `liveActivities`: `"false"` when the iOS Live Activity is disabled
 - `notifications`: `"false"` when the exam (DS) reminders are disabled

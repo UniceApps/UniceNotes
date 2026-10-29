@@ -25,6 +25,8 @@ interface ScreenProps extends Partial<ScreenHeaderProps> {
   onScroll?: ScrollViewProps['onScroll'];
   // posé par-dessus la page : feuilles, snackbar…
   overlay?: ReactNode;
+  // décor fixe derrière le contenu défilant
+  background?: ReactNode;
   children: ReactNode;
 }
 
@@ -41,6 +43,7 @@ export function Screen(props: ScreenProps) {
     scrollRef,
     onScroll,
     overlay,
+    background,
     children,
   } = props;
   const theme = useAppTheme();
@@ -61,6 +64,7 @@ export function Screen(props: ScreenProps) {
 
   return (
     <View style={{ flex: 1, paddingTop: top, backgroundColor: theme.colors.background }}>
+      {background}
       <ScrollView
         ref={scrollRef}
         onScroll={onScroll}

@@ -4,8 +4,8 @@ import { View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import { HeaderButton } from '@/src/components/ui/ScreenHeader';
-import { useAppTheme } from '@/src/theme';
-import { formatLongDate } from '@/src/utils/date';
+import { useAppTheme, useThemeId } from '@/src/theme';
+import { daysBetween, formatLongDate } from '@/src/utils/date';
 
 // salutation selon l'heure, avant 5 h on reste sur le soir
 const GREETINGS = [
@@ -41,10 +41,51 @@ const GREETINGS = [
   },
 ];
 
-function getGreeting(date: Date) {
+// thème Noël : compte à rebours jusqu'au 25 décembre, puis les fêtes jusqu'à l'Épiphanie
+function getChristmasGreeting(date: Date): { title: string; messages: string[] } {
+  const month = date.getMonth();
+  const day = date.getDate();
+  if (month === 11 && day >= 24 && day <= 25) {
+    return {
+      title: '🎄 Joyeux Noël !',
+      messages: ['tema le gars il mate UniceNotes à Noël 🎁'],
+    };
+  }
+  if (month === 11 && day > 25) {
+    return {
+      title: '⛄ Bonnes fêtes !',
+      messages: [
+        'Encore un peu de bûche ? 🍰',
+        'Repose-toi bien pendant les vacances !',
+        'Les cours reprennent bientôt… ❄️',
+      ],
+    };
+  }
+  if (month === 0 && day <= 3 || month === 11 && day === 31) {
+    return {
+      title: '🎆 Bonne année !',
+      messages: [
+        "On passe de 6 à 7 ou quoi l'ékip 😋",
+        'Meilleurs vœux !',
+      ],
+    };
+  }
+
+  const days = daysBetween(date, new Date(date.getFullYear(), 11, 25));
   const hour = date.getHours();
-  const { title, messages } = GREETINGS.find((g) => hour >= g.from) ?? GREETINGS[0];
-  return { title, message: messages[Math.floor(Math.random() * messages.length)] };
+  return {
+    title: hour >= 18 || hour < 5 ? '⛄ Bonsoir !' : hour >= 12 ? '🎄 Salut !' : '❄️ Bonjour !',
+    messages: [
+      `Plus que ${days} dodos avant Noël 🎁`,
+      'Tu as été sage cette année ? 🎅',
+    ],
+  };
+}
+
+function getGreeting(date: Date, christmas: boolean): { title: string; messages: string[] } {
+  if (christmas) return getChristmasGreeting(date);
+  const hour = date.getHours();
+  return GREETINGS.find((g) => hour >= g.from) ?? GREETINGS[0];
 }
 
 interface HomeHeaderProps {
@@ -55,7 +96,11 @@ interface HomeHeaderProps {
 
 export function HomeHeader({ now, onEditEdt, onSettings }: HomeHeaderProps) {
   const theme = useAppTheme();
-  const [greeting] = useState(() => getGreeting(new Date()));
+  const christmas = useThemeId() === 'noel';
+  // tiré une fois : le message ne change pas à chaque rendu
+  const [seed] = useState(Math.random);
+  const greeting = getGreeting(now, christmas);
+  const message = greeting.messages[Math.floor(seed * greeting.messages.length)];
 
   return (
     <View>
@@ -71,7 +116,7 @@ export function HomeHeader({ now, onEditEdt, onSettings }: HomeHeaderProps) {
         {greeting.title}
       </Text>
       <Text variant="titleMedium" style={{ marginTop: 4, color: theme.colors.onSurfaceVariant }}>
-        {greeting.message}
+        {message}
       </Text>
     </View>
   );

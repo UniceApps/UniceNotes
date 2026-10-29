@@ -5,6 +5,8 @@ import { AppState } from 'react-native';
 // toutes les clés utilisées par l'app, voir .docs/DATA.md
 export type StorageKey =
   | 'theme'
+  | 'themeSeason'
+  | 'themeBeforeSeason'
   | 'haptics'
   | 'liveActivities'
   | 'notifications'
