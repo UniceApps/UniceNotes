@@ -50,7 +50,8 @@ function Browser({ app, fromHome, onClose }: { app: EntApp; fromHome: boolean; o
   const insets = useSafeAreaInsets();
   const tabBarInset = useTabBarInset();
   const c = theme.colors;
-  const webRef = useRef<WebView>(null);
+  // sans paramètre, webview 14 type les props en never
+  const webRef = useRef<WebView<object>>(null);
 
   // cookies de session réinjectés avant la première requête
   const [ready, setReady] = useState(false);

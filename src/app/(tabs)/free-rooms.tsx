@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, View, type ScrollViewInstance, type ViewInstance } from 'react-native';
 
 import { useIsFocused } from 'expo-router';
 import { Snackbar } from 'react-native-paper';
@@ -44,9 +44,9 @@ export default function FreeRoomsScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const favorites = useFavoriteRooms(snapshot?.rooms);
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const scrollY = useRef(0);
-  const treeRef = useRef<View>(null);
+  const treeRef = useRef<ViewInstance>(null);
 
   const tree = useMemo(() => buildRoomTree(snapshot?.rooms ?? []), [snapshot]);
   const bookingsByRoom = useMemo(() => groupBookingsByRoom(snapshot?.bookings ?? []), [snapshot]);

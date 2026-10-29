@@ -11,7 +11,6 @@ import { SectionTitle } from '@/src/components/ui/SectionTitle';
 import { Watermark } from '@/src/components/ui/Watermark';
 import { APP_VERSION, BUILD_COMMIT, IS_BETA, LINKS } from '@/src/constants/config';
 import { useSettings } from '@/src/context/SettingsContext';
-import { clearWebSession } from '@/src/services/webSession';
 import { alertNotificationsDenied, NOTIFICATIONS_SUPPORTED, requestReminderPermission } from '@/src/services/reminders';
 import { LIVE_ACTIVITIES_SUPPORTED } from '@/src/services/widgets';
 import { useAppTheme } from '@/src/theme';

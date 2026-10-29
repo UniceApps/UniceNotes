@@ -1,5 +1,12 @@
 import { Children, isValidElement, type ReactElement, type ReactNode, type Ref } from 'react';
-import { Platform, ScrollView, View, type RefreshControlProps, type ScrollViewProps } from 'react-native';
+import {
+  Platform,
+  ScrollView,
+  View,
+  type RefreshControlProps,
+  type ScrollViewInstance,
+  type ScrollViewProps,
+} from 'react-native';
 
 import Animated, { FadeOut } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +21,7 @@ interface ScreenProps extends Partial<ScreenHeaderProps> {
   // remplace l'en-tête standard (accueil)
   header?: ReactNode;
   refreshControl?: ReactElement<RefreshControlProps>;
-  scrollRef?: Ref<ScrollView>;
+  scrollRef?: Ref<ScrollViewInstance>;
   onScroll?: ScrollViewProps['onScroll'];
   // posé par-dessus la page : feuilles, snackbar…
   overlay?: ReactNode;

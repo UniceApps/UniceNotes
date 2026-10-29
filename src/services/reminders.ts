@@ -1,6 +1,7 @@
 import { Alert, Linking, Platform } from 'react-native';
 
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 
 import type { CalendarEvent } from '@/src/types';
 import { DAY_MS, formatClock } from '@/src/utils/date';
@@ -25,7 +26,7 @@ async function ensureChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
     name: 'Rappels de DS',
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
   });
 }
 

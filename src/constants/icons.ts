@@ -1,11 +1,11 @@
-import type { ImageSourcePropType } from 'react-native';
+import type { ImageProps } from 'expo-image';
 
 export interface AppIconOption {
   // nom exact déclaré dans app.json (expo-alternate-app-icons), null pour l'icône principale
   name: string | null;
   label: string;
   author?: string;
-  source: ImageSourcePropType;
+  source: ImageProps['source'];
 }
 
 export interface AppIconGroup {
