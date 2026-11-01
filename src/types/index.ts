@@ -20,7 +20,10 @@ export interface AdeProject {
 // cursus trouvé par la recherche ADE
 export interface AdeProgram {
   id: string;
+  // code du calendrier iCal : EIGE4-150-VET
+  code: string;
   name: string;
+  faculty?: string;
 }
 
 // widgets et Live Activity

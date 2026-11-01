@@ -13,7 +13,7 @@ import { SectionTitle } from '@/src/components/ui/SectionTitle';
 import { useCalendar } from '@/src/context/CalendarContext';
 import { useSettings } from '@/src/context/SettingsContext';
 import { getProjectSelection, setProjectOverride, type ProjectSelection } from '@/src/services/ade';
-import { PROGRAM_SUFFIX, searchPrograms } from '@/src/services/edt';
+import { PROGRAM_SUFFIX, preloadPrograms, searchPrograms } from '@/src/services/edt';
 import type { AdeProgram } from '@/src/types';
 import { useAppTheme } from '@/src/theme';
 import { haptics } from '@/src/utils/haptics';
@@ -53,7 +53,7 @@ export default function EdtConfigScreen() {
       {mode === 'student' ? (
         <StudentForm onSave={save} />
       ) : (
-        <ProgramSearch onSelect={(id) => save(id + PROGRAM_SUFFIX)} />
+        <ProgramSearch onSelect={save} />
       )}
 
       <ProjectPicker />
@@ -115,13 +115,15 @@ function StudentForm({ onSave }: { onSave: (code: string) => void }) {
   );
 }
 
-function ProgramSearch({ onSelect }: { onSelect: (id: string) => void }) {
+function ProgramSearch({ onSelect }: { onSelect: (code: string) => void }) {
   const theme = useAppTheme();
   const [query, setQuery] = useState('');
   // résultats de la dernière recherche terminée
   const [search, setSearch] = useState<{ term: string; results: AdeProgram[] | null } | null>(null);
   const term = query.trim();
   const active = term.length >= 2;
+
+  useEffect(preloadPrograms, []);
 
   useEffect(() => {
     if (term.length < 2) return;
@@ -169,7 +171,8 @@ function ProgramSearch({ onSelect }: { onSelect: (id: string) => void }) {
               key={program.id}
               icon="school-outline"
               title={program.name}
-              onPress={() => onSelect(program.id)}
+              subtitle={program.faculty}
+              onPress={() => onSelect(program.code)}
             />
           ))}
         </ListGroup>

@@ -91,7 +91,7 @@ export function AnnouncementSheet() {
             ))}
           </View>
           <Button mode="contained" icon="check" onPress={close}>
-            Merci !
+            Fermer
           </Button>
         </Content>
       )}

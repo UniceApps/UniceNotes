@@ -1,7 +1,9 @@
-import type { AdeRoom, RoomBooking } from '@/src/types';
+import type { AdeProgram, AdeRoom, RoomBooking } from '@/src/types';
+import { isValidEdtCode } from '@/src/utils/deeplink';
 
 const TAG_BODY = '((?:"[^"]*"|[^>"])*)';
 const ROOM_TAG = new RegExp(`<room\\b${TAG_BODY}>`, 'g');
+const TRAINEE_TAG = new RegExp(`<trainee\\b${TAG_BODY}>`, 'g');
 const EVENT_TAG = new RegExp(`<event\\b${TAG_BODY}>`, 'g');
 const RESOURCE_TAG = new RegExp(`<resource\\b${TAG_BODY}>`, 'g');
 
@@ -60,6 +62,32 @@ export function parseRooms(xml: string): AdeRoom[] {
     rooms.push({ id: attributes.id, name, path });
   }
   return rooms;
+}
+
+export interface ProgramEntry {
+  program: AdeProgram;
+  text: string;
+}
+
+function parseFaculty(path: string | undefined, parent: string | undefined): string | undefined {
+  const suffix = `${parent}.`;
+  if (!path || !parent || !path.endsWith(suffix)) return undefined;
+  const faculty = path.slice(0, -suffix.length).replace(/\.$/, '').replace(/\.(?=\S)/g, ' › ').trim();
+  return faculty || undefined;
+}
+
+export function parsePrograms(xml: string): ProgramEntry[] {
+  assertNoAdeError(xml);
+  const entries: ProgramEntry[] = [];
+  for (const [, source] of xml.matchAll(TRAINEE_TAG)) {
+    const { id, code, name: rawName, fatherName, path } = parseAttributes(source);
+    const name = rawName?.trim();
+    if (!id || !name || !isValidEdtCode(code)) continue;
+
+    const faculty = parseFaculty(path, fatherName);
+    entries.push({ program: { id, code, name, faculty }, text: [name, fatherName, faculty, code].join(' ') });
+  }
+  return entries;
 }
 
 // une réservation par salle d'un événement ; date au format JJ/MM/AAAA

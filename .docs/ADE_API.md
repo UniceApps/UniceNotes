@@ -182,3 +182,22 @@ detail → 8 : nécessaire pour avoir les <resources> de chaque événement (une
 - Une journée entière pèse environ 2,3 Mo (~2 s) et ADE **ne compresse pas** ses réponses.
 - Filtrer avec `resources=id1%7Cid2…` ne réduit presque rien au total (le poids vient des listes de groupes d'étudiants). Le `|` doit être encodé (`%7C`), sinon HTTP 400, et l'URL est limitée à environ 4 Ko (HTTP 414 au-delà d'environ 500 identifiants).
 - À fort niveau de détail, ADE renvoie parfois des `<event/>` vides : le parseur lève une erreur plutôt que d'afficher toutes les salles libres.
+
+
+# Recherche de cursus (VET)
+
+L'ancienne recherche `ade-consult.univ-cotedazur.fr/?action=search-vet` redirige désormais vers le CAS. La recherche (`src/services/edt.ts`, `parsePrograms` dans `src/utils/ade-xml.ts`) enchaîne `connect` → `setProject` → `getResources` → `disconnect` avec la session anonyme, puis filtre la liste sur le téléphone.
+
+`https://adresse-ade/jsp/webapi?sessionId=xxxxxxxxxxxxx&function=getResources&category=trainee&type=VET&detail=11`
+
+```
+category → trainee
+type → VET : uniquement les cursus (environ 1000), pas les groupes de TD/TP
+detail → 11 : premier niveau qui expose code (detail=2 : ~90 Ko, detail=11 : ~850 Ko, ~0,6 s)
+```
+
+- `code` est le code à passer à `anonymous_cal.jsp` (`EIGE4-150-VET`). Il vaut presque toujours le préfixe du nom + `-VET`, mais pas toujours (`VUDLR1-400-VET-DU-FCC`, `ALC-VET`, `XUUEC1-400-VET` pour un nom en `XUUEC1-180`) : ne pas le déduire du nom.
+- `name` est parfois abrégé (`EIGE4-150 - GE4`) : `fatherName` donne le nom complet (`EIGE4-150 - Polytech - Ingénieur - Génie de l'Eau - 4e année`).
+- `path` se termine toujours par `fatherName.` ; ce qui précède est la composante (`POLYTECH - UNICA`, `IUT.IUT - Informatique (INFO)`). Les noms peuvent contenir des points (`INSPE - INST. NAT DU PROFES ET DE L'EDUC`).
+- Deux cursus peuvent partager le même code (`AIMBU2-500-VET`).
+- `name=` n'accepte pas de joker (`*`, `%`) : seule une correspondance exacte renvoie quelque chose.
